@@ -482,16 +482,32 @@ The document is dated and can be stored as evidence of ongoing compliance activi
 
 ---
 
-### Building the M365 app
+### Building the desktop app
 
-`build_gdpr.py` packages `gdpr_scanner.py` + `m365_connector.py` + `lang/` into a standalone native app — same PyInstaller / pywebview approach as `build.py`.
+`build_gdpr.py` packages `gdpr_scanner.py` + `m365_connector.py` + `lang/` into a standalone native app using PyInstaller + pywebview.
 
 ```bash
 python build_gdpr.py              # build for the current platform
-python build_gdpr.py --icons-only # regenerate icon_m365.icns / icon_m365.ico
+python build_gdpr.py --icons-only # regenerate icon_gdpr.icns / icon_gdpr.ico
 ```
 
-> **Note:** Same cross-compilation restriction applies — must build on the target platform.
+| Platform | Output | Native window |
+|---|---|---|
+| macOS | `dist/GDPRScanner.app` | WKWebView |
+| Windows | `dist/GDPRScanner/GDPRScanner.exe` | WebView2 (Edge) |
+| Linux | `dist/GDPRScanner/GDPRScanner` | GTK WebKit |
+
+> **Cross-compilation is not supported** — build on the target platform, or use the pre-built binaries from the [GitHub Releases](../../releases) page.
+
+**GitHub Actions** builds all three platforms automatically on every push to `main` and on `v*` tags. Pre-built zips are attached to each release:
+
+| File | Platform |
+|---|---|
+| `GDPRScanner_windows_x64.zip` | Windows 10/11 x64 |
+| `GDPRScanner_linux_x86_64.zip` | Ubuntu 22.04+ / Debian |
+| `GDPRScanner_macos_x86_64.zip` | macOS 12+ Intel / Apple Silicon (Rosetta) |
+
+> **macOS Gatekeeper:** the app is unsigned. On first launch right-click → **Open** to bypass the security warning.
 
 ---
 
