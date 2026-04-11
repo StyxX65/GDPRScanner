@@ -1,0 +1,50 @@
+{
+  "_description": "Microsoft Education SKU classification for GDPR Scanner role detection.",
+  "_source": "https://learn.microsoft.com/en-us/entra/identity/users/licensing-service-plan-reference",
+  "_note": "student_ids and staff_ids MUST be disjoint. student is checked first — any overlap causes Faculty users to be misclassified as students. Add new SKUs here; no code change required.",
+  "student_ids": {
+    "314c4481-f395-4525-be8b-2ec4bb1e9d91": "Microsoft 365 A1 for students (STANDARDWOFFPACK_STUDENT)",
+    "c32f9321-a627-406d-a114-1f9c81aaafac": "Microsoft 365 A1 for students (OFFICESUBSCRIPTION_STUDENT / new commerce CSP)",
+    "e82ae690-a2d5-4d76-8d30-7c6e01e6022e": "Microsoft 365 A3 for students",
+    "98b6e773-24d4-4c0d-a968-6e787a1f8204": "Microsoft 365 A5 for students",
+    "46c119d4-0379-4a9d-85e4-97c66d3f909e": "Microsoft 365 A1 for students (student use benefit)",
+    "e960f18a-dd80-4a07-82aa-1744b52d22ba": "Office 365 A1 for students",
+    "78e66a63-337a-4a9a-8959-41c6654dfb56": "Office 365 A3 for students",
+    "8fc2205d-4e51-4401-97f0-8c895b11bed4": "Office 365 A5 for students",
+    "12b8c807-2e20-48fc-b453-542b6ee9d171": "Microsoft 365 A1 for students (device)",
+    "d37cc85e-b4c5-4e39-b1d3-e54fb6dd5d63": "Office 365 A1 for students (device)",
+    "160d616a-4b30-4c5a-9a0b-e06b31a82b4b": "Office 365 A3 for students (device)",
+    "8a89b70c-9c52-4e4a-ab05-5a5e14c6c4f4": "Microsoft Teams Essentials (EDU Student)",
+    "a4e376bd-c61c-4517-878d-55e43f5fc13b": "Microsoft 365 A1 for students (new commerce)"
+  },
+  "staff_ids": {
+    "94763226-9b3c-4e75-a931-5c89701abe66": "Microsoft 365 A1 for faculty",
+    "f30db892-07e9-47e9-837c-80727f46fd3d": "Microsoft Power Automate Free (assigned to faculty)",
+    "4b590615-0888-425a-a965-b3bf7789848d": "Microsoft 365 A3 for faculty",
+    "e578b273-6db4-4691-bba0-8d691f4da603": "Microsoft 365 A5 for faculty",
+    "2d61d025-d6aa-49aa-b8f9-ca2ebb63e3ab": "Microsoft 365 A1 for faculty (faculty use benefit)",
+    "a4585165-0533-458a-97e3-c400570268c4": "Office 365 A1 for faculty",
+    "0c266dff-15dd-4b49-8397-2bb16070ed52": "Office 365 A3 for faculty",
+    "1e7e1070-8ccb-4aca-b470-d7cb538cb70e": "Office 365 A5 for faculty",
+    "15b1d32e-5f65-4a21-a4c4-d1a0e2ee3f8e": "Office 365 A3 for faculty (device)",
+    "ba04c29e-5b81-4f69-a5f6-c4c7d6bade97": "Microsoft 365 A1 for faculty (new commerce)",
+    "c2273bd0-dff7-4215-9ef5-2c7bcfb06425": "Microsoft 365 Apps for Faculty"
+  },
+  "student_fragments": [
+    "STUDENT",
+    "STU_",
+    "_STU",
+    "STANDARDWOFFPACK_STUDENT",
+    "STANDARDWOFFPACK_IW_STUDENT",
+    "OFFICESUBSCRIPTION_STUDENT"
+  ],
+  "staff_fragments": [
+    "FACULTY",
+    "FAC_",
+    "_FAC",
+    "TEACHER",
+    "STANDARDWOFFPACK_FACULTY",
+    "STANDARDWOFFPACK_IW_FACULTY",
+    "OFFICESUBSCRIPTION_FACULTY"
+  ]
+}

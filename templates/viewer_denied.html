@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GDPRScanner — Access denied</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+    .denied-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 32px 40px;
+      text-align: center;
+      max-width: 360px;
+    }
+    .denied-card h1 { font-size: 16px; font-weight: 600; margin: 0 0 8px; color: var(--text); }
+    .denied-card p  { font-size: 13px; color: var(--muted); margin: 0; }
+  </style>
+</head>
+<body data-theme="dark">
+  <div class="denied-card">
+    <h1>Access denied</h1>
+    <p>This link is invalid or has expired.<br>Ask the administrator for a new link.</p>
+  </div>
+</body>
+</html>

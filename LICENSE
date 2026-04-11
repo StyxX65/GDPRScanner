@@ -1,0 +1,49 @@
+                    GNU AFFERO GENERAL PUBLIC LICENSE
+                       Version 3, 19 November 2007
+
+ Copyright (C) 2024-2026 Henrik Højmark
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU Affero General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU Affero General Public License for more details.
+
+ You should have received a copy of the GNU Affero General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+AUTHORSHIP AND AI ASSISTANCE
+
+This software was developed by Henrik Højmark. Development was conducted with
+substantial AI assistance (Claude by Anthropic), used as a pair-programming
+tool. All design decisions, architecture, requirements, and validation were made
+by the author. The use of AI tooling does not diminish authorship — it is
+analogous to the use of any other development tool or reference.
+
+ADDITIONAL TERMS — COMMERCIAL USE
+
+If you wish to use this software in a commercial SaaS product or managed
+service without complying with the AGPL-3.0 source disclosure requirements,
+a commercial license is available. Please contact the project maintainers.
+
+--------------------------------------------------------------------------------
+
+DISCLAIMER — NOT LEGAL ADVICE
+
+This software is a technical tool intended to assist with GDPR compliance
+activities. It does not constitute legal advice. The authors make no
+representation that use of this tool satisfies any specific legal obligation.
+You are responsible for ensuring your use of this software complies with
+applicable law, including GDPR, Databeskyttelsesloven, and any other relevant
+regulations in your jurisdiction.
+
+CPR numbers (Danish personal identification numbers) are special category
+personal data. Handle scan results with appropriate care and access controls.

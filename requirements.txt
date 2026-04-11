@@ -1,0 +1,48 @@
+# M365 GDPR Scanner — Python dependencies
+# Python 3.11+ required (3.13+ not recommended — spaCy compatibility)
+
+# ── Web server ────────────────────────────────────────────────────────────────
+flask>=3.0
+
+# ── Microsoft 365 authentication ─────────────────────────────────────────────
+msal>=1.28             # OAuth device code + client credentials flow
+requests>=2.31         # Microsoft Graph API HTTP client
+
+# ── Document scanning ─────────────────────────────────────────────────────────
+pdfplumber>=0.11       # PDF text extraction
+python-docx>=1.1       # Word document scanning
+openpyxl>=3.1          # Excel scanning + export
+
+# ── Image processing ──────────────────────────────────────────────────────────
+Pillow>=10.0           # Image thumbnails + EXIF extraction (always-on)
+opencv-python>=4.9     # Face detection (opt-in — Scan photos for faces)
+numpy>=1.26            # Required by opencv-python
+
+# ── NER / PII detection ───────────────────────────────────────────────────────
+# spaCy 3.7 supports Python 3.8–3.12. Do NOT upgrade past Python 3.12.
+spacy>=3.7,<4.0
+
+# ── PDF scanning (optional — improves accuracy) ───────────────────────────────
+pymupdf>=1.24          # Physical PDF text layer access (fallback: pdfplumber)
+
+# ── Encryption ───────────────────────────────────────────────────────────────
+cryptography>=42.0     # Fernet — SMTP password encrypted at rest
+
+# ── Packaging / desktop ───────────────────────────────────────────────────────
+pyinstaller>=6.0
+pyinstaller-hooks-contrib>=2024.0
+pywebview>=5.0         # Native app window
+pystray>=0.19          # System tray icon
+
+# ── File system scanning (optional) ──────────────────────────────────────────
+smbprotocol>=1.13      # SMB2/3 network share scanning without mounting
+keyring>=25.0          # OS keychain credential storage for SMB passwords
+python-dotenv>=1.0     # .env file fallback for headless SMB credentials
+
+# ── Scheduler (#19) ──────────────────────────────────────────────────────────
+APScheduler>=3.10      # In-process scheduled scans
+
+# ── Google Workspace scanning (#10) ──────────────────────────────────────────
+google-auth>=2.0                   # Service account + domain-wide delegation
+google-auth-httplib2               # HTTP transport for google-auth
+google-api-python-client>=2.0      # Gmail API + Drive API + Admin Directory API

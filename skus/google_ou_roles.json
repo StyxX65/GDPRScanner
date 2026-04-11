@@ -1,0 +1,26 @@
+{
+    "_description": "Google Workspace Organizational Unit (OU) path → role mapping for GDPRScanner.",
+    "_note": "orgUnitPath values from Google Admin Console → Directory → Organisational units. Matching is prefix-based and case-insensitive — '/Elever/Indskoling' matches the '/Elever' student rule. Rules are evaluated top-to-bottom; first match wins. Edit this file to match your school's OU structure — no code change required.",
+    "_source": "Google Admin Console → Directory → Administrer organisationsenheder",
+    "student_ou_prefixes": [
+        "/Elever",
+        "/Students",
+        "/Elev",
+        "/Pupils"
+    ],
+    "staff_ou_prefixes": [
+        "/Personale",
+        "/Staff",
+        "/Lærere",
+        "/Ansatte",
+        "/Teachers",
+        "/Admin"
+    ],
+    "_examples": {
+        "gudenaaskolen.dk example": {
+            "student": "/Elever  →  student",
+            "staff":   "/Personale  →  staff",
+            "admin":   "/Admin  →  staff"
+        }
+    }
+}

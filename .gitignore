@@ -1,0 +1,91 @@
+# VERSION, CHANGELOG.md, LICENSE, README.md — always commit these
+# (VERSION is plain text, not JSON, so the *.json rule does not catch it)
+
+# ── Credentials and config (NEVER commit these) ───────────────────────────────
+*.json
+!lang/*.json
+!keywords/*.json
+!skus/*.json
+!package*.json
+
+# Be explicit about the most sensitive files
+.m365_scanner_config.json
+.m365_scanner_smtp.json
+.m365_scanner_settings.json
+.m365_scanner_delta.json
+.m365_scanner_checkpoint.json
+.m365_scanner_lang
+.document_scanner_lang
+
+# ── Databases (contain personal data) ────────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+
+# ── Audit logs (contain personal data) ───────────────────────────────────────
+*.jsonl
+scanner_audit.jsonl
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+.eggs/
+pip-wheel-metadata/
+*.egg
+
+# ── PyInstaller output ────────────────────────────────────────────────────────
+dist/
+build/
+*.spec
+*.exe
+*.app
+
+# ── Node (docx generation) ────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+
+# ── macOS ─────────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V3
+.Trashes
+Icon?
+
+# ── Windows ───────────────────────────────────────────────────────────────────
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ── Editor / IDE ──────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# ── Test artifacts ────────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ── Temporary / local ─────────────────────────────────────────────────────────
+*.tmp
+*.bak
+*.orig
+tools/
+# Tools folder is created by the installer — not part of the repo

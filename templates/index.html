@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>GDPRScanner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+<script>
+// ── i18n ─────────────────────────────────────────────────────────────────────
+var LANG = {{ lang_json | safe }};
+// ── Viewer mode ───────────────────────────────────────────────────────────────
+window.VIEWER_MODE = {{ 'true' if viewer_mode else 'false' }};
+function t(key, fallback) {
+  return LANG[key] !== undefined ? LANG[key] : (fallback !== undefined ? fallback : key);
+}
+function applyI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const v = LANG[el.getAttribute('data-i18n')];
+    if (v !== undefined) {
+      // Use textContent for <option> elements — innerHTML can break select rendering
+      if (el.tagName === 'OPTION') el.textContent = v;
+      else el.innerHTML = v;
+    }
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const v = LANG[el.getAttribute('data-i18n-placeholder')];
+    if (v !== undefined) el.placeholder = v;
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const v = LANG[el.getAttribute('data-i18n-title')];
+    if (v !== undefined) el.title = v;
+  });
+}
+document.addEventListener('DOMContentLoaded', applyI18n);
+</script>
+</head>
+<body data-theme="dark">
+<div class="layout" id="layout">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">🔍 GDPRScanner</div>
+    </div>
+
+    <!-- Sources — rendered dynamically by renderSourcesPanel() -->
+    <div class="sidebar-section" id="sourcesPanelSection">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div class="section-label" style="margin-bottom:0" data-i18n="m365_sources">Sources</div>
+        <button class="section-collapse-btn" onclick="toggleSection('sourcesPanelSection')" id="sourcesPanelSection-btn">▾</button>
+      </div>
+      <div id="sourcesPanelSectionBody">
+        <div id="sourcesPanel" style="overflow-y:auto;display:flex;flex-direction:column;gap:0"></div>
+        <div class="sources-resize-handle" id="sourcesResizeHandle"></div>
+      </div>
+    </div>
+
+    <!-- Options -->
+    <div class="sidebar-section" id="optionsSection">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div class="section-label" style="margin-bottom:0" data-i18n="m365_options">Options</div>
+        <button class="section-collapse-btn" onclick="toggleSection('optionsSection')" id="optionsSection-btn">▾</button>
+      </div>
+      <div id="optionsSectionBody">
+
+      <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px" data-i18n="m365_opt_date_from">Flag items older than</label>
+      <div class="datepicker-wrap">
+        <input type="date" id="olderThanDate" autocomplete="off">
+        <div class="date-presets">
+          <button class="date-preset" data-years="1" data-i18n="m365_preset_1yr">1 yr</button>
+          <button class="date-preset selected" data-years="2" data-i18n="m365_preset_2yr">2 yr</button>
+          <button class="date-preset" data-years="5" data-i18n="m365_preset_5yr">5 yr</button>
+          <button class="date-preset" data-years="10" data-i18n="m365_preset_10yr">10 yr</button>
+          <button class="date-preset" data-years="0" data-i18n="m365_preset_any">Any</button>
+        </div>
+      </div>
+      <input type="hidden" id="olderThan" value="730">
+
+      <div style="margin-top:4px">
+        <div class="toggle-row">
+          <span class="toggle-label"><span data-i18n="m365_opt_email_body">Scan email body</span></span>
+          <label class="toggle"><input type="checkbox" id="optEmailBody" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label" data-i18n="m365_opt_attachments">Scan attachments</span>
+          <label class="toggle"><input type="checkbox" id="optAttachments" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div class="toggle-row" id="attachSizeRow">
+          <span class="toggle-label" style="color:var(--muted)" data-i18n="m365_opt_max_attach">Max attachment size</span>
+          <div style="display:flex;align-items:center;gap:4px">
+            <input type="number" id="optMaxAttachMB" value="20" min="1" max="100"
+                   style="width:46px;padding:3px 6px;font-size:11px;text-align:right">
+          </div>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label"><span data-i18n="m365_opt_max_emails">Max emails per user</span></span>
+          <input type="number" id="optMaxEmails" value="2000" min="10" max="50000"
+                 style="width:56px;padding:3px 6px;font-size:11px;text-align:right">
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label" style="flex:1">
+            <span data-i18n="m365_opt_delta">Delta scan</span><span class="hint-wrap"><span class="hint-icon" onclick="toggleHint(this)">?</span><span class="hint-bubble" data-i18n="m365_opt_delta_hint">Changed items only (after first full scan)</span></span>
+          </span>
+          <label class="toggle"><input type="checkbox" id="optDelta"><span class="toggle-slider"></span></label>
+        </div>
+        <div id="deltaStatusRow" style="display:none;font-size:10px;padding:3px 0 2px;color:var(--muted)">
+          <span id="deltaStatusText"></span>
+          <button onclick="clearDeltaTokens()" style="background:none;border:none;color:var(--danger);font-size:10px;cursor:pointer;padding:0 0 0 6px" data-i18n="m365_delta_clear">Clear tokens</button>
+        </div>
+
+        <!-- Photo / biometric scan (#9) -->
+        <div class="toggle-row">
+          <span class="toggle-label" style="flex:1">
+            <span data-i18n="m365_opt_scan_photos">Scan photos for faces</span><span class="hint-wrap"><span class="hint-icon" onclick="toggleHint(this)">?</span><span class="hint-bubble" data-i18n="m365_opt_scan_photos_hint">Flags images with detected faces as Art. 9 biometric data. Slower — opt in.</span></span>
+          </span>
+          <label class="toggle"><input type="checkbox" id="optScanPhotos"><span class="toggle-slider"></span></label>
+        </div>
+
+        <!-- Retention policy (suggestion #1) -->
+        <div class="toggle-row">
+          <span class="toggle-label" style="flex:1">
+            <span data-i18n="m365_opt_retention">Retention policy</span><span class="hint-wrap"><span class="hint-icon" onclick="toggleHint(this)">?</span><span class="hint-bubble" data-i18n="m365_opt_retention_hint">Flag and delete items older than N years</span></span>
+          </span>
+          <label class="toggle"><input type="checkbox" id="optRetention" onchange="toggleRetentionPanel()"><span class="toggle-slider"></span></label>
+        </div>
+        <div id="retentionPanel" style="display:none;margin-top:5px;padding:7px 8px;background:var(--bg);border-radius:6px;font-size:11px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+            <label style="color:var(--muted);flex:1" data-i18n="m365_ret_years">Retention years</label>
+            <input type="number" id="optRetentionYears" value="5" min="1" max="30"
+                   style="width:46px;padding:3px 6px;font-size:11px;text-align:right">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px">
+            <label style="color:var(--muted)" data-i18n="m365_ret_fy_end">Fiscal year end</label>
+            <select id="optFiscalYearEnd" style="font-size:11px;padding:3px 6px;width:100%">
+              <option value="" data-i18n="m365_ret_fy_rolling">Rolling (today)</option>
+              <option value="12-31" data-i18n="m365_ret_fy_dec">31 Dec (Bogføringsloven)</option>
+              <option value="06-30" data-i18n="m365_ret_fy_jun">30 Jun</option>
+              <option value="03-31" data-i18n="m365_ret_fy_mar">31 Mar</option>
+            </select>
+          </div>
+          <div id="retentionCutoffHint" style="font-size:10px;color:var(--muted);margin-top:4px"></div>
+        </div>
+      </div>
+      </div><!-- /optionsSectionBody -->
+    </div>
+
+    <!-- Accounts -->
+    <div class="sidebar-section" id="accountsSection" style="flex:1;display:flex;flex-direction:column;overflow:hidden;padding:7px 12px;border-bottom:1px solid var(--border)">
+      <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">
+        <span style="display:flex;align-items:center;gap:5px">
+          <span data-i18n="m365_accounts">Accounts</span>
+          <span id="userCountBadge" style="font-size:10px;color:var(--muted);font-weight:400"></span>
+        </span>
+        <span style="display:flex;align-items:center;gap:6px">
+          <div style="display:flex;border:1px solid var(--border);border-radius:5px;overflow:hidden">
+            <button onclick="selectAllAccounts(true)" style="background:none;border:none;border-right:1px solid var(--border);color:var(--accent);font-size:11px;cursor:pointer;padding:0 7px;height:22px" data-i18n="btn_all">Alle</button>
+            <button onclick="selectAllAccounts(false)" style="background:none;border:none;border-right:1px solid var(--border);color:var(--muted);font-size:11px;cursor:pointer;padding:0 7px;height:22px" data-i18n="btn_none">Ingen</button>
+            <button onclick="loadUsers()" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:0 7px;height:22px" title="Refresh">↻</button>
+          </div>
+          <button class="section-collapse-btn" onclick="toggleSection('accountsSection')" id="accountsSection-btn">▾</button>
+        </span>
+      </div>
+      <div id="accountsSectionBody" style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0">
+      <div style="margin:4px 0 3px">
+        <input id="userSearch" type="text" data-i18n-placeholder="m365_search_users" placeholder="Search users…"
+               oninput="filterUsers()"
+               style="width:100%;box-sizing:border-box;font-size:11px;padding:5px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;color:var(--text);outline:none">
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px">
+        <div style="flex:1;display:flex;background:var(--bg);border:1px solid var(--border);border-radius:6px;overflow:hidden">
+          <button onclick="setRoleFilter('')" id="rfAll" class="role-filter-btn rf-sep" style="background:var(--accent);color:#fff" data-i18n="m365_role_all">All</button>
+          <button onclick="setRoleFilter('staff')" id="rfStaff" class="role-filter-btn rf-sep" data-i18n="role_staff">Ansat</button>
+          <button onclick="setRoleFilter('student')" id="rfStudent" class="role-filter-btn" data-i18n="role_student">Elev</button>
+        </div>
+        <button onclick="showSkuDebug()" title="Show tenant SKU IDs" style="font-size:13px;height:26px;padding:0 7px;border-radius:5px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--muted);flex-shrink:0;box-sizing:border-box">&#128269;</button>
+      </div>
+      <div id="skuWarnBanner" style="display:none;background:#7c1a0030;border:1px solid var(--danger);border-radius:5px;padding:6px 8px;font-size:10px;color:#ff9090;line-height:1.5;margin-bottom:4px">&#9888; No users classified. SKU IDs unknown &#8212; click &#128269; to diagnose.</div>
+      <div id="accountsList" style="font-size:12px;color:var(--muted);flex:1;overflow-y:auto;min-height:0">
+        <div id="accountsLoading" style="padding:4px 0">Loading…</div>
+      </div>
+      <div style="margin-top:5px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px" data-i18n="m365_add_account_label">Add account manually:</div>
+        <div style="display:flex;gap:4px">
+          <input id="addUserInput" type="text" data-i18n-placeholder="m365_add_account_placeholder" placeholder="email or UPN" style="flex:1;font-size:11px;padding:4px 7px;min-width:0">
+          <button onclick="addUserManually()" style="background:var(--accent);color:#fff;border:none;padding:4px 8px;border-radius:5px;font-size:11px;cursor:pointer;flex-shrink:0">+</button>
+        </div>
+      </div>
+      </div><!-- /accountsSectionBody -->
+    </div>
+
+    <!-- Stats -->
+    <div class="sidebar-section" id="statsSection" style="display:none">
+      <div class="section-label" data-i18n="m365_stats">Stats</div>
+      <div style="font-size:12px; color:var(--muted); line-height:1.8">
+        <span data-i18n="m365_stat_scanned">Scanned</span>: <strong id="statScanned">0</strong><br>
+        <span data-i18n="m365_stat_flagged">Flagged</span>: <strong id="statFlagged" style="color:var(--danger)">0</strong><br>
+        <span data-i18n="m365_stat_cpr">CPR hits</span>: <strong id="statCPR" style="color:var(--accent2)">0</strong>
+      </div>
+
+      <!-- Trend sparkline (#7) -->
+      <div id="trendPanel" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:10px;color:var(--muted)" data-i18n="m365_trend_title">Trend</span>
+          <span style="font-size:10px;color:var(--muted)" id="trendChange"></span>
+        </div>
+        <div class="spark-wrap">
+          <canvas id="sparkCanvas"></canvas>
+          <div class="spark-tip" id="sparkTip"></div>
+        </div>
+        <div class="spark-labels" id="sparkLabels"></div>
+        <div class="spark-legend">
+          <span><span class="spark-dot" style="background:#378ADD"></span><span data-i18n="m365_trend_flagged">Flagged</span></span>
+          <span><span class="spark-dot" style="background:#BA7517;opacity:.7"></span><span data-i18n="m365_trend_overdue">Overdue</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SMTP / Email Report -->
+
+    <!-- Sidebar footer: hidden lang select (still used by setLang) -->
+    <div class="sidebar-footer">
+      <select id="langSelect" onchange="setLang(this.value)" style="display:none"></select>
+    </div>
+  </div>
+
+  <!-- Main area -->
+  <div class="main" id="mainArea">
+
+    <!-- Auth screen (shown when not connected) -->
+    <div id="authScreen" class="auth-panel" style="padding-top: env(safe-area-inset-top, 0px)">
+      <div class="auth-card">
+        <div class="auth-title" data-i18n="m365_connect_title">Connect to Microsoft 365</div>
+        <div class="auth-sub" data-i18n="m365_connect_sub">Enter your Azure app credentials to sign in.</div>
+
+        <div id="configForm">
+          <div class="form-row">
+            <label class="form-label" data-i18n="m365_label_client_id">Client ID (Application ID)</label>
+            <input type="text" id="clientId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" value="">
+          </div>
+          <div class="form-row">
+            <label class="form-label" data-i18n="m365_label_tenant_id">Tenant ID</label>
+            <input type="text" id="tenantId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" value="">
+          </div>
+          <div class="form-row">
+            <label class="form-label" style="display:flex;align-items:center;gap:6px">
+              <span data-i18n="m365_label_client_secret">Client Secret</span>
+              <span style="font-size:10px;color:var(--muted);font-weight:400" data-i18n="m365_secret_hint">(optional — enables org-wide scanning)</span>
+            </label>
+            <input type="password" id="clientSecret" placeholder="Leave blank for personal sign-in" value="" autocomplete="off">
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5">
+            <strong data-i18n="m365_label_client_secret">Client Secret</strong>: <span data-i18n="m365_secret_desc_app">app accesses all users' data directly (Application permissions, no sign-in required).</span><br>
+            <strong data-i18n="m365_btn_sign_out" style="display:none"></strong><span data-i18n="m365_secret_desc_delegated">you sign in as yourself and can only scan your own data unless you're a Global Admin.</span>
+          </div>
+          <div style="display:flex; gap:8px; margin-top:8px">
+            <button class="btn-primary" onclick="handleSignIn()" data-i18n="m365_btn_connect">Connect</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scanner screen (shown when connected) -->
+    <div id="scannerScreen" style="display:none; flex-direction:column; height:100%; padding-top: env(safe-area-inset-top, 0px)">
+
+      <!-- Topbar -->
+      <div class="topbar">
+        <span id="viewerBrand" style="display:none;font-size:15px;font-weight:600;color:var(--text);white-space:nowrap;margin-right:6px">🔍 GDPRScanner</span>
+        <button class="scan-btn" id="scanBtn" onclick="startScan()" data-i18n="m365_btn_scan">Scan</button>
+        <button class="stop-btn" id="stopBtn" style="display:none" onclick="stopScan()" data-i18n="m365_btn_stop">Stop</button>
+
+        <!-- Profile selector (15c) -->
+        <div id="profileBar" style="display:flex;align-items:center;gap:6px;margin-left:10px">
+          <span style="font-size:10px;color:var(--muted)" data-i18n="m365_profile_label">Profil:</span>
+          <select id="profileSelect" onchange="onProfileChange()"
+                  style="font-size:11px;height:26px;padding:0 6px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);max-width:160px;cursor:pointer;box-sizing:border-box">
+            <option value="" disabled selected data-i18n="m365_profile_placeholder">— Vælg profil —</option>
+          </select>
+          <button id="profileClearBtn" onclick="clearActiveProfile()"
+                  style="display:none;background:none;border:1px solid var(--border);color:var(--muted);border-radius:5px;font-size:11px;height:26px;padding:0 7px;cursor:pointer;box-sizing:border-box" data-i18n="m365_profile_clear_btn" title="Ryd aktiv profil">Ryd</button>
+          <button onclick="saveCurrentAsProfile()" data-i18n="m365_profile_save_btn"
+                  style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:5px;font-size:11px;height:26px;padding:0 7px;cursor:pointer;box-sizing:border-box" data-i18n-title="m365_profile_save_tip">Gem</button>
+          <div id="schedNextIndicator" style="display:none;height:26px;align-items:center;font-size:10px;color:var(--muted);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid var(--border);border-radius:5px;padding:0 7px;box-sizing:border-box" onclick="openSettings('scheduler')" title="Click to configure scheduler"><span id="schedNextText"></span></div>
+        </div>
+        <div class="topbar-sep"></div>
+        <div class="config-group">
+          <button onclick="openProfileMgmtModal()" data-i18n="m365_profile_manage_btn" title="Manage profiles">Profiler</button>
+          <button onclick="openSourcesMgmt('m365')" data-i18n="m365_sources_manage_btn" title="Manage sources">Kilder</button>
+          <button onclick="openSettings('general')" data-i18n="m365_btn_settings" title="Settings">Indstillinger</button>
+        </div>
+
+        <div class="spacer"></div>
+        <div class="stats-pill" id="statsPill" style="display:none">
+          <span id="pillFlagged">0</span data-i18n="m365_pill_flagged"> flagged</span> · <span id="pillScanned">0</span> <span data-i18n="m365_pill_scanned">scanned
+        </div>
+        <button class="theme-btn" onclick="openSubjectModal()" data-i18n-title="m365_subject_title" title="Data subject lookup" style="font-size:13px">🔍</button>
+        <button class="theme-btn" id="shareBtn" onclick="openShareModal()" data-i18n-title="share_modal_title" title="Share results" style="font-size:13px">&#128279;</button>
+        <button class="theme-btn" onclick="(function(){var l=(document.getElementById('langSelect')?.value||'da');if(window.pywebview&&pywebview.api&&pywebview.api.open_manual){pywebview.api.open_manual(l);}else{window.open('/manual?lang='+l,'gdpr_manual','width=960,height=800,resizable=yes,scrollbars=yes');}})();" title="Hjælp / Help" style="font-size:13px;font-weight:600">?</button>
+        <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Toggle dark/light mode">🌙</button>
+      </div>
+
+      <!-- Resume checkpoint banner -->
+      <div id="resumeBanner" style="display:none;align-items:center;gap:10px;padding:8px 14px;background:var(--surface);border-bottom:1px solid var(--border);font-size:12px;color:var(--text)">
+        <span>⏸</span>
+        <span id="resumeBannerText"></span>
+        <button onclick="startScan(true)"  style="padding:3px 10px;border-radius:5px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px" data-i18n="m365_btn_resume">Resume</button>
+        <button onclick="clearCheckpointAndScan()" style="padding:3px 10px;border-radius:5px;background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:12px" data-i18n="m365_btn_start_fresh">Start fresh</button>
+      </div>
+
+      <!-- Filter bar — full width, above grid + preview -->
+      <div class="filter-bar" id="filterBar">
+          <input type="text" id="filterSearch" data-i18n-placeholder="m365_filter_search" placeholder="Search…" oninput="applyFilters()">
+          <select id="filterSource" onchange="applyFilters()">
+            <option value="" data-i18n="m365_filter_all_sources">All sources</option>
+            <option value="email" data-i18n="m365_filter_email">Outlook</option>
+            <option value="onedrive" data-i18n="m365_filter_onedrive">OneDrive</option>
+            <option value="sharepoint" data-i18n="m365_filter_sharepoint">SharePoint</option>
+            <option value="teams" data-i18n="m365_filter_teams">Teams</option>
+            <option value="gmail">Gmail</option>
+            <option value="gdrive">Google Drive</option>
+            <option value="local" data-i18n="m365_filter_local">Lokal</option>
+            <option value="smb" data-i18n="m365_filter_smb">Netværk (SMB)</option>
+          </select>
+          <select id="filterDisposition" onchange="applyFilters()" style="width:150px">
+            <option value="" data-i18n="m365_filter_all_disp">All dispositions</option>
+            <option value="unreviewed"       data-i18n="m365_disp_unreviewed">Unreviewed</option>
+            <option value="retain-legal"     data-i18n="m365_disp_retain_legal">Retain — legal</option>
+            <option value="retain-legitimate" data-i18n="m365_disp_retain_legit">Retain — legitimate</option>
+            <option value="retain-contract"  data-i18n="m365_disp_retain_contract">Retain — contract</option>
+            <option value="delete-scheduled" data-i18n="m365_disp_delete_sched">Delete — scheduled</option>
+            <option value="deleted"          data-i18n="m365_disp_deleted">Deleted</option>
+            <option value="personal-use"      data-i18n="m365_disp_personal_use">Personal use — out of scope</option>
+          </select>
+          <select id="filterTransfer" onchange="applyFilters()" style="width:160px">
+            <option value="" data-i18n="m365_filter_all_transfer">All items</option>
+            <option value="external-recipient" data-i18n="m365_filter_ext_recipient">⚠ External recipient</option>
+            <option value="external-share" data-i18n="m365_filter_ext_share">🔗 External share</option>
+            <option value="shared" data-i18n="m365_filter_shared">🔗 Shared</option>
+          </select>
+          <select id="filterSpecial" onchange="applyFilters()" style="width:150px">
+            <option value="" data-i18n="m365_filter_all_special">All risk levels</option>
+            <option value="1" data-i18n="m365_filter_special_only">⚠ Art. 9 only</option>
+            <option value="photo" data-i18n="m365_filter_photo_only">📷 Photos / biometric</option>
+          </select>
+          <button class="filter-clear" onclick="clearFilters()" data-i18n="m365_filter_clear">Ryd</button>
+          <div class="spacer"></div>
+          <button id="exportBtn" onclick="exportExcel()" style="background:none;border:1px solid var(--border);color:var(--muted)" data-i18n="m365_btn_export_excel" title="Export results as Excel">Excel</button>
+          <button id="exportA30Btn" onclick="exportArticle30()" style="background:none;border:1px solid var(--accent);color:var(--accent)" data-i18n="m365_btn_export_article30" title="Export GDPR Article 30 report as Word document">Art.30</button>
+          <button id="bulkDeleteBtn" onclick="openBulkDelete()" style="background:none;border:1px solid var(--danger);color:var(--danger)" data-i18n="m365_btn_bulk_delete" title="Bulk delete">Slet</button>
+          <button id="listViewBtn" style="background:none;border:1px solid var(--border);color:var(--muted)" onclick="toggleView()" data-i18n="m365_btn_list_view">Liste</button>
+      </div>
+
+      <!-- Content area: grid + preview panel -->
+      <div class="content-area">
+        <div style="flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:220px">
+
+        <!-- Grid -->
+        <div class="grid-area" id="gridArea">
+          <div class="empty-state" id="emptyState">
+            <div class="empty-icon">☁️</div>
+            <div class="empty-text" data-i18n="m365_empty_hint">Select sources and click <strong>Scan</strong><br>to find documents with CPR numbers</div>
+          </div>
+          <div id="lastScanSummary" style="display:none" class="empty-state last-scan-summary"></div>
+          <div class="grid" id="grid" style="display:none"></div>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="progress-bar" id="progressBar">
+          <div class="progress-who" id="progressWho"></div>
+          <span class="progress-file" id="progressFile"></span>
+          <span id="progressStats" style="flex-shrink:0"></span>
+          <span id="progressEta"   style="flex-shrink:0; margin-left:6px"></span>
+          <div class="progress-track" id="progressTrack"></div>
+        </div>
+
+        <!-- Log -->
+        <div class="log-wrap" id="logWrap">
+          <div class="log-header">
+            <button class="section-collapse-btn" onclick="toggleSection('logSection')" id="logSection-btn">▾</button>
+            <span class="log-header-title">Log</span>
+            <button class="log-filter-btn active" id="logFilterAll" onclick="setLogFilter('all')" title="Show all log entries" data-i18n="btn_all">All</button>
+            <button class="log-filter-btn" id="logFilterErr" onclick="setLogFilter('err')" title="Show errors only" data-i18n="btn_errors">Errors</button>
+            <button class="log-copy-btn" onclick="copyLog()" title="Copy log to clipboard" data-i18n="log_copy">Copy</button>
+          </div>
+          <div id="logSectionBody">
+            <div class="log-resize-handle" id="logResizeHandle"></div>
+            <div class="log-panel" id="logPanel"><div class="log-line log-live" id="logLive" style="display:none"></div></div>
+          </div>
+        </div>
+
+        </div><!-- end flex col -->
+
+        <!-- Preview panel -->
+        <div class="preview-panel hidden" id="previewPanel">
+          <div class="preview-resize-handle" id="previewResizeHandle"></div>
+          <div class="preview-inner">
+            <div class="preview-header">
+              <div class="preview-title" id="previewTitle">—</div>
+              <button class="preview-close" onclick="closePreview()" data-i18n-title="m365_preview_close" title="Close">×</button>
+            </div>
+            <div class="preview-body" id="previewBody">
+              <div class="preview-loading" id="previewLoading">Loading preview…</div>
+              <iframe id="previewFrame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" style="display:none"></iframe>
+            </div>
+            <div class="preview-meta" id="previewMeta"></div>
+            <!-- Disposition widget (#6) -->
+            <div class="disposition-row" id="dispositionRow" style="display:none">
+              <span class="disposition-label" data-i18n="m365_disposition_label">Disposition</span>
+              <select class="disposition-select" id="dispositionSelect">
+                <option value="unreviewed"      data-i18n="m365_disp_unreviewed">Unreviewed</option>
+                <option value="retain-legal"    data-i18n="m365_disp_retain_legal">Retain — legal obligation</option>
+                <option value="retain-legitimate" data-i18n="m365_disp_retain_legit">Retain — legitimate interest</option>
+                <option value="retain-contract" data-i18n="m365_disp_retain_contract">Retain — contract</option>
+                <option value="delete-scheduled" data-i18n="m365_disp_delete_sched">Delete — scheduled</option>
+                <option value="deleted"         data-i18n="m365_disp_deleted">Deleted</option>
+                <option value="personal-use"    data-i18n="m365_disp_personal_use">Personal use — out of scope</option>
+              </select>
+              <button class="disposition-save" onclick="saveDisposition()" data-i18n="m365_disp_save">Save</button>
+              <span class="disposition-saved" id="dispositionSaved"></span>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- end content-area -->
+    </div>
+
+  </div>
+</div>
+
+<!-- Device code modal -->
+<div class="about-modal-backdrop" id="deviceCodeBackdrop">
+  <div class="about-modal" style="max-width:400px;text-align:center">
+    <h2 data-i18n="m365_connect_title">Connect to Microsoft 365</h2>
+    <div class="device-code-box" style="margin:16px 0">
+      <div class="device-url"><span data-i18n="m365_device_code_go">Go to</span> <a href="https://microsoft.com/devicelogin" target="_blank">microsoft.com/devicelogin</a></div>
+      <div class="device-code" id="deviceCode">—</div>
+      <div class="device-url" data-i18n="m365_device_code_enter">and enter this code</div>
+    </div>
+    <div class="auth-status waiting" id="authStatus" style="margin-bottom:12px">⏳ Waiting for sign-in…</div>
+    <button class="about-close" style="background:transparent;border:1px solid var(--border);color:var(--muted)" onclick="cancelAuth()" data-i18n="m365_btn_cancel_auth">Cancel</button>
+  </div>
+</div>
+
+<!-- Mode info modal -->
+<div class="about-modal-backdrop" id="modeInfoBackdrop" onclick="if(event.target===this)closeModeInfo()">
+  <div class="about-modal" style="max-width:440px">
+    <h2 id="modeInfoTitle"></h2>
+    <div class="about-version" id="modeInfoSubtitle"></div>
+    <div id="modeInfoRows"></div>
+    <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px;display:flex;flex-direction:column;gap:6px">
+      <button class="btn" style="width:100%;font-size:11px;padding:7px 12px;background:transparent;border:1px solid var(--border);color:var(--muted)"
+        onclick="closeModeInfo();reconfigure()" data-i18n="m365_btn_reconfigure">Reconfigure</button>
+      <button class="btn" style="width:100%;font-size:11px;padding:7px 12px;background:transparent;border:1px solid var(--danger);color:var(--danger)"
+        onclick="closeModeInfo();signOut()" data-i18n="m365_btn_sign_out">Sign out</button>
+    </div>
+    <button class="about-close" onclick="closeModeInfo()" data-i18n="btn_close">Close</button>
+  </div>
+</div>
+
+<!-- Bulk delete modal -->
+<div class="about-modal-backdrop" id="bulkDeleteBackdrop" onclick="if(event.target===this)closeBulkDelete()">
+  <div class="about-modal bulk-delete-modal">
+    <h2><span data-i18n="m365_bulk_delete_title">Bulk Delete</span></h2>
+    <div class="about-version" data-i18n="m365_bulk_delete_sub">Permanently removes items from Microsoft 365. Emails go to Deleted Items; files go to the recycle bin.</div>
+
+    <div style="margin:14px 0 6px;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em" data-i18n="m365_bulk_filter_heading">Filter what to delete</div>
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <button onclick="preFilterOverdue()" style="flex:1;background:none;border:1px solid var(--accent2);color:var(--accent2);padding:4px 8px;border-radius:6px;font-size:11px;cursor:pointer" data-i18n="m365_bulk_overdue_btn">🗓 Filter overdue</button>
+      <button onclick="clearBdFilters()" style="background:none;border:1px solid var(--border);color:var(--muted);padding:4px 8px;border-radius:6px;font-size:11px;cursor:pointer" data-i18n="m365_bulk_clear_filters">Clear filters</button>
+    </div>
+
+    <div class="bulk-criteria-row">
+      <label data-i18n="m365_bulk_filter_source">Source type</label>
+      <select id="bdSource">
+        <option value="" data-i18n="m365_filter_all_sources">All sources</option>
+        <option value="email" data-i18n="m365_filter_email">Email</option>
+        <option value="onedrive" data-i18n="m365_filter_onedrive">OneDrive</option>
+        <option value="sharepoint" data-i18n="m365_filter_sharepoint">SharePoint</option>
+        <option value="teams" data-i18n="m365_filter_teams">Teams</option>
+        <option value="gmail">Gmail</option>
+        <option value="gdrive">Google Drive</option>
+        <option value="local" data-i18n="m365_filter_local">Lokal</option>
+        <option value="smb" data-i18n="m365_filter_smb">Netværk (SMB)</option>
+      </select>
+    </div>
+    <div class="bulk-criteria-row">
+      <label data-i18n="m365_bulk_filter_min_cpr">Min CPR hits</label>
+      <input type="number" id="bdMinCpr" min="1" value="1" style="width:80px;flex:none">
+    </div>
+    <div class="bulk-criteria-row">
+      <label data-i18n="m365_bulk_filter_older_than">Older than date</label>
+      <input type="date" id="bdOlderThan">
+    </div>
+
+    <div id="bdPreview" style="font-size:12px;color:var(--muted);margin:10px 0 4px"></div>
+
+    <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:12px;display:flex;gap:8px;align-items:center">
+      <button class="btn-danger" id="bdConfirmBtn" onclick="executeBulkDelete()" data-i18n="m365_bulk_delete_confirm">Delete matching items</button>
+      <button class="btn" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:7px 14px;border-radius:6px;font-size:12px;cursor:pointer" onclick="closeBulkDelete()" data-i18n="btn_close">Close</button>
+      <div class="delete-progress" id="bdProgress"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="settings-backdrop" id="settingsBackdrop" onclick="if(event.target===this)closeSettings()">
+  <div class="settings-modal">
+    <div class="settings-header">
+      <h2 data-i18n="m365_settings_title">⚙ Settings</h2>
+      <button onclick="closeSettings()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px;line-height:1">&times;</button>
+    </div>
+    <div class="settings-tabs">
+      <button class="settings-tab" id="stTabGeneral"  onclick="switchSettingsTab('general')"  data-i18n="m365_settings_tab_general">General</button>
+      <button class="settings-tab" id="stTabSecurity" onclick="switchSettingsTab('security')" data-i18n="m365_settings_tab_security">Security</button>
+      <button class="settings-tab" id="stTabScheduler" onclick="switchSettingsTab('scheduler')" data-i18n="m365_settings_tab_scheduler">Scheduler</button>
+      <button class="settings-tab" id="stTabEmail"    onclick="switchSettingsTab('email')"    data-i18n="m365_settings_tab_email">Email report</button>
+      <button class="settings-tab" id="stTabDatabase" onclick="switchSettingsTab('database')" data-i18n="m365_settings_tab_database">Database</button>
+    </div>
+    <div class="settings-body">
+
+      <!-- ── General pane ──────────────────────────────────────────────────── -->
+      <div class="settings-pane" id="stPaneGeneral">
+        <div class="settings-group">
+          <div class="settings-group-title" data-i18n="m365_settings_appearance">Appearance</div>
+          <div class="settings-row">
+            <label data-i18n="m365_settings_language">Language</label>
+            <select id="langSelectSettings" onchange="setLang(this.value); document.getElementById('langSelect').value=this.value;"></select>
+          </div>
+          <div class="settings-row">
+            <label data-i18n="m365_settings_theme">Theme</label>
+            <label class="toggle" style="flex:unset"><input type="checkbox" id="themeToggle" onchange="toggleTheme()"><span class="toggle-slider"></span></label>
+          </div>
+        </div>
+        <div class="settings-group">
+          <div class="settings-group-title" data-i18n="m365_settings_about">About</div>
+          <div class="settings-about-row"><span>🔍 GDPRScanner</span><span style="color:var(--muted)">v{{ app_version }}</span></div>
+          <div class="settings-about-row"><span data-i18n="label_python">Python</span><span id="st-about-python" style="color:var(--muted)">—</span></div>
+          <div class="settings-about-row"><span>MSAL</span><span id="st-about-msal" style="color:var(--muted)">—</span></div>
+          <div class="settings-about-row"><span>Requests</span><span id="st-about-requests" style="color:var(--muted)">—</span></div>
+          <div class="settings-about-row"><span>openpyxl</span><span id="st-about-openpyxl" style="color:var(--muted)">—</span></div>
+        </div>
+      </div>
+
+      <!-- ── Security pane ─────────────────────────────────────────────────── -->
+      <div class="settings-pane" id="stPaneSecurity">
+        <div class="settings-group">
+          <div class="settings-group-title" data-i18n="m365_settings_admin_pin">Admin PIN</div>
+          <div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:4px" data-i18n="m365_settings_pin_hint">Required for destructive actions (e.g. Reset DB). Leave blank to disable.</div>
+          <div id="stPinStatus" style="font-size:10px;color:var(--muted);margin-bottom:6px"></div>
+          <div class="settings-row" id="stCurrentPinRow" style="display:none">
+            <label data-i18n="m365_settings_current_pin">Current PIN</label>
+            <input id="stCurrentPin" type="password" autocomplete="off" placeholder="••••">
+          </div>
+          <div class="settings-row">
+            <label data-i18n="m365_settings_new_pin">New PIN</label>
+            <input id="stNewPin" type="password" autocomplete="off" placeholder="••••">
+          </div>
+          <div class="settings-row">
+            <label data-i18n="m365_settings_confirm_pin">Confirm PIN</label>
+            <input id="stConfirmPin" type="password" autocomplete="off" placeholder="••••">
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px">
+            <div id="stPinSaveStatus" style="flex:1;font-size:11px;color:var(--muted);align-self:center"></div>
+            <button onclick="stSavePin()" style="background:var(--accent);color:#fff;border:none;height:26px;padding:0 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;box-sizing:border-box" data-i18n="m365_settings_save_pin">Save PIN</button>
+          </div>
+        </div>
+        <div class="settings-group">
+          <div class="settings-group-title" data-i18n="viewer_pin_group_title">Viewer PIN</div>
+          <div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:4px" data-i18n="viewer_pin_desc">A numeric PIN (4–8 digits) that lets anyone open <code style="font-size:10px">/view</code> in a browser for read-only access to results without a token URL.</div>
+          <div id="stViewerPinStatus" style="font-size:10px;color:var(--muted);margin-bottom:6px"></div>
+          <div class="settings-row" id="stViewerCurrentPinRow" style="display:none">
+            <label data-i18n="m365_settings_current_pin">Current PIN</label>
+            <input id="stViewerCurrentPin" type="password" autocomplete="off" placeholder="••••">
+          </div>
+          <div class="settings-row">
+            <label data-i18n="m365_settings_new_pin">New PIN</label>
+            <input id="stViewerNewPin" type="password" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="4–8 digits">
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px">
+            <div id="stViewerPinSaveStatus" style="flex:1;font-size:11px;color:var(--muted);align-self:center"></div>
+            <button type="button" onclick="stClearViewerPin()" id="stViewerPinClearBtn" style="display:none;background:none;border:1px solid var(--danger);color:var(--danger);height:26px;padding:0 12px;border-radius:6px;font-size:12px;cursor:pointer;box-sizing:border-box" data-i18n="viewer_pin_clear">Clear PIN</button>
+            <button type="button" onclick="stSaveViewerPin()" style="background:var(--accent);color:#fff;border:none;height:26px;padding:0 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;box-sizing:border-box" data-i18n="m365_settings_save_pin">Save PIN</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Scheduler pane (#19) ──────────────────────────────────────────── -->
+      <div class="settings-pane" id="stPaneScheduler">
+
+        <!-- ── Job list ───────────────────────────────────────────────────── -->
+        <div class="settings-group">
+          <div class="settings-group-title" data-i18n="m365_sched_title">🕐 Scheduled scans</div>
+          <div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:6px" data-i18n="m365_sched_hint">Run scans automatically at a set time. Requires an active M365 connection (application mode recommended).</div>
+          <div id="schedNoAps" style="display:none;font-size:11px;color:var(--danger);margin-bottom:8px" data-i18n="m365_sched_no_aps">⚠ APScheduler not installed. Run: pip install apscheduler</div>
+          <div id="schedJobList" style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px"></div>
+          <button onclick="schedAddJob()" style="background:none;border:1px dashed var(--border);color:var(--muted);height:26px;padding:0 12px;border-radius:6px;font-size:12px;cursor:pointer;width:100%;text-align:left;box-sizing:border-box" data-i18n="m365_sched_add">+ Add scheduled scan</button>
+        </div>
+
+        <!-- ── Job editor (shown when adding / editing) ───────────────────── -->
+        <div id="schedJobEditor" style="display:none">
+          <div class="settings-group" style="border:1px solid var(--border);border-radius:8px;padding:10px">
+            <div class="settings-group-title" id="schedEditorTitle" data-i18n="m365_sched_editor_new">New scheduled scan</div>
+            <input type="hidden" id="schedEditId" value="">
+            <div class="settings-row">
+              <label data-i18n="m365_sched_name">Name</label>
+              <input id="schedName" type="text" placeholder="e.g. Nightly tenant scan" style="flex:1">
+            </div>
+            <div class="settings-row">
+              <label data-i18n="m365_sched_enabled">Enabled</label>
+              <label class="toggle" style="flex:unset"><input type="checkbox" id="schedEnabled"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="settings-row">
+              <label data-i18n="m365_sched_frequency">Frequency</label>
+              <select id="schedFrequency" onchange="schedToggleFreqRows()" style="flex:1;height:26px;padding:0 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);font-size:12px;box-sizing:border-box">
+                <option value="daily" data-i18n="m365_sched_freq_daily">Daily</option>
+                <option value="weekly" data-i18n="m365_sched_freq_weekly">Weekly</option>
+                <option value="monthly" data-i18n="m365_sched_freq_monthly">Monthly</option>
+              </select>
+            </div>
+            <div class="settings-row" id="schedDowRow" style="display:none">
+              <label data-i18n="m365_sched_dow">Day of week</label>
+              <select id="schedDow" style="flex:1;height:26px;padding:0 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);font-size:12px;box-sizing:border-box">
+                <option value="mon" data-i18n="m365_sched_dow_mon">Monday</option><option value="tue" data-i18n="m365_sched_dow_tue">Tuesday</option>
+                <option value="wed" data-i18n="m365_sched_dow_wed">Wednesday</option><option value="thu" data-i18n="m365_sched_dow_thu">Thursday</option>
+                <option value="fri" data-i18n="m365_sched_dow_fri">Friday</option><option value="sat" data-i18n="m365_sched_dow_sat">Saturday</option>
+                <option value="sun" data-i18n="m365_sched_dow_sun">Sunday</option>
+              </select>
+            </div>
+            <div class="settings-row" id="schedDomRow" style="display:none">
+              <label data-i18n="m365_sched_dom">Day of month</label>
+              <input id="schedDom" type="number" min="1" max="28" value="1" style="max-width:70px">
+            </div>
+            <div class="settings-row">
+              <label data-i18n="m365_sched_time">Time</label>
+              <div style="display:flex;gap:4px;align-items:center">
+                <input id="schedHour" type="number" min="0" max="23" value="2" style="width:50px">
+                <span>:</span>
+                <input id="schedMinute" type="number" min="0" max="59" value="0" style="width:50px">
+              </div>
+            </div>
+            <div class="settings-row">
+              <label data-i18n="m365_sched_profile">Profile</label>
+              <select id="schedProfile" style="flex:1;height:26px;padding:0 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);font-size:12px;box-sizing:border-box">
+                <option value="" data-i18n="m365_sched_profile_last">Last saved settings</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <label data-i18n="m365_sched_auto_email">Email report automatically</label>
+              <label class="toggle" style="flex:unset"><input type="checkbox" id="schedAutoEmail"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="settings-row">
+              <label data-i18n="m365_sched_auto_retention">Enforce retention policy</label>
+              <label class="toggle" style="flex:unset"><input type="checkbox" id="schedAutoRetention"><span class="toggle-slider"></span></label>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
+              <div id="schedSaveStatus" style="flex:1;font-size:11px;color:var(--muted);align-self:center"></div>
+              <button onclick="schedCancelEdit()" style="background:none;border:1px solid var(--border);color:var(--muted);height:26px;padding:0 12px;border-radius:6px;font-size:12px;cursor:pointer;box-sizing:border-box" data-i18n="btn_cancel">Cancel</button>
+              <button onclick="schedSaveJob()" style="background:var(--accent);color:#fff;border:none;height:26px;padding:0 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;box-sizing:border-box" data-i18n="btn_save">Save</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── History ────────────────────────────────────────────────────── -->
+        <div class="settings-group">
+          <div class="settings-group-title" data-i18n="m365_sched_status">Recent runs</div>
+          <div id="schedHistory" style="font-size:10px;color:var(--muted);line-height:1.6;height:72px;overflow-y:auto;border:1px solid var(--border);border-radius:4px;padding:4px 6px"></div>
+        </div>
+
+      </div>
+
+      <!-- ── Email report pane ─────────────────────────────────────────────── -->
+      <div class="settings-pane" id="stPaneEmail">
+        <div class="settings-group">
+          <div class="settings-group-title" data-i18n="m365_smtp_title">Email report (SMTP)</div>
+          <div class="settings-row">
+            <label data-i18n="m365_smtp_host">SMTP host</label>
+            <input id="st-smtpHost" type="text" placeholder="smtp.office365.com">
+          </div>
+          <div class="settings-row">
+            <label data-i18n="m365_smtp_port">Port</label>
+            <input id="st-smtpPort" type="number" value="587" style="max-width:80px">
+          </div>
+          <div class="settings-row">
+            <label data-i18n="m365_smtp_user">Username</label>
+            <input id="st-smtpUser" type="text" autocomplete="off">
+          </div>
+          <div class="settings-row">
+            <label data-i18n="m365_smtp_pw">Password</label>
+            <input id="st-smtpPw" type="password" autocomplete="off">
+          </div>
+          <div class="settings-row">
+            <label data-i18n="m365_smtp_from">From</label>
+            <input id="st-smtpFrom" type="text">
+          </div>
+          <div class="settings-row">
+            <label>STARTTLS</label>
+            <label class="toggle" style="flex:unset"><input type="checkbox" id="st-smtpTls" checked><span class="toggle-slider"></span></label>
+          </div>
+          <div class="settings-row">
+            <label data-i18n="m365_smtp_recipients">Recipients</label>
+            <input id="st-smtpTo" type="text" placeholder="a@school.dk, b@school.dk">
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px">
+            <div id="st-smtpStatus" style="flex:1;font-size:11px;color:var(--muted);align-self:center"></div>
+            <button onclick="stSmtpSave()" style="background:none;border:1px solid var(--border);color:var(--muted);height:26px;padding:0 12px;border-radius:6px;font-size:12px;cursor:pointer;box-sizing:border-box" data-i18n="btn_save">Save</button>
+            <button onclick="stSmtpTest()" style="background:none;border:1px solid var(--border);color:var(--muted);height:26px;padding:0 12px;border-radius:6px;font-size:12px;cursor:pointer;box-sizing:border-box" data-i18n="m365_smtp_test">Test</button>
+            <button onclick="stSmtpSend()" style="background:var(--accent);color:#fff;border:none;height:26px;padding:0 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;box-sizing:border-box" data-i18n="m365_smtp_send">Send now</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Database pane ─────────────────────────────────────────────────── -->
+      <div class="settings-pane" id="stPaneDatabase">
+        <div class="settings-group">
+          <div class="settings-group-title" data-i18n="m365_db_title">Database</div>
+          <div id="st-dbStats" style="font-size:11px;color:var(--muted);line-height:1.8"></div>
+        </div>
+        <div class="settings-group">
+          <div class="settings-group-title" data-i18n="m365_settings_db_actions">Actions</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="display:flex;background:var(--bg);border:1px solid var(--border);border-radius:6px;overflow:hidden">
+              <button onclick="exportDB()" style="background:none;border:none;border-right:1px solid var(--border);color:var(--muted);height:26px;padding:0 14px;font-size:12px;cursor:pointer;box-sizing:border-box" data-i18n="m365_db_export">Export</button>
+              <button onclick="openImportDBModal()" style="background:none;border:none;color:var(--muted);height:26px;padding:0 14px;font-size:12px;cursor:pointer;box-sizing:border-box" data-i18n="m365_db_import">Import</button>
+            </div>
+            <button onclick="stResetDB()" style="background:none;border:1px solid var(--danger);color:var(--danger);height:26px;padding:0 14px;border-radius:6px;font-size:12px;cursor:pointer;box-sizing:border-box" data-i18n="m365_db_reset">Reset DB</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /.settings-body -->
+    <div class="settings-footer">
+      <button onclick="closeSettings()" style="background:none;border:1px solid var(--border);color:var(--muted);height:26px;padding:0 14px;border-radius:6px;font-size:12px;cursor:pointer;box-sizing:border-box" data-i18n="btn_close">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Admin PIN prompt (used for Reset DB) -->
+<div class="settings-backdrop" id="pinPromptBackdrop" style="z-index:1300" onclick="if(event.target===this)closePinPrompt()">
+  <div class="settings-modal" style="width:min(340px,94vw)">
+    <div class="settings-header">
+      <h2 data-i18n="m365_settings_enter_pin">Enter admin PIN</h2>
+      <button onclick="closePinPrompt()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px;line-height:1">&times;</button>
+    </div>
+    <div class="settings-body" style="gap:10px">
+      <div style="font-size:12px;color:var(--muted)" id="pinPromptMsg"></div>
+      <input id="pinPromptInput" type="password" placeholder="••••"
+             style="width:100%;font-size:16px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);letter-spacing:.2em"
+             onkeydown="if(event.key==='Enter')confirmPinPrompt()">
+      <div id="pinPromptError" style="font-size:11px;color:var(--danger);min-height:14px"></div>
+    </div>
+    <div class="settings-footer">
+      <button onclick="closePinPrompt()" style="background:none;border:1px solid var(--border);color:var(--muted);height:26px;padding:0 14px;border-radius:6px;font-size:12px;cursor:pointer;box-sizing:border-box" data-i18n="btn_cancel">Cancel</button>
+      <button onclick="confirmPinPrompt()" style="background:var(--danger);color:#fff;border:none;height:26px;padding:0 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;box-sizing:border-box" data-i18n="btn_confirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- About modal -->
+<!-- Data Subject Lookup Modal (#4) -->
+<div class="dsub-modal-backdrop" id="dsubBackdrop" onclick="if(event.target===this)closeDsubModal()">
+  <div class="dsub-modal">
+    <h2 data-i18n="m365_subject_title">🔍 Data subject lookup</h2>
+    <div style="font-size:11px;color:var(--muted)" data-i18n="m365_subject_desc">Find all flagged items containing a given CPR number. The CPR is hashed before querying and is never stored in plaintext.</div>
+    <div class="dsub-input-row">
+      <input id="dsubInput" type="text" placeholder="DDMMYY-XXXX" data-i18n-placeholder="m365_subject_placeholder"
+             onkeydown="if(event.key==='Enter')runSubjectLookup()">
+      <button onclick="runSubjectLookup()" style="padding:6px 14px;border-radius:7px;background:var(--accent);color:#fff;border:none;font-size:12px;cursor:pointer" data-i18n="m365_subject_search">Search</button>
+    </div>
+    <div id="dsubStatus" style="font-size:11px;color:var(--muted);min-height:16px"></div>
+    <div class="dsub-results" id="dsubResults"></div>
+    <div class="dsub-footer">
+      <button onclick="closeDsubModal()" style="background:none;border:1px solid var(--border);color:var(--muted)" data-i18n="btn_close">Close</button>
+      <button id="dsubDeleteBtn" onclick="deleteSubjectItems()" style="display:none;background:var(--danger);color:#fff;border:none;font-weight:500" data-i18n="m365_subject_delete_all">Delete all for this person</button>
+    </div>
+  </div>
+</div>
+
+<!-- SMTP / Email Report Modal -->
+<div class="smtp-modal-backdrop" id="smtpBackdrop" onclick="if(event.target===this)closeSmtpModal()">
+  <div class="smtp-modal">
+    <h2 data-i18n="m365_smtp_title">✉ Email report</h2>
+    <div class="smtp-subtitle" data-i18n="m365_smtp_desc">Configure SMTP settings to send the scan report by email.</div>
+
+    <div class="smtp-grid">
+      <!-- Server -->
+      <div class="smtp-field">
+        <label data-i18n="m365_smtp_host">SMTP host</label>
+        <input id="smtpHost" type="text" placeholder="smtp.office365.com">
+      </div>
+      <div class="smtp-field">
+        <label data-i18n="m365_smtp_port">Port</label>
+        <input id="smtpPort" type="number" value="587" style="width:80px">
+      </div>
+
+      <!-- Auth -->
+      <div class="smtp-field">
+        <label data-i18n="m365_smtp_user">Username</label>
+        <input id="smtpUser" type="text" placeholder="scanner@company.com">
+      </div>
+      <div class="smtp-field">
+        <label data-i18n="m365_smtp_pass">Password</label>
+        <input id="smtpPass" type="password" placeholder="(saved)">
+      </div>
+
+      <!-- From -->
+      <div class="smtp-field full">
+        <label><span data-i18n="m365_smtp_from">From address</span> <span style="font-weight:400;color:var(--muted)" data-i18n="m365_smtp_from_hint">(optional — defaults to username)</span></label>
+        <input id="smtpFrom" type="text" placeholder="scanner@company.com">
+      </div>
+
+      <!-- TLS / SSL -->
+      <div class="full">
+        <hr class="smtp-divider">
+        <div style="display:flex;gap:20px">
+          <div class="smtp-toggle-row">
+            <label class="toggle" title="STARTTLS (port 587)"><input type="checkbox" id="smtpTLS" checked><span class="toggle-slider"></span></label>
+            <span data-i18n="m365_smtp_tls">STARTTLS</span>
+            <span style="color:var(--muted);font-size:10px">(port 587)</span>
+          </div>
+          <div class="smtp-toggle-row">
+            <label class="toggle" title="SMTPS (port 465)"><input type="checkbox" id="smtpSSL"><span class="toggle-slider"></span></label>
+            <span data-i18n="m365_smtp_ssl">SSL</span>
+            <span style="color:var(--muted);font-size:10px">(port 465)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recipients -->
+      <div class="smtp-field full">
+        <hr class="smtp-divider">
+        <label data-i18n="m365_smtp_recipients">Recipients</label>
+        <input id="smtpRecipients" type="text" placeholder="compliance@company.com, ciso@company.com">
+        <div style="font-size:10px;color:var(--muted);margin-top:3px" data-i18n="m365_smtp_recipients_hint">Comma or semicolon separated</div>
+      </div>
+    </div>
+
+    <div class="smtp-footer">
+      <button onclick="closeSmtpModal()" style="background:none;border:1px solid var(--border);color:var(--muted)" data-i18n="btn_close">Close</button>
+      <button onclick="saveSmtpConfig()" style="background:none;border:1px solid var(--accent);color:var(--accent)" data-i18n="m365_smtp_save">Save settings</button>
+      <button onclick="sendReport()" style="background:var(--accent);color:#fff;border:none;font-weight:500" data-i18n="m365_smtp_send">Send now</button>
+    </div>
+    <div class="smtp-status" id="smtpStatus"></div>
+  </div>
+</div>
+
+<!-- Share / Viewer token modal (#33) -->
+<div class="about-modal-backdrop" id="shareBackdrop" onclick="if(event.target===this)closeShareModal()">
+  <div class="about-modal" style="max-width:520px;width:min(520px,96vw)">
+    <h2 style="margin:0 0 4px;font-size:15px" data-i18n="share_modal_title">Share results</h2>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px" data-i18n="share_modal_desc">Read-only links let a DPO or reviewer browse results and tag dispositions without access to scan controls or credentials.</div>
+
+    <!-- Create new token -->
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px 12px;margin-bottom:12px">
+      <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px" data-i18n="share_new_link">New link</div>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px" data-i18n="share_label_lbl">Label (optional)</div>
+          <input id="shareLabel" type="text" data-i18n-placeholder="share_label_placeholder" placeholder="e.g. DPO review 2026" style="width:100%;box-sizing:border-box;font-size:12px;padding:5px 8px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text)">
+        </div>
+        <div style="width:100px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px" data-i18n="share_expires_in">Expires in</div>
+          <select id="shareExpiry" style="width:100%;font-size:12px;padding:5px 6px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text)">
+            <option value="" data-i18n="share_expires_never">Never</option>
+            <option value="7" data-i18n="share_expires_7d">7 days</option>
+            <option value="30" selected data-i18n="share_expires_30d">30 days</option>
+            <option value="90" data-i18n="share_expires_90d">90 days</option>
+            <option value="365" data-i18n="share_expires_1y">1 year</option>
+          </select>
+        </div>
+        <button onclick="createShareLink()" style="height:30px;padding:0 14px;background:var(--accent);color:#fff;border:none;border-radius:5px;font-size:12px;cursor:pointer;flex-shrink:0" data-i18n="share_create">Create</button>
+      </div>
+      <div id="shareNewLinkRow" style="display:none;margin-top:10px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px" data-i18n="share_copy_link_prompt">Copy link:</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input id="shareNewLinkUrl" type="text" readonly style="flex:1;font-size:11px;padding:5px 8px;background:var(--bg2,var(--bg));border:1px solid var(--border);border-radius:5px;color:var(--text);min-width:0">
+          <button onclick="copyShareLink()" id="shareCopyBtn" style="height:26px;padding:0 10px;background:none;border:1px solid var(--border);color:var(--muted);border-radius:5px;font-size:11px;cursor:pointer;flex-shrink:0" data-i18n="log_copy">Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Existing tokens -->
+    <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px" data-i18n="share_active_links">Active links</div>
+    <div id="shareTokenList" style="display:flex;flex-direction:column;gap:5px;max-height:180px;overflow-y:auto"></div>
+
+    <!-- PIN status -->
+    <div style="margin-top:12px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;gap:10px;font-size:12px">
+      <span style="flex:1;color:var(--muted)"><span data-i18n="share_viewer_pin_label">Viewer PIN:</span> <span id="sharePinStatus" style="color:var(--text)">—</span></span>
+      <button type="button" onclick="closeShareModal();openSettings('security')" style="height:24px;padding:0 10px;background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;font-size:11px;cursor:pointer" data-i18n="share_pin_configure">Configure</button>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;margin-top:14px">
+      <button onclick="closeShareModal()" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:5px;font-size:12px;height:28px;padding:0 14px;cursor:pointer" data-i18n="btn_close">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="about-modal-backdrop" id="aboutBackdrop" onclick="if(event.target===this)closeAbout()">
+  <div class="about-modal">
+    <h2>🔍 GDPRScanner</h2>
+    <div class="about-version">v{{ app_version }}</div>
+    <div class="about-row"><span data-i18n="label_python">Python</span><span id="about-python">—</span></div>
+    <div class="about-row"><span>MSAL</span><span id="about-msal">—</span></div>
+    <div class="about-row"><span>Requests</span><span id="about-requests">—</span></div>
+    <div class="about-row"><span>openpyxl</span><span id="about-openpyxl">—</span></div>
+    <button class="about-close" onclick="closeAbout()" data-i18n="btn_close">Close</button>
+  </div>
+</div>
+
+<!-- Unified Source Management modal (#17) -->
+<div class="srcmgmt-backdrop" id="srcMgmtBackdrop" onclick="if(event.target===this)closeSourcesMgmt()">
+  <div class="srcmgmt-modal">
+    <div class="srcmgmt-header">
+      <h2 data-i18n="m365_srcmgmt_title">⚙️ Source management</h2>
+      <button onclick="closeSourcesMgmt()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px;line-height:1">&times;</button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="srcmgmt-tabs">
+      <button class="srcmgmt-tab" id="srcTabM365"    onclick="switchSrcTab('m365')"   data-i18n="m365_srcmgmt_tab_m365">Microsoft 365</button>
+      <button class="srcmgmt-tab" id="srcTabGoogle" onclick="switchSrcTab('google')" data-i18n="m365_srcmgmt_tab_google">Google Workspace</button>
+      <button class="srcmgmt-tab" id="srcTabFiles"   onclick="switchSrcTab('files')"  data-i18n="m365_srcmgmt_tab_files">File sources</button>
+    </div>
+
+    <div class="srcmgmt-body">
+
+      <!-- ── Microsoft 365 pane ───────────────────────────────────────────── -->
+      <div class="srcmgmt-pane" id="srcPaneM365">
+
+        <!-- Connection status row -->
+        <div class="srcmgmt-group">
+          <div class="srcmgmt-group-title" data-i18n="m365_srcmgmt_connection">Connection</div>
+          <div class="srcmgmt-row" id="srcM365StatusRow">
+            <span class="srcmgmt-row-icon">☁️</span>
+            <div style="flex:1">
+              <div class="srcmgmt-row-label" id="srcM365StatusLabel" data-i18n="m365_srcmgmt_not_connected">Not connected</div>
+              <div class="srcmgmt-row-sub" id="srcM365StatusSub"></div>
+            </div>
+            <span class="srcmgmt-status grey" id="srcM365StatusDot"></span>
+          </div>
+        </div>
+
+        <!-- Azure credentials -->
+        <div class="srcmgmt-group">
+          <div class="srcmgmt-group-title" data-i18n="m365_srcmgmt_azure_creds">Azure credentials</div>
+          <div class="srcmgmt-cred-form">
+            <div class="srcmgmt-cred-row">
+              <label data-i18n="m365_label_client_id">Client ID</label>
+              <input id="smClientId" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off">
+            </div>
+            <div class="srcmgmt-cred-row">
+              <label data-i18n="m365_label_tenant_id">Tenant ID</label>
+              <input id="smTenantId" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off">
+            </div>
+            <div class="srcmgmt-cred-row">
+              <label data-i18n="m365_label_client_secret">Client Secret</label>
+              <input id="smClientSecret" type="password" placeholder="Leave blank for delegated sign-in" autocomplete="off">
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:2px">
+              <div id="smConnStatus" style="font-size:11px;color:var(--muted);align-self:center;flex:1"></div>
+              <button onclick="smDisconnect()" id="smDisconnectBtn" style="display:none;background:none;border:1px solid var(--danger);color:var(--danger);height:26px;padding:0 12px;border-radius:6px;font-size:11px;cursor:pointer;box-sizing:border-box" data-i18n="m365_btn_sign_out">Disconnect</button>
+              <button onclick="smConnect()" style="background:var(--accent);color:#fff;border:none;height:26px;padding:0 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;box-sizing:border-box" data-i18n="m365_btn_connect">Connect</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- M365 source toggles -->
+        <div class="srcmgmt-group">
+          <div class="srcmgmt-group-title" data-i18n="m365_srcmgmt_sources_m365">Sources to scan</div>
+          <div id="srcM365Toggles" style="display:flex;flex-direction:column;gap:6px">
+            <div class="srcmgmt-row">
+              <span class="srcmgmt-row-icon">📧</span>
+              <div style="flex:1"><div class="srcmgmt-row-label" data-i18n="m365_src_email">Exchange / Outlook</div></div>
+              <label class="toggle" style="flex-shrink:0"><input type="checkbox" id="smSrcEmail" checked onchange="renderSourcesPanel();renderAccountList();_saveM365SourceToggles()"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="srcmgmt-row">
+              <span class="srcmgmt-row-icon">💾</span>
+              <div style="flex:1"><div class="srcmgmt-row-label" data-i18n="m365_src_onedrive">OneDrive</div></div>
+              <label class="toggle" style="flex-shrink:0"><input type="checkbox" id="smSrcOneDrive" checked onchange="renderSourcesPanel();renderAccountList();_saveM365SourceToggles()"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="srcmgmt-row">
+              <span class="srcmgmt-row-icon">🌐</span>
+              <div style="flex:1"><div class="srcmgmt-row-label" data-i18n="m365_src_sharepoint">SharePoint</div></div>
+              <label class="toggle" style="flex-shrink:0"><input type="checkbox" id="smSrcSharePoint" checked onchange="renderSourcesPanel();renderAccountList();_saveM365SourceToggles()"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="srcmgmt-row">
+              <span class="srcmgmt-row-icon">💬</span>
+              <div style="flex:1"><div class="srcmgmt-row-label" data-i18n="m365_src_teams">Teams</div></div>
+              <label class="toggle" style="flex-shrink:0"><input type="checkbox" id="smSrcTeams" checked onchange="renderSourcesPanel();renderAccountList();_saveM365SourceToggles()"><span class="toggle-slider"></span></label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Google Workspace pane (stub) ────────────────────────────────── -->
+      <!-- ── Google Workspace pane ────────────────────────────────────────────── -->
+      <div class="srcmgmt-pane" id="srcPaneGoogle">
+
+        <!-- Connection status row -->
+        <div class="srcmgmt-group">
+          <div class="srcmgmt-group-title" data-i18n="m365_srcmgmt_connection">Connection</div>
+          <div class="srcmgmt-row" id="srcGoogleStatusRow">
+            <span class="srcmgmt-row-icon">🔵</span>
+            <div style="flex:1">
+              <div class="srcmgmt-row-label" id="srcGoogleStatusLabel" data-i18n="m365_srcmgmt_not_connected">Not connected</div>
+              <div class="srcmgmt-row-sub"  id="srcGoogleStatusSub"></div>
+            </div>
+            <span class="srcmgmt-status grey" id="srcGoogleStatusDot"></span>
+          </div>
+        </div>
+
+        <!-- Auth mode toggle -->
+        <div class="srcmgmt-group">
+          <div class="srcmgmt-group-title" data-i18n="m365_google_auth_mode">Auth mode</div>
+          <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;width:fit-content">
+            <button type="button" id="smGoogleModeWorkspace" onclick="smGoogleSetMode('workspace')" style="height:26px;padding:0 14px;font-size:12px;border:none;cursor:pointer;background:var(--accent);color:#fff;box-sizing:border-box" data-i18n="m365_google_mode_workspace">Workspace</button>
+            <button type="button" id="smGoogleModePersonal"  onclick="smGoogleSetMode('personal')"  style="height:26px;padding:0 14px;font-size:12px;border:none;cursor:pointer;background:var(--surface);color:var(--text);box-sizing:border-box" data-i18n="m365_google_mode_personal">Personal account</button>
+          </div>
+        </div>
+
+        <!-- Service account credentials -->
+        <div class="srcmgmt-group" id="smGoogleSaSection">
+          <div class="srcmgmt-group-title" data-i18n="m365_google_sa_creds">Service account credentials</div>
+          <div class="srcmgmt-cred-form">
+            <div class="srcmgmt-cred-row" style="align-items:flex-start;flex-direction:column;gap:4px">
+              <label style="flex:unset" data-i18n="m365_google_sa_key_file">Service Account JSON key</label>
+              <div style="display:flex;gap:6px;width:100%;align-items:center">
+                <input type="file" id="smGoogleKeyFile" accept=".json" style="flex:1;font-size:11px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:3px 6px">
+                <span id="smGoogleKeyName" style="font-size:10px;color:var(--accent);white-space:nowrap"></span>
+              </div>
+              <div style="font-size:10px;color:var(--muted);line-height:1.5" data-i18n="m365_google_sa_key_hint">Download from Google Cloud Console → IAM &amp; Admin → Service Accounts → Keys → Add Key → JSON</div>
+            </div>
+            <div class="srcmgmt-cred-row">
+              <label data-i18n="m365_google_admin_email">Admin email</label>
+              <input id="smGoogleAdminEmail" type="email" placeholder="admin@yourdomain.com" autocomplete="off">
+            </div>
+            <div style="font-size:10px;color:var(--muted);margin-top:-4px;padding-left:118px;line-height:1.5" data-i18n="m365_google_admin_email_hint">Used for domain-wide delegation — must be a Workspace super-admin.</div>
+            <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:4px">
+              <div id="smGoogleConnStatus" style="font-size:11px;color:var(--muted);align-self:center;flex:1"></div>
+              <button onclick="smGoogleDisconnect()" id="smGoogleDisconnectBtn" style="display:none;background:none;border:1px solid var(--danger);color:var(--danger);height:26px;padding:0 12px;border-radius:6px;font-size:11px;cursor:pointer;box-sizing:border-box" data-i18n="m365_btn_sign_out">Disconnect</button>
+              <button onclick="smGoogleConnect()" style="background:#4285f4;color:#fff;border:none;height:26px;padding:0 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;box-sizing:border-box" data-i18n="m365_btn_connect">Connect</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Personal account credentials -->
+        <div class="srcmgmt-group" id="smGooglePersonalSection" style="display:none">
+          <div class="srcmgmt-group-title" data-i18n="m365_google_personal_creds">Personal account</div>
+          <div class="srcmgmt-cred-form">
+            <div class="srcmgmt-cred-row">
+              <label data-i18n="m365_google_personal_client_id">Client ID</label>
+              <input id="smGooglePersonalClientId" type="text" placeholder="….apps.googleusercontent.com" autocomplete="off">
+            </div>
+            <div class="srcmgmt-cred-row">
+              <label data-i18n="m365_google_personal_client_secret">Client secret</label>
+              <input id="smGooglePersonalClientSecret" type="password" placeholder="" autocomplete="off">
+            </div>
+            <div style="font-size:10px;color:var(--muted);margin-top:-4px;padding-left:118px;line-height:1.5" data-i18n="m365_google_personal_hint">Create OAuth 2.0 Desktop credentials in Google Cloud Console, then paste the client ID and secret above.</div>
+            <div id="smGoogleDeviceBox" class="device-code-box" style="display:none">
+              <div class="device-url"><span data-i18n="m365_device_code_go">Go to</span> <a id="smGoogleDeviceUrl" href="https://google.com/device" target="_blank">google.com/device</a></div>
+              <div class="device-code" id="smGoogleDeviceCode">—</div>
+              <div class="device-url" data-i18n="m365_device_code_enter">and enter this code</div>
+              <div id="smGooglePollStatus" style="font-size:12px;color:var(--muted);margin-top:8px"></div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:4px">
+              <div id="smGooglePersonalConnStatus" style="font-size:11px;color:var(--muted);align-self:center;flex:1"></div>
+              <button type="button" onclick="smGooglePersonalSignOut()" id="smGooglePersonalSignOutBtn" style="display:none;background:none;border:1px solid var(--danger);color:var(--danger);height:26px;padding:0 12px;border-radius:6px;font-size:11px;cursor:pointer;box-sizing:border-box" data-i18n="m365_btn_sign_out">Sign out</button>
+              <button type="button" onclick="smGooglePersonalStart()" id="smGooglePersonalSignInBtn" style="background:#4285f4;color:#fff;border:none;height:26px;padding:0 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;box-sizing:border-box" data-i18n="m365_google_personal_sign_in">Sign in</button>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.7;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:7px;margin-top:8px">
+            <strong data-i18n="m365_google_personal_setup_title">Setup required:</strong><br>
+            1. <span data-i18n="m365_google_personal_setup_step1">In Google Cloud Console, create a project and enable Gmail API + Drive API.</span><br>
+            2. <span data-i18n="m365_google_personal_setup_step2">Create OAuth 2.0 credentials (Desktop app type) and copy the client ID and secret.</span><br>
+            3. <span data-i18n="m365_google_personal_setup_step3">Add your Google account email to the OAuth consent screen test users list.</span>
+          </div>
+        </div>
+
+        <!-- Sources to scan -->
+        <div class="srcmgmt-group" id="smGoogleSourcesGroup" style="display:none">
+          <div class="srcmgmt-group-title" data-i18n="m365_srcmgmt_sources_google">Sources to scan</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div class="srcmgmt-row">
+              <span class="srcmgmt-row-icon">📧</span>
+              <div style="flex:1"><div class="srcmgmt-row-label" data-i18n="m365_google_src_gmail">Gmail</div></div>
+              <label class="toggle" style="flex-shrink:0"><input type="checkbox" id="smGoogleSrcGmail" checked onchange="_onGoogleSourceToggle()"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="srcmgmt-row">
+              <span class="srcmgmt-row-icon">📁</span>
+              <div style="flex:1"><div class="srcmgmt-row-label" data-i18n="m365_google_src_drive">Google Drive</div></div>
+              <label class="toggle" style="flex-shrink:0"><input type="checkbox" id="smGoogleSrcDrive" checked onchange="_onGoogleSourceToggle()"><span class="toggle-slider"></span></label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Setup guide callout (workspace only) -->
+        <div class="srcmgmt-group" id="smGoogleWorkspaceSetup">
+          <div style="font-size:11px;color:var(--muted);line-height:1.7;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:7px">
+            <strong data-i18n="m365_google_setup_title">Setup required in Google Workspace:</strong><br>
+            1. <span data-i18n="m365_google_setup_step1">Create a Google Cloud project and enable Gmail API + Drive API + Admin SDK.</span><br>
+            2. <span data-i18n="m365_google_setup_step2">Create a service account, download the JSON key, and enable domain-wide delegation.</span><br>
+            3. <span data-i18n="m365_google_setup_step3">In Workspace Admin → Security → API Controls → Domain-wide delegation, add the service account client ID with scopes:</span><br>
+            <code style="font-size:10px;word-break:break-all;display:block;margin:4px 0;padding:4px 6px;background:var(--bg2);border-radius:4px">https://www.googleapis.com/auth/gmail.readonly, https://www.googleapis.com/auth/drive.readonly, https://www.googleapis.com/auth/admin.directory.user.readonly</code>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── File sources pane ────────────────────────────────────────────── -->
+      <div class="srcmgmt-pane" id="srcPaneFiles">
+        <div class="srcmgmt-group">
+          <div class="srcmgmt-group-title" data-i18n="m365_srcmgmt_file_sources">File sources</div>
+          <div class="fsrc-list" id="srcFileList" style="max-height:calc(4 * 62px)">
+            <div class="fsrc-empty" data-i18n="m365_file_sources_empty">No file sources yet.</div>
+          </div>
+        </div>
+
+        <!-- Add source form (moved from fsrcBackdrop) -->
+        <div class="srcmgmt-group">
+          <div class="srcmgmt-group-title" data-i18n="m365_file_sources_add">Add source</div>
+          <div class="fsrc-form" style="border-color:var(--border)">
+            <div class="fsrc-form-row">
+              <label>Name <span style="color:var(--accent)">*</span></label>
+              <input id="srcFileLabel" type="text" placeholder="e.g. Teacher files, NAS archive" maxlength="80" autocomplete="off">
+            </div>
+            <div class="fsrc-form-row">
+              <label data-i18n="m365_fsrc_path">Path</label>
+              <input id="srcFilePath" type="text" placeholder="~/Documents  or  //nas/shares" oninput="srcFileDetectSmb(); srcFileAutoName()">
+            </div>
+            <div id="srcFileSmbFields" style="display:none;flex-direction:column;gap:6px">
+              <div style="font-size:10px;color:var(--accent)" data-i18n="m365_fsrc_smb_detected">SMB/CIFS network share detected</div>
+              <div class="fsrc-form-row">
+                <label data-i18n="m365_fsrc_smb_host">SMB host</label>
+                <input id="srcFileSmbHost" type="text" placeholder="nas.school.dk">
+              </div>
+              <div class="fsrc-form-row">
+                <label data-i18n="m365_fsrc_smb_user">Username</label>
+                <input id="srcFileSmbUser" type="text" placeholder="DOMAIN\\username">
+              </div>
+              <div class="fsrc-form-row">
+                <label data-i18n="m365_fsrc_smb_pw">Password</label>
+                <input id="srcFileSmbPw" type="password" placeholder="Stored in OS keychain">
+              </div>
+              <div style="font-size:10px;color:var(--muted)" data-i18n="m365_fsrc_smb_pw_hint">Saved to OS keychain — never stored in a file.</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <input type="hidden" id="srcFileEditId" value="">
+              <div id="srcFileStatus" style="flex:1;font-size:11px;color:var(--muted)"></div>
+              <button onclick="srcFileAdd()" id="srcFileAddBtn" style="background:var(--accent);color:#fff;border:none;height:26px;padding:0 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;box-sizing:border-box" data-i18n="m365_fsrc_add_btn">Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /.srcmgmt-body -->
+
+    <div class="srcmgmt-footer">
+      <button onclick="closeSourcesMgmt()" style="background:none;border:1px solid var(--border);color:var(--muted);height:26px;padding:0 14px;border-radius:6px;font-size:12px;cursor:pointer;box-sizing:border-box" data-i18n="btn_close">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- File Sources modal (#8) — kept for backward compat; redirects to #17 modal -->
+
+<div class="fsrc-backdrop" id="fsrcBackdrop" onclick="if(event.target===this)closeFileSourcesModal()">
+  <div class="fsrc-modal">
+    <h2 data-i18n="m365_file_sources_title">📁 File Sources</h2>
+    <div class="fsrc-list" id="fsrcList">
+      <div class="fsrc-empty" data-i18n="m365_file_sources_empty">No file sources yet. Add a local folder or network share below.</div>
+    </div>
+
+    <!-- Add source form -->
+    <div class="fsrc-form" id="fsrcForm">
+      <div style="font-size:11px;font-weight:600;color:var(--text)" data-i18n="m365_file_sources_add">Add source</div>
+      <div class="fsrc-form-row">
+        <label data-i18n="m365_fsrc_label">Name <span style="color:var(--accent)">*</span></label>
+        <input id="fsrcLabel" type="text" placeholder="e.g. Teacher files, NAS archive" maxlength="80" autocomplete="off">
+      </div>
+      <div class="fsrc-form-row">
+        <label data-i18n="m365_fsrc_path">Path</label>
+        <input id="fsrcPath" type="text" placeholder="~/Documents  or  //nas/shares" oninput="fsrcDetectSmb(); fsrcAutoName()">
+      </div>
+      <div id="fsrcSmbFields" class="fsrc-smb-fields" style="display:none;flex-direction:column;gap:6px">
+        <div style="font-size:10px;color:var(--accent);margin:-2px 0 2px" data-i18n="m365_fsrc_smb_detected">SMB/CIFS network share detected</div>
+        <div class="fsrc-form-row">
+          <label data-i18n="m365_fsrc_smb_host">SMB host</label>
+          <input id="fsrcSmbHost" type="text" placeholder="nas.school.dk">
+        </div>
+        <div class="fsrc-form-row">
+          <label data-i18n="m365_fsrc_smb_user">Username</label>
+          <input id="fsrcSmbUser" type="text" placeholder="DOMAIN\\username or username">
+        </div>
+        <div class="fsrc-form-row">
+          <label data-i18n="m365_fsrc_smb_pw">Password</label>
+          <input id="fsrcSmbPw" type="password" placeholder="Stored in OS keychain">
+        </div>
+        <div style="font-size:10px;color:var(--muted)" data-i18n="m365_fsrc_smb_pw_hint">Password is saved to the OS keychain — never stored in a file.</div>
+      </div>
+      <div style="display:flex;justify-content:flex-end">
+        <button onclick="fsrcAddSource()" style="background:var(--accent);color:#fff;border:none;padding:5px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600" data-i18n="m365_fsrc_add_btn">Add</button>
+      </div>
+    </div>
+
+    <div id="fsrcStatus" style="min-height:14px;font-size:11px;color:var(--muted)"></div>
+    <div class="fsrc-footer">
+      <button onclick="closeFileSourcesModal()" style="background:none;border:1px solid var(--border);color:var(--muted);padding:5px 14px;border-radius:6px;font-size:12px;cursor:pointer" data-i18n="btn_close">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Profile management modal (#15d) -->
+<div class="pmgmt-backdrop" id="pmgmtBackdrop" onclick="if(event.target===this)closeProfileMgmt()">
+  <div class="pmgmt-modal">
+    <div class="pmgmt-panel-list">
+      <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center">
+        <span style="font-size:13px;font-weight:500;color:var(--text)" data-i18n="m365_profile_manage_title">Profiler</span>
+      </div>
+      <div class="pmgmt-list" id="pmgmtList" style="flex:1;overflow-y:auto">
+        <div class="pmgmt-empty" data-i18n="m365_profile_no_profiles">No saved profiles yet.</div>
+      </div>
+      <div style="padding:10px 14px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px">
+        <button onclick="_pmgmtNewProfile()" style="width:100%;font-size:12px;height:26px;border-radius:6px;border:1px solid var(--accent);background:none;color:var(--accent);cursor:pointer;box-sizing:border-box">+ Ny profil</button>
+      </div>
+    </div>
+    <div class="pmgmt-panel-editor" id="pmgmtEditor">
+      <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+        <span id="pmgmtEditorTitle" style="font-size:13px;font-weight:500;color:var(--text)">Rediger profil</span>
+        <button onclick="closeProfileMgmt()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0;line-height:1">&#215;</button>
+      </div>
+      <div class="pmgmt-editor-body" id="pmgmtEditorBody"><div id="pmgmtEditorPlaceholder" style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;text-align:center;padding:24px">Klik på en profil for at redigere</div></div>
+      <div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px">
+        <button onclick="_pmgmtCloseEditor()" style="font-size:12px;height:26px;padding:0 12px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;box-sizing:border-box" data-i18n="btn_close">Luk</button>
+        <button onclick="_pmgmtSaveFullEdit()" style="font-size:12px;height:26px;padding:0 12px;border-radius:6px;border:1px solid var(--accent);background:rgba(99,126,210,.15);color:var(--accent);cursor:pointer;box-sizing:border-box" data-i18n="btn_save">Gem profil</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Import DB modal (#11) -->
+<div class="import-db-backdrop" id="importDbBackdrop" onclick="if(event.target===this)closeImportDBModal()">
+  <div class="import-db-modal">
+    <h2 data-i18n="m365_db_import_title">📥 Import Database</h2>
+    <p data-i18n="m365_db_import_desc">Select a previously exported <code>.zip</code> file. <b>Merge</b> adds dispositions and deletion log. <b>Replace</b> wipes and fully restores.</p>
+    <div>
+      <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px" data-i18n="m365_db_import_file">ZIP file</label>
+      <input type="file" id="importDbFile" accept=".zip" style="width:100%;box-sizing:border-box;padding:5px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px">
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <label style="font-size:11px;color:var(--muted)" data-i18n="m365_db_import_mode">Mode:</label>
+      <select id="importDbMode" style="font-size:12px;padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text)">
+        <option value="merge" data-i18n="m365_db_import_merge">Merge (safe)</option>
+        <option value="replace" data-i18n="m365_db_import_replace">Replace (full restore)</option>
+      </select>
+    </div>
+    <div id="importDbReplaceWarn" style="display:none;background:#7c1a0060;border:1px solid var(--danger);border-radius:6px;padding:8px 10px;font-size:11px;color:#ff7070;line-height:1.5" data-i18n="m365_db_import_replace_warn">⚠ Replace mode will erase all existing scan data before restoring. Make sure you have a backup of ~/.gdpr_scanner.db first.</div>
+    <div id="importDbStatus" style="min-height:16px;font-size:11px;color:var(--muted)"></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:4px;border-top:1px solid var(--border)">
+      <button onclick="closeImportDBModal()" style="background:none;border:1px solid var(--border);color:var(--muted);padding:5px 14px;border-radius:6px;font-size:12px;cursor:pointer" data-i18n="btn_close">Close</button>
+      <button id="importDbBtn" onclick="doImportDB()" style="background:var(--accent);color:#fff;border:none;padding:5px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600" data-i18n="m365_db_import_run">Import</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="/static/js/ui.js"></script>
+<script type="module" src="/static/js/log.js"></script>
+<script type="module" src="/static/js/users.js"></script>
+<script type="module" src="/static/js/auth.js"></script>
+<script type="module" src="/static/js/profiles.js"></script>
+<script type="module" src="/static/js/scan.js"></script>
+<script type="module" src="/static/js/results.js"></script>
+<script type="module" src="/static/js/sources.js"></script>
+<script type="module" src="/static/js/scheduler.js"></script>
+<script type="module" src="/static/js/connector.js"></script>
+<script type="module" src="/static/js/viewer.js"></script>
+</body>
+</html>
