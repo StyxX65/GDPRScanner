@@ -62,7 +62,7 @@ jobs:
         run: python -m spacy download da_core_news_sm
 
       - name: Build Document Scanner
-        run: python build.py
+        run: python build_gdpr.py
 
       # Zip the Linux binary (no installer on Linux)
       - name: Package Linux binary
@@ -140,7 +140,7 @@ jobs:
           retention-days: 30
           path: |
             dist/*.exe
-            dist/M365_Scanner_linux_x86_64.zip
+            dist/GDPRScanner_linux_x86_64.zip
 
   # ── Release (only on version tags v*) ────────────────────────────────────
   release:
