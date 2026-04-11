@@ -87,27 +87,50 @@ jobs:
             dist/*.exe
             dist/GDPRScanner_linux_x86_64.zip
 
-  # ── Release (only on version tags v*) ────────────────────────────────────
+  # ── Release ───────────────────────────────────────────────────────────────
+  # • version tag (v*) → proper versioned release with generated notes
+  # • main push       → rolling 'latest' pre-release (replaces previous)
   release:
     name: Create GitHub Release
     needs: [build-m365-scanner]
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
           merge-multiple: true
 
-      - name: Create release
+      - name: Move 'latest' tag to current commit
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git tag -f latest
+          git push origin latest --force
+
+      - name: Create versioned release
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           name: ${{ github.ref_name }}
           draft: false
           prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
           generate_release_notes: true
+          files: artifacts/**
+
+      - name: Update rolling 'latest' release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "Latest build (main)"
+          body: "Automated build from the latest commit on `main`. Not a stable release."
+          draft: false
+          prerelease: true
           files: artifacts/**
