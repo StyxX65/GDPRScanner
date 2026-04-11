@@ -78,14 +78,20 @@ jobs:
           cd dist
           zip -r "GDPRScanner_linux_x86_64.zip" "GDPRScanner"
 
+      - name: Package Windows binary
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist\GDPRScanner -DestinationPath dist\GDPRScanner_windows_x64.zip
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: M365Scanner-${{ matrix.name }}
           retention-days: 30
           path: |
-            dist/*.exe
             dist/GDPRScanner_linux_x86_64.zip
+            dist/GDPRScanner_windows_x64.zip
 
   # ── Release ───────────────────────────────────────────────────────────────
   # • version tag (v*) → proper versioned release with generated notes
