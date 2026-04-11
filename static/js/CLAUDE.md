@@ -26,3 +26,4 @@ Never revert to `!!window._googleConnected` / `_fileSources.length > 0` — thos
 
 - **Profile editor accounts** — default to unchecked. Only explicitly saved `user_ids` are checked.
 - **Date presets** — stored as `years * 365` (integer days). Do not use `* 365.25`.
+- **`copyTokenLink` is async** — called from `onclick` attributes as a fire-and-forget (the Promise is unhandled, which is fine). It `await`s `_getShareBaseUrl()` to get the machine's LAN IP before building the URL. Do not make it synchronous or revert to `window.location.origin` directly.

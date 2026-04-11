@@ -218,7 +218,7 @@ _activate_venv()
 
 def start_flask(port: int):
     import gdpr_scanner as _app
-    _app.app.run(host="127.0.0.1", port=port, debug=False,
+    _app.app.run(host="0.0.0.0", port=port, debug=False,
                  threaded=True, use_reloader=False)
 
 

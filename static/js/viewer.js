@@ -1,6 +1,20 @@
 // ── Viewer token management (#33) ─────────────────────────────────────────────
 // Share button → modal to create, copy, and revoke read-only viewer links.
 
+async function _getShareBaseUrl() {
+  // Use the machine's LAN IP so links work for remote users, not just localhost.
+  try {
+    const r = await fetch('/api/local_ip');
+    if (r.ok) {
+      const d = await r.json();
+      if (d.ip && d.ip !== '127.0.0.1') {
+        return 'http://' + d.ip + ':' + window.location.port;
+      }
+    }
+  } catch(e) {}
+  return window.location.origin;
+}
+
 function openShareModal() {
   document.getElementById('shareBackdrop').classList.add('open');
   document.getElementById('shareNewLinkRow').style.display = 'none';
@@ -69,7 +83,7 @@ async function createShareLink() {
     });
     if (!r.ok) throw new Error('Server error ' + r.status);
     const entry = await r.json();
-    const url = window.location.origin + '/view?token=' + encodeURIComponent(entry.token);
+    const url = (await _getShareBaseUrl()) + '/view?token=' + encodeURIComponent(entry.token);
     const urlInput = document.getElementById('shareNewLinkUrl');
     urlInput.value = url;
     document.getElementById('shareNewLinkRow').style.display = 'block';
@@ -86,8 +100,8 @@ function copyShareLink() {
   _copyText(url, document.getElementById('shareCopyBtn'));
 }
 
-function copyTokenLink(token, btn) {
-  const url = window.location.origin + '/view?token=' + encodeURIComponent(token);
+async function copyTokenLink(token, btn) {
+  const url = (await _getShareBaseUrl()) + '/view?token=' + encodeURIComponent(token);
   _copyText(url, btn);
 }
 

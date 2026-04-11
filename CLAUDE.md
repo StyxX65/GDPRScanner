@@ -6,7 +6,7 @@ A GDPR compliance scanner for Danish educational and municipal organisations. Sc
 
 ```bash
 source venv/bin/activate
-python gdpr_scanner.py          # http://localhost:5100
+python gdpr_scanner.py          # http://0.0.0.0:5100 (all interfaces)
 python -m pytest tests/ -q
 ```
 
@@ -51,6 +51,8 @@ Read-only access for DPOs and reviewers. Key invariants:
 - **Token onclick attributes** — Copy/Revoke buttons in `_renderTokenList()` pass the token as a single-quoted JS string literal (`'\'' + tok.token + '\''`), never via `JSON.stringify`. `JSON.stringify` produces double-quoted strings that break the surrounding `onclick="…"` HTML attribute.
 - **Settings Security pane** — Admin PIN and Viewer PIN groups live in `stPaneSecurity`, not `stPaneGeneral`. `switchSettingsTab('security')` in `sources.js` triggers both `stLoadPinStatus()` and `stLoadViewerPinStatus()`. The Share modal Configure button opens `openSettings('security')`.
 - **`stClearViewerPin` guard** — validates that the current-PIN field is non-empty client-side before sending the DELETE request; shows an inline error and focuses the field if empty.
+- **Share link base URL** — `_getShareBaseUrl()` in `viewer.js` fetches `/api/local_ip` (returns the machine's LAN IP via a UDP probe to `8.8.8.8`) and substitutes it so copied links are routable from other machines. Falls back to `window.location.origin` on error. Both `createShareLink` and `copyTokenLink` are `async` and `await` this helper. Do not revert to a bare `window.location.origin` — that produces `127.0.0.1` links useless to remote viewers.
+- **Flask binds to `0.0.0.0`** — `gdpr_scanner.py` default `--host`, `m365_launcher.py`, and `build_gdpr.py` all use `host="0.0.0.0"`. Internal loopback URLs (urllib exports, webview window, port probe) intentionally keep `127.0.0.1` — do not change those to `0.0.0.0`.
 
 ## Sources panel resize — static/js/log.js + sources.js
 

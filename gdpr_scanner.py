@@ -15,6 +15,7 @@ import base64
 import hashlib
 import io
 import json
+import socket
 import logging
 import logging.handlers
 import os
@@ -1432,6 +1433,18 @@ def _build_article30_docx() -> tuple[bytes, str]:
 
 
 
+@app.route("/api/local_ip")
+def local_ip():
+    """Return the machine's LAN IP so viewer links point to a routable address."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as _s:
+            _s.connect(("8.8.8.8", 80))
+            ip = _s.getsockname()[0]
+    except Exception:
+        ip = "127.0.0.1"
+    return jsonify({"ip": ip})
+
+
 @app.route("/api/scan/stream")
 def scan_stream():
     q = queue.Queue(maxsize=512)
@@ -1538,7 +1551,7 @@ Example --settings file with SMTP:
 """,
     )
     parser.add_argument("--port",     type=int, default=5100)
-    parser.add_argument("--host",     default="127.0.0.1")
+    parser.add_argument("--host",     default="0.0.0.0")
     parser.add_argument("--headless", action="store_true",
                         help="Run a non-interactive scan and export Excel, then exit")
     parser.add_argument("--output",   default=".",
