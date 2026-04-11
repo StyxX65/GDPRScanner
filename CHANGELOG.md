@@ -11,6 +11,7 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ### Added
 
+- **GitHub Actions CI/CD** — automated build workflow (`.github/workflows/build.yml`) builds Windows `.exe` and Linux binary on every push to `main`. Creates a GitHub Release with artifacts when a `v*` tag is pushed.
 - **`EFFORT_ESTIMATE.md`** — build effort estimate document covering component-by-component hour breakdowns and complexity drivers for the project.
 - **Settings → Security tab** — new dedicated pane in the Settings modal. Admin PIN and Viewer PIN groups moved here from the General tab, which now contains only Appearance and About. The Share modal's **Configure** button navigates directly to the Security tab.
 - **Viewer mode layout** — the sidebar, log panel, and progress bar are now hidden in viewer mode so results fill the full window width. The `🔍 GDPRScanner` brand is shown in the top-left of the topbar (replacing the sidebar header) at the same size and weight as the normal sidebar title.
