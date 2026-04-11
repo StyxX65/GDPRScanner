@@ -1,4 +1,4 @@
-name: Build — Windows & Linux
+name: Build — Windows, Linux & macOS
 
 # Trigger on every push to main, on version tags, or manually
 on:
@@ -22,10 +22,10 @@ jobs:
         include:
           - os: windows-latest
             name: windows
-            artifact_glob: "dist/*.exe"
           - os: ubuntu-22.04
             name: linux
-            artifact_glob: "dist/GDPRScanner"
+          - os: macos-13
+            name: macos
 
     runs-on: ${{ matrix.os }}
     name: GDPRScanner / ${{ matrix.name }}
@@ -58,6 +58,11 @@ jobs:
           Xvfb :99 -screen 0 1024x768x24 &
           echo "DISPLAY=:99" >> $GITHUB_ENV
 
+      - name: Install macOS system dependencies
+        if: runner.os == 'macOS'
+        run: |
+          brew install tesseract tesseract-lang poppler
+
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
@@ -84,6 +89,12 @@ jobs:
         run: |
           Compress-Archive -Path dist\GDPRScanner -DestinationPath dist\GDPRScanner_windows_x64.zip
 
+      - name: Package macOS binary
+        if: runner.os == 'macOS'
+        run: |
+          cd dist
+          zip -r "GDPRScanner_macos_x86_64.zip" "GDPRScanner.app"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -92,6 +103,7 @@ jobs:
           path: |
             dist/GDPRScanner_linux_x86_64.zip
             dist/GDPRScanner_windows_x64.zip
+            dist/GDPRScanner_macos_x86_64.zip
 
   # ── Release ───────────────────────────────────────────────────────────────
   # • version tag (v*) → proper versioned release with generated notes
