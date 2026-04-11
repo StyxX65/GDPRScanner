@@ -14,72 +14,6 @@ concurrency:
 
 jobs:
 
-  # ── Document Scanner ──────────────────────────────────────────────────────
-  build-document-scanner:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-latest
-            name: windows
-            artifact_glob: "dist/*.exe"
-          - os: ubuntu-22.04
-            name: linux
-            artifact_glob: "dist/Document Scanner"
-
-    runs-on: ${{ matrix.os }}
-    name: Document Scanner / ${{ matrix.name }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-
-      # Linux: install system libraries required by OpenCV, pdf2image, Tesseract
-      - name: Install Linux system dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
-            tesseract-ocr tesseract-ocr-dan tesseract-ocr-deu \
-            poppler-utils \
-            libgtk-3-dev libwebkit2gtk-4.0-dev \
-            libglib2.0-dev libcairo2-dev pkg-config \
-            python3-dev
-
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      # Download the Danish spaCy model used for NER/anonymisation
-      - name: Download spaCy model
-        run: python -m spacy download da_core_news_sm
-
-      - name: Build Document Scanner
-        run: python build_gdpr.py
-
-      # Zip the Linux binary (no installer on Linux)
-      - name: Package Linux binary
-        if: runner.os == 'Linux'
-        run: |
-          cd dist
-          zip -r "Document_Scanner_linux_x86_64.zip" "Document Scanner"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: DocumentScanner-${{ matrix.name }}
-          retention-days: 30
-          path: |
-            dist/*.exe
-            dist/Document_Scanner_linux_x86_64.zip
-
   # ── GDPRScanner ──────────────────────────────────────────────────────────
   build-m365-scanner:
     strategy:
@@ -149,7 +83,7 @@ jobs:
   # ── Release (only on version tags v*) ────────────────────────────────────
   release:
     name: Create GitHub Release
-    needs: [build-document-scanner, build-m365-scanner]
+    needs: [build-m365-scanner]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
