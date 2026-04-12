@@ -5,6 +5,17 @@ on:
   push:
     branches: [main]
     tags:     ['v*']
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'tests/**'
+      - 'pytest.ini'
+      - 'run_tests.sh'
+      - 'build_gdpr.sh'
+      - 'start_gdpr.sh'
+      - 'install_macos.sh'
+      - 'install_windows.ps1'
+      - '.github/ISSUE_TEMPLATE/**'
   workflow_dispatch:
 
 # Only run one build at a time per branch to avoid race conditions
