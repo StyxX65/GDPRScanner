@@ -93,6 +93,17 @@ class M365DeltaTokenExpired(M365Error):
     pass
 
 
+class M365DriveNotFound(M365Error):
+    """Raised when the Graph API returns 404 for a drive/root path.
+
+    Common causes: OneDrive licence not assigned, service plan disabled,
+    drive not yet provisioned (user has never signed in), or account
+    suspended/deleted.  Not a scan error — callers should skip the user
+    and log at a lower severity.
+    """
+    pass
+
+
 class M365Connector:
     def __init__(self, client_id: str, tenant_id: str, client_secret: str = ""):
         if not MSAL_OK:
@@ -425,6 +436,8 @@ class M365Connector:
                 except Exception:
                     msg = r.text[:200]
                 raise M365PermissionError(path, msg)
+            if r.status_code == 404:
+                raise M365DriveNotFound(f"404 Not Found: {path}")
             r.raise_for_status()
             return r.json()
         raise _requests.exceptions.RetryError(f"Gave up after {self._MAX_RETRIES} attempts: {url}")

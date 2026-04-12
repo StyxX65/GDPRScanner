@@ -73,6 +73,20 @@ Both options live in the profile `options` dict and apply to **all three scan en
 - **File scan** reads both from `source` dict keys (passed directly from the `/api/file_scan/start` payload). **M365 scan** reads both from `scan_opts = options.get("options", {})`. Both paths apply the same `_cpr_qualifies` / `_exif_has_pii` logic before the flagging gate.
 - **UI:** sidebar controls `#optSkipGps` (toggle) and `#optMinCpr` (number); profile editor controls `#peOptSkipGps` and `#peOptMinCpr`. Both are saved/loaded by `profiles.js`.
 
+## M365 connector exceptions — m365_connector.py
+
+Exception hierarchy (all inherit `M365Error(Exception)`):
+
+| Exception | Trigger | Handler |
+|---|---|---|
+| `M365PermissionError` | 403 Forbidden | `scan_error` broadcast with human-readable permission hint |
+| `M365DeltaTokenExpired` | 410 Gone on delta endpoint | Caller clears token and falls back to full scan |
+| `M365DriveNotFound` | 404 Not Found on any path | `scan_phase` broadcast ("not provisioned — skipped") in `_scan_user_onedrive`; full-scan path's `except Exception: return` also silences it |
+
+**`M365DriveNotFound` — why it exists:** `_get()` previously fell through to `raise_for_status()` on 404, which was caught by the generic `except Exception` handler in `_scan_user_onedrive` and broadcast as a red `scan_error`. The full-scan path (`_iter_drive_folder_for`) silently swallowed the same 404 via `except Exception: return`. Adding the specific exception makes the delta path consistent with the full-scan path: a user without a provisioned OneDrive is skipped without an error card. Common causes: no OneDrive licence, service plan disabled, drive never initialised (account never signed in), account suspended.
+
+**Do not add a 404 handler to `_get()` that returns a fallback value** — that would silently mask genuine path bugs elsewhere. Raising `M365DriveNotFound` keeps the error visible to callers that need to act on it.
+
 ## Memory management — scan_engine.py
 
 Large M365 tenants can generate enormous memory pressure. Key rules to preserve:

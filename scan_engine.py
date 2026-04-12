@@ -54,6 +54,7 @@ def _get_scan_meta():
 try:
     from m365_connector import (
         M365Connector, M365Error, M365PermissionError, M365DeltaTokenExpired,
+        M365DriveNotFound,
         MSAL_OK, REQUESTS_OK,
     )
     CONNECTOR_OK = True
@@ -62,6 +63,7 @@ except ImportError:
     M365Error = Exception
     M365PermissionError = Exception
     M365DeltaTokenExpired = Exception
+    M365DriveNotFound = Exception
     MSAL_OK = False
     REQUESTS_OK = False
     CONNECTOR_OK = False
@@ -768,6 +770,10 @@ def run_scan(options: dict):
                         work_items.append(("file", item, None))
             except M365PermissionError:
                 broadcast("scan_error", {"file": f"OneDrive ({uname})", "error": _permission_msg("OneDrive", uname)})
+            except M365DriveNotFound:
+                # OneDrive not provisioned for this user (no licence, service plan
+                # disabled, or drive never initialised). Not a scan error — skip silently.
+                broadcast("scan_phase", {"phase": f"OneDrive ({uname}): not provisioned — skipped"})
             except Exception as e:
                 broadcast("scan_error", {"file": f"OneDrive ({uname})", "error": str(e)})
             else:

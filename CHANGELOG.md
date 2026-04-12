@@ -24,6 +24,8 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ### Fixed
 
+- **OneDrive 404 errors during delta scans** — `GET /users/{id}/drive/root/delta` returns 404 for users with no OneDrive licence, a disabled service plan, a drive that was never provisioned (account never signed in), or a suspended account. Previously these 404s fell through to `requests.raise_for_status()` and were caught by the generic `except Exception` handler in `_scan_user_onedrive`, broadcasting a red `scan_error` card. Full scans never showed the error because `_iter_drive_folder_for` has a bare `except Exception: return`. Fixed by adding `M365DriveNotFound(M365Error)` to `m365_connector.py`, raising it from `_get()` on HTTP 404, and handling it explicitly in `_scan_user_onedrive` with a `scan_phase` broadcast ("OneDrive (user): not provisioned — skipped") before the generic exception handler.
+
 - **CI — Windows artifact never uploaded** — PyInstaller `--onedir` puts the exe inside `dist/GDPRScanner/`, not at `dist/*.exe`. The artifact glob never matched, so no Windows build appeared in releases. A PowerShell packaging step now zips `dist\GDPRScanner\` into `GDPRScanner_windows_x64.zip` (mirroring the existing Linux step).
 - **`EFFORT_ESTIMATE.md`** — build effort estimate document covering component-by-component hour breakdowns and complexity drivers for the project.
 - **Settings → Security tab** — new dedicated pane in the Settings modal. Admin PIN and Viewer PIN groups moved here from the General tab, which now contains only Appearance and About. The Share modal's **Configure** button navigates directly to the Security tab.

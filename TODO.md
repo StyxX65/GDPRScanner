@@ -41,11 +41,10 @@ Full spec in SUGGESTIONS.md §29.
 A shareable URL (token-protected) or numeric PIN that gives a DPO, school principal, or compliance coordinator read-only access to the results grid — with disposition tagging but without scan controls, credentials, or delete access. Full spec in SUGGESTIONS.md §33.  
 **Size:** Medium · **Priority:** Medium
 
-### OneDrive 404 errors — investigate and handle appropriately
-Every student is supposed to have a OneDrive licence, so 404s on `drive/root/delta` are unexpected. A 404 can mean: no licence assigned, licence assigned but OneDrive service plan disabled, drive not yet provisioned (account never signed in), or account suspended/deleted. Currently broadcast as red `scan_error` in the log.
+### OneDrive 404 errors — investigate and handle appropriately ✅
+404 on `drive/root/delta` during delta scans was being broadcast as a red `scan_error`. Root cause: `_get()` hit `raise_for_status()` for 404s, which fell through to the generic `except Exception` handler in `_scan_user_onedrive`. The full-scan path silently swallowed the same 404 via `except Exception: return` in `_iter_drive_folder_for`.
 
-**Action:** Check affected users in the M365 admin centre (Licences + OneDrive status). Once root cause is confirmed, decide whether to suppress, log at lower severity, or show a specific "OneDrive not provisioned" message instead of the raw HTTP error.  
-**Size:** Small · **Priority:** Medium
+Fixed by adding `M365DriveNotFound(M365Error)` exception, raising it from `_get()` on 404, and catching it explicitly in `_scan_user_onedrive` with a lower-severity `scan_phase` broadcast ("OneDrive (user): not provisioned — skipped") instead of a red error card.
 
 ---
 
