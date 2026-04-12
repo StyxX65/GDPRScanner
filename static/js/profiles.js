@@ -335,7 +335,8 @@ function _openEditorForProfile(profile) {
       : (u.platform || 'm365') === 'google' ? '<span style="font-size:9px;padding:1px 5px;border-radius:10px;background:#EAF3DE;color:#3B6D11;font-weight:500">GWS</span>'
       : '<span style="font-size:9px;padding:1px 5px;border-radius:10px;background:#E6F1FB;color:#185FA5;font-weight:500">M365</span>';
     const roleBadge = u.userRole === 'student' ? t('role_student','Elev') : u.userRole === 'staff' ? t('role_staff','Ansat') : t('role_other','Anden');
-    return `<label class="pmgmt-acct-row" data-uid="${_esc(u.id)}"><input type="checkbox" ${checked} data-uid="${_esc(u.id)}"><span style="flex:1;color:var(--color-text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(u.displayName)}</span>${platBadge}<span style="font-size:9px;padding:1px 5px;border-radius:10px;background:#D3D1C7;color:#444441">${roleBadge}</span></label>`;
+    const roleOverrideStyle = u.roleOverride ? 'color:var(--color-text-info);outline:1px solid var(--color-border-info);' : '';
+    return `<label class="pmgmt-acct-row" data-uid="${_esc(u.id)}" data-role="${_esc(u.userRole || 'other')}"><input type="checkbox" ${checked} data-uid="${_esc(u.id)}"><span style="flex:1;color:var(--color-text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(u.displayName)}</span>${platBadge}<button type="button" class="pmgmt-role-badge" data-uid="${_esc(u.id)}" onclick="_pmgmtCycleRole(this.getAttribute('data-uid'),event)" style="font-size:9px;padding:1px 5px;border-radius:10px;background:#D3D1C7;border:none;cursor:pointer;${roleOverrideStyle}">${roleBadge}</button></label>`;
   }).join('');
 
   body.innerHTML = `
@@ -503,6 +504,26 @@ function _pmgmtCloseEditor() {
   closeProfileMgmt();
 }
 
+async function _pmgmtCycleRole(uid, event) {
+  event.stopPropagation();
+  if (typeof cycleUserRole !== 'function') return;
+  await cycleUserRole(uid);
+  // Refresh the badge inside the profile modal to reflect the new role
+  const u = S._allUsers.find(function(u){ return u.id === uid; });
+  if (!u) return;
+  const lbl = document.querySelector('#pmgmtAcctList label[data-uid="' + uid.replace(/"/g, '\\"') + '"]');
+  if (!lbl) return;
+  const badge = lbl.querySelector('.pmgmt-role-badge');
+  if (!badge) return;
+  const roleText = u.userRole === 'student' ? t('role_student','Elev')
+                 : u.userRole === 'staff'   ? t('role_staff','Ansat')
+                 : t('role_other','Anden');
+  badge.textContent = roleText;
+  lbl.dataset.role  = u.userRole || 'other';
+  badge.style.color   = u.roleOverride ? 'var(--color-text-info)' : '';
+  badge.style.outline = u.roleOverride ? '1px solid var(--color-border-info)' : '';
+}
+
 function _pmgmtSelectAllAccounts(checked) {
   document.querySelectorAll('#pmgmtAcctList label input[type=checkbox]').forEach(function(cb) {
     if (cb.closest('label').style.display !== 'none') cb.checked = checked;
@@ -541,10 +562,9 @@ function _pmgmtAddManual() {
 function _pmgmtFilterAccounts(q) {
   q = (q || '').toLowerCase();
   document.querySelectorAll('#pmgmtAcctList label').forEach(function(lbl) {
-    var name = (lbl.querySelector('span') || {}).textContent || '';
-    var uid  = lbl.querySelector('input')?.dataset?.uid || '';
-    var user = S._allUsers.find(u => u.id === uid);
-    var roleOk = !_pmgmtRoleActive || (user && user.userRole === _pmgmtRoleActive);
+    var name   = (lbl.querySelector('span') || {}).textContent || '';
+    var role   = lbl.dataset.role || 'other';
+    var roleOk = !_pmgmtRoleActive || role === _pmgmtRoleActive;
     var nameOk = !q || name.toLowerCase().includes(q);
     lbl.style.display = (roleOk && nameOk) ? '' : 'none';
   });
@@ -698,6 +718,7 @@ window._peSetYear = _peSetYear;
 window._renderEditorSources = _renderEditorSources;
 window._pmgmtNewProfile = _pmgmtNewProfile;
 window._pmgmtCloseEditor = _pmgmtCloseEditor;
+window._pmgmtCycleRole = _pmgmtCycleRole;
 window._pmgmtSelectAllAccounts = _pmgmtSelectAllAccounts;
 window._pmgmtRoleFilter = _pmgmtRoleFilter;
 window._pmgmtAddManual = _pmgmtAddManual;

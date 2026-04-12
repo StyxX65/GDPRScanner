@@ -363,17 +363,17 @@ function _attachScanListeners(source) {
   source.addEventListener('scan_done', function(e) {
     var d = JSON.parse(e.data);
     console.log('[SSE] scan_done:', d);
-    // Only close SSE if the user started this scan via the Scan button.
-    // For scheduled scans, keep the SSE connection alive so future
-    // scheduler events are still received.
-    if (S._userStartedScan) {
-      S._userStartedScan = false;
-      if (S.es) { S.es.close(); S.es = null; }
-    }
     S._srcPct.m365 = 100;
     S._m365ScanRunning = false;
     _renderProgressSegments();
     var _anyRunning = S._googleScanRunning || S._fileScanRunning;
+    // Only close SSE once all concurrent scans have finished.
+    // Closing early would drop google_scan_done / file_scan_done events and
+    // leave the UI stuck in scanning state.
+    if (S._userStartedScan && !_anyRunning) {
+      S._userStartedScan = false;
+      if (S.es) { S.es.close(); S.es = null; }
+    }
     if (!_anyRunning) setLogLive('');
     document.getElementById('scanBtn').disabled = _anyRunning;
     document.getElementById('stopBtn').style.display = _anyRunning ? 'inline-block' : 'none';
@@ -405,6 +405,10 @@ function _attachScanListeners(source) {
     S._googleScanRunning = false;
     _renderProgressSegments();
     if (!S._m365ScanRunning && !S._fileScanRunning) {
+      if (S._userStartedScan) {
+        S._userStartedScan = false;
+        if (S.es) { S.es.close(); S.es = null; }
+      }
       setLogLive('');
       document.getElementById('scanBtn').disabled = false;
       document.getElementById('stopBtn').style.display = 'none';
@@ -429,6 +433,10 @@ function _attachScanListeners(source) {
     S._fileScanRunning = false;
     _renderProgressSegments();
     if (!S._m365ScanRunning && !S._googleScanRunning) {
+      if (S._userStartedScan) {
+        S._userStartedScan = false;
+        if (S.es) { S.es.close(); S.es = null; }
+      }
       setLogLive('');
       document.getElementById('scanBtn').disabled = false;
       document.getElementById('stopBtn').style.display = 'none';

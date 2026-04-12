@@ -72,6 +72,18 @@ Large M365 tenants can generate enormous memory pressure. Key rules to preserve:
 - **PDF OCR images freed page-by-page** — in `document_scanner.scan_pdf`, `images[page_num-1] = None` immediately after OCR. Do not cache or accumulate page images.
 - **Memory guard** — `psutil.virtual_memory().available` checked before each M365 file download; scan skips the file if < 300 MB free.
 
+## Export — routes/export.py
+
+- **`GDPRDb.get_session_sources()`** — returns a `set` of source-key strings (e.g. `{"gmail", "gdrive", "email"}`) for every scan in the current session window. Used by both `_build_excel_bytes()` and `_build_article30_docx()` to include zero-hit sources in summary tables. Do not derive the scanned-source set from `by_source` alone — that dict only contains sources with flagged items.
+- **Excel Summary sheet vs. per-source tabs** — the Summary sheet shows all scanned sources (even with 0 items). Per-source tabs are only created for sources with items; an empty tab has no value.
+- **ART.30 breakdown table** — iterates `scanned_sources` (not `by_source`) so Gmail, Google Drive, etc. appear with `0 | 0 | 0 | —` when the scan found nothing.
+
+## SSE teardown — static/js/scan.js
+
+- **Do not close `S.es` in `scan_done` if other scans are still running** — M365 (`scan_done`), Google (`google_scan_done`), and File (`file_scan_done`) each emit their own done event. If M365 finishes first and the SSE is closed, the remaining done events are never received and the UI hangs at 100% indefinitely.
+- **Rule:** close `S.es` (and reset `S._userStartedScan`) only inside the branch where *all* concurrent scans have finished: `scan_done` checks `!S._googleScanRunning && !S._fileScanRunning`; `google_scan_done` checks `!S._m365ScanRunning && !S._fileScanRunning`; `file_scan_done` checks `!S._m365ScanRunning && !S._googleScanRunning`.
+- **Scheduled scans** — `S._userStartedScan` is false for scheduler-triggered runs, so the SSE connection is never closed and future scheduler events continue to arrive.
+
 ## Global gotchas
 
 - **Pattern matching in Python** — when using `str.replace()` to patch JS/HTML, whitespace and quote style must match exactly. Use `in` check first and print if not found.

@@ -41,6 +41,14 @@ Full spec in SUGGESTIONS.md §29.
 A shareable URL (token-protected) or numeric PIN that gives a DPO, school principal, or compliance coordinator read-only access to the results grid — with disposition tagging but without scan controls, credentials, or delete access. Full spec in SUGGESTIONS.md §33.  
 **Size:** Medium · **Priority:** Medium
 
+### OneDrive 404 errors — investigate and handle appropriately
+Every student is supposed to have a OneDrive licence, so 404s on `drive/root/delta` are unexpected. A 404 can mean: no licence assigned, licence assigned but OneDrive service plan disabled, drive not yet provisioned (account never signed in), or account suspended/deleted. Currently broadcast as red `scan_error` in the log.
+
+**Action:** Check affected users in the M365 admin centre (Licences + OneDrive status). Once root cause is confirmed, decide whether to suppress, log at lower severity, or show a specific "OneDrive not provisioned" message instead of the raw HTTP error.  
+**Size:** Small · **Priority:** Medium
+
+---
+
 ### #32 — Windowed mode for Profiles, Sources, and Settings ✗ Won't do
 The workflow is sequential (configure → scan → review), not parallel — there is no realistic scenario where a modal and the results grid need to be open simultaneously. The Sources panel is already visible in the sidebar. Option A (the least-work path) still loads the full 3800-line JS stack twice. Closed.
 

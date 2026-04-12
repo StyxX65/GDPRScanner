@@ -171,11 +171,23 @@ def _build_excel_bytes() -> tuple[bytes, str]:
     for item in state.flagged_items:
         by_source.setdefault(item.get("source_type", "other"), []).append(item)
 
+    # Determine which sources were actually scanned (even if they found nothing)
+    scanned_sources: set = set()
+    if DB_OK:
+        try:
+            _db_tmp = _get_db()
+            if _db_tmp:
+                scanned_sources = _db_tmp.get_session_sources()
+        except Exception:
+            pass
+    # Fall back: treat any source that has items as scanned
+    scanned_sources |= set(by_source.keys())
+
     sum_row = 7
     for src_key, (label, tab_bg) in SOURCE_MAP.items():
-        items = by_source.get(src_key, [])
-        if not items:
+        if src_key not in scanned_sources:
             continue
+        items = by_source.get(src_key, [])
         ws_sum.cell(row=sum_row, column=1, value=label).font = Font(name="Arial", size=10)
         ws_sum.cell(row=sum_row, column=2, value=len(items)).font = Font(name="Arial", size=10)
         ws_sum.cell(row=sum_row, column=3, value=sum(i.get("cpr_count", 0) for i in items)).font = Font(name="Arial", size=10)
@@ -352,6 +364,15 @@ def _build_article30_docx() -> tuple[bytes, str]:
     for item in items:
         st = item.get("source_type", "other")
         by_source.setdefault(st, []).append(item)
+
+    # Determine which sources were actually scanned (may be empty-hit)
+    scanned_sources: set = set()
+    if db:
+        try:
+            scanned_sources = db.get_session_sources()
+        except Exception:
+            pass
+    scanned_sources |= set(by_source.keys())
 
     SOURCE_LABELS = {
         "email":      "Exchange (Outlook)",
@@ -557,9 +578,9 @@ def _build_article30_docx() -> tuple[bytes, str]:
         r.font.size = Pt(10); r.font.color.rgb = WHITE
 
     for src_key in ("email", "onedrive", "sharepoint", "teams", "gmail", "gdrive", "local", "smb"):
-        src_items = by_source.get(src_key, [])
-        if not src_items:
+        if src_key not in scanned_sources:
             continue
+        src_items = by_source.get(src_key, [])
         row   = src_tbl.add_row().cells
         n_ov   = sum(1 for i in src_items if i.get("id") in overdue_ids)
         n_cpr  = sum(i.get("cpr_count", 0) for i in src_items)

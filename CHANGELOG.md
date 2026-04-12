@@ -11,7 +11,7 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ### Added
 
-- **GitHub Actions CI/CD — macOS build** — `.github/workflows/build.yml` now also builds a macOS `.app` bundle (`macos-13`, Intel x86_64 / Rosetta) on every push to `main` and on `v*` tags. Released as `GDPRScanner_macos_x86_64.zip`.
+- **GitHub Actions CI/CD — macOS build** — `.github/workflows/build.yml` now also builds a macOS `.app` bundle (`macos-15`, Apple Silicon ARM64) on every push to `main` and on `v*` tags. Released as `GDPRScanner_macos_arm64.zip`. (Originally `macos-13` / Intel, changed when GitHub retired that runner.)
 
 ### Fixed
 
@@ -19,12 +19,11 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 - **`EFFORT_ESTIMATE.md`** — build effort estimate document covering component-by-component hour breakdowns and complexity drivers for the project.
 - **Settings → Security tab** — new dedicated pane in the Settings modal. Admin PIN and Viewer PIN groups moved here from the General tab, which now contains only Appearance and About. The Share modal's **Configure** button navigates directly to the Security tab.
 - **Viewer mode layout** — the sidebar, log panel, and progress bar are now hidden in viewer mode so results fill the full window width. The `🔍 GDPRScanner` brand is shown in the top-left of the topbar (replacing the sidebar header) at the same size and weight as the normal sidebar title.
-
-### Fixed
-
 - **Share modal — Revoke / Copy buttons broken** — `JSON.stringify(token)` produced a double-quoted string that terminated the surrounding `onclick="…"` HTML attribute early, so neither button fired its handler. Both now pass the token as a single-quoted JS string literal, which is safe for the hex token format.
 - **Viewer PIN — Clear PIN rejected with "current PIN is incorrect"** — clicking **Clear PIN** without first typing in the Current PIN field sent an empty string to the server, which correctly rejected it. A client-side guard now validates the field is non-empty before sending the request, and focuses the input with an inline error message if it is empty.
 - **Share modal — all UI strings now translated** — the Share results modal and Viewer PIN settings group were fully hardcoded in English. All visible strings are now backed by i18n keys (`share_*`, `viewer_pin_*`) in `en.json`, `da.json`, and `de.json`.
+- **Excel / ART.30 export — Gmail and Google Drive missing from summary** — `by_source` was built from flagged items only, so sources that produced zero hits were silently skipped. Both the Excel Summary sheet and the ART.30 "Breakdown by source" table now include every source that was actually scanned, showing `0` items and `0` CPR hits where nothing was found. New `GDPRDb.get_session_sources()` method reads the `sources` JSON column from all scans in the current session window to determine which sources ran.
+- **Scan never finishes when M365 + Google run concurrently** — `scan_done` (M365 finished) was closing the SSE connection immediately via `S.es.close()`, even when `S._googleScanRunning` or `S._fileScanRunning` was still true. The `google_scan_done` / `file_scan_done` events therefore never arrived, leaving the progress bar stuck at 100% indefinitely. SSE teardown is now deferred until the last concurrent scan completes: `scan_done` only closes the connection if neither Google nor File is still running; `google_scan_done` and `file_scan_done` close it when they are the final scan to finish.
 
 ---
 

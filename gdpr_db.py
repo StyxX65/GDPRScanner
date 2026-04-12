@@ -472,6 +472,33 @@ class ScanDB:
             result.append(d)
         return result
 
+    def get_session_sources(self, window_seconds: int = 300) -> set:
+        """Return the union of all source keys scanned in the current session.
+
+        Reads the ``sources`` JSON array stored in each scan record that belongs
+        to the same session as the latest completed scan.  This is used by the
+        export builders so they can show every scanned source in summary tables
+        even when a source produced zero flagged items.
+        """
+        row = self._connect().execute(
+            "SELECT started_at FROM scans WHERE finished_at IS NOT NULL ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        if not row:
+            return set()
+        latest_start = row[0]
+        rows = self._connect().execute(
+            """SELECT sources FROM scans
+               WHERE started_at >= ? AND finished_at IS NOT NULL""",
+            (latest_start - window_seconds,),
+        ).fetchall()
+        result: set = set()
+        for r in rows:
+            try:
+                result.update(json.loads(r[0] or "[]"))
+            except Exception:
+                pass
+        return result
+
     def lookup_data_subject(self, cpr: str) -> list[dict]:
         """Find all flagged items containing a given CPR number (by hash)."""
         cpr_hash = hashlib.sha256(str(cpr).encode()).hexdigest()
