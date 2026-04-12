@@ -7,9 +7,14 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
-## [Unreleased]
+## [1.6.15] — 2026-04-12
 
 ### Added
+
+- **Scan filter options for student environments** — two new profile options reduce noise when scanning student accounts:
+  - **Ignore GPS in images** (`skip_gps_images`) — images whose only PII signal is an embedded GPS coordinate are not flagged. Smartphones embed location in every camera photo by default, generating large numbers of low-priority flags in school contexts. GPS data is still extracted and shown in the detail card when the image is flagged by another signal (faces, EXIF author/comment). Applies to M365, Google, and file scans.
+  - **Min. CPR count per file** (`min_cpr_count`, default 1) — a file is only flagged if it contains at least this many *distinct* CPR numbers. Set to 2 to avoid reporting a student's own consent form or registration document (one CPR) while still flagging class lists and grade sheets with multiple students' CPRs. Deduplication is by value — a CPR repeated 10 times counts as 1 distinct number. Applies to M365, Google, and file scans.
+  - Both options are saved in profiles and editable in the Profile Manager editor.
 
 - **GitHub Actions CI/CD — macOS build** — `.github/workflows/build.yml` now also builds a macOS `.app` bundle (`macos-15`, Apple Silicon ARM64) on every push to `main` and on `v*` tags. Released as `GDPRScanner_macos_arm64.zip`. (Originally `macos-13` / Intel, changed when GitHub retired that runner.)
 

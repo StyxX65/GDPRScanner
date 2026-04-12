@@ -61,6 +61,15 @@ Read-only access for DPOs and reviewers. Key invariants:
 - **Do not add a fixed `max-height` or `height` to `#sourcesPanel` in HTML** — height is controlled entirely by `_fitSourcesPanel()` at runtime.
 - **Do not call `_fitSourcesPanel()` before the panel has rendered** — `scrollHeight` will be 0. The call in `renderSourcesPanel()` is the correct hook; `_initSourcesResize()` only sets up the drag handler.
 
+## Scan filter options — scan_engine.py
+
+Both options live in the profile `options` dict and apply to **all three scan engines** (M365, Google, file scan).
+
+- **`skip_gps_images` (bool, default `false`)** — When enabled, images whose only PII is GPS coordinates are not flagged. GPS data is still extracted and stored in the card `exif` field if the item is flagged by another signal (faces, EXIF author/comment). The `gps_location` special category is also suppressed. Evaluated via `_exif_has_pii` which rechecks `pii_fields` and `author` when GPS is skipped.
+- **`min_cpr_count` (int, default `1`)** — Minimum number of **distinct** CPR numbers in a file before it is flagged. Deduplication uses `list(dict.fromkeys(cprs))` to preserve order. Files with faces or EXIF PII are still flagged regardless of CPR count — the threshold gates only CPR-based hits.
+- **File scan** reads both from `source` dict keys (passed directly from the `/api/file_scan/start` payload). **M365 scan** reads both from `scan_opts = options.get("options", {})`. Both paths apply the same `_cpr_qualifies` / `_exif_has_pii` logic before the flagging gate.
+- **UI:** sidebar controls `#optSkipGps` (toggle) and `#optMinCpr` (number); profile editor controls `#peOptSkipGps` and `#peOptMinCpr`. Both are saved/loaded by `profiles.js`.
+
 ## Memory management — scan_engine.py
 
 Large M365 tenants can generate enormous memory pressure. Key rules to preserve:

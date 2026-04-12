@@ -164,8 +164,10 @@ def run_file_scan(source: dict):
     smb_domain  = source.get("smb_domain") or ""
     keychain_key= source.get("keychain_key") or None
     smb_password= source.get("smb_password") or None
-    scan_photos = bool(source.get("scan_photos", False))
-    max_mb      = int(source.get("max_file_mb", 50))
+    scan_photos     = bool(source.get("scan_photos", False))
+    skip_gps_images = bool(source.get("skip_gps_images", False))
+    min_cpr_count   = max(1, int(source.get("min_cpr_count", 1)))
+    max_mb          = int(source.get("max_file_mb", 50))
 
     if not FILE_SCANNER_OK:
         broadcast("scan_error", {"file": label, "error": "file_scanner.py not found"})
@@ -243,7 +245,14 @@ def run_file_scan(source: dict):
                     _face_count = _detect_photo_faces(content, rel_path)
                 _exif = _extract_exif(content, rel_path)
 
-            if not cprs and _face_count == 0 and not _exif.get("has_pii"):
+            # Apply filters: distinct CPR threshold and GPS suppression
+            _distinct_cprs = list(dict.fromkeys(cprs))  # preserve order, deduplicate
+            _cpr_qualifies = len(_distinct_cprs) >= min_cpr_count
+            _exif_has_pii  = _exif.get("has_pii") and (
+                not skip_gps_images or bool(_exif.get("pii_fields") or _exif.get("author"))
+            )
+
+            if not (_cpr_qualifies and cprs) and _face_count == 0 and not _exif_has_pii:
                 continue
 
             # Build card metadata
@@ -256,9 +265,9 @@ def run_file_scan(source: dict):
             _sc  = _check_special_category(_file_text, cprs)
             if _face_count > 0 and "biometric" not in _sc:
                 _sc = sorted(_sc + ["biometric"])
-            if _exif.get("gps") and "gps_location" not in _sc:
+            if _exif.get("gps") and not skip_gps_images and "gps_location" not in _sc:
                 _sc = sorted(_sc + ["gps_location"])
-            if _exif.get("has_pii") and "exif_pii" not in _sc:
+            if _exif_has_pii and "exif_pii" not in _sc:
                 _sc = sorted(_sc + ["exif_pii"])
 
             # Thumbnail for images
@@ -389,6 +398,8 @@ def run_scan(options: dict):
     max_emails     = int(scan_opts.get("max_emails", 2000))
     delta_enabled  = bool(scan_opts.get("delta", False))
     scan_photos    = bool(scan_opts.get("scan_photos", False))  # biometric photo scan (#9)
+    skip_gps_images= bool(scan_opts.get("skip_gps_images", False))
+    min_cpr_count  = max(1, int(scan_opts.get("min_cpr_count", 1)))
 
     # Delta token state — loaded once, updated per-source, saved on completion
     delta_tokens:     dict = _load_delta_tokens() if delta_enabled else {}
@@ -1079,8 +1090,15 @@ def run_scan(options: dict):
                         _face_count = _detect_photo_faces(content, name)
                     _exif = _extract_exif(content, name)
 
-                # Flag item if CPRs found, faces detected, or EXIF PII found
-                if cprs or _face_count > 0 or _exif.get("has_pii"):
+                # Apply filters: distinct CPR threshold and GPS suppression
+                _distinct_cprs   = list(dict.fromkeys(cprs))  # preserve order, deduplicate
+                _cpr_qualifies   = len(_distinct_cprs) >= min_cpr_count
+                _exif_has_pii    = _exif.get("has_pii") and (
+                    not skip_gps_images or bool(_exif.get("pii_fields") or _exif.get("author"))
+                )
+
+                # Flag item if CPRs found (above threshold), faces detected, or EXIF PII found
+                if (_cpr_qualifies and cprs) or _face_count > 0 or _exif_has_pii:
                     # Make thumbnail
                     if ext in {".jpg", ".jpeg", ".png"} and PIL_OK:
                         thumb = _make_thumb(content, name)
@@ -1109,9 +1127,9 @@ def run_scan(options: dict):
                     # the category even when no CPR is present in the file.
                     if _face_count > 0 and "biometric" not in _sc:
                         _sc = sorted(_sc + ["biometric"])
-                    if _exif.get("gps") and "gps_location" not in _sc:
+                    if _exif.get("gps") and not skip_gps_images and "gps_location" not in _sc:
                         _sc = sorted(_sc + ["gps_location"])
-                    if _exif.get("has_pii") and "exif_pii" not in _sc:
+                    if _exif_has_pii and "exif_pii" not in _sc:
                         _sc = sorted(_sc + ["exif_pii"])
                     meta["_special_category"] = _sc
                     meta["_face_count"]        = _face_count

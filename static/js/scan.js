@@ -125,6 +125,8 @@ function buildScanPayload() {
     max_emails:       parseInt(document.getElementById('optMaxEmails').value) || 200,
     delta:            document.getElementById('optDelta') ? document.getElementById('optDelta').checked : false,
     scan_photos:      document.getElementById('optScanPhotos') ? document.getElementById('optScanPhotos').checked : false,
+    skip_gps_images:  document.getElementById('optSkipGps') ? document.getElementById('optSkipGps').checked : false,
+    min_cpr_count:    document.getElementById('optMinCpr') ? (parseInt(document.getElementById('optMinCpr').value) || 1) : 1,
     retention_enabled: document.getElementById('optRetention') ? document.getElementById('optRetention').checked : false,
     retention_years:  parseInt(document.getElementById('optRetentionYears')?.value) || 5,
     fiscal_year_end:  document.getElementById('optFiscalYearEnd')?.value || '',
@@ -570,7 +572,11 @@ function startScan(resume) {
       if (!source) return;
       fetch('/api/file_scan/start', {
         method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify(Object.assign({}, source, {scan_photos: options.scan_photos || false}))
+        body: JSON.stringify(Object.assign({}, source, {
+          scan_photos:      options.scan_photos     || false,
+          skip_gps_images:  options.skip_gps_images || false,
+          min_cpr_count:    options.min_cpr_count   || 1,
+        }))
       }).catch(e => { log('File scan error: ' + e, 'err'); });
     });
 

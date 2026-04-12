@@ -123,9 +123,10 @@ A date-from picker limits the scan to items modified after the selected date. Qu
 | Scan attachments | On | Scan PDF/Word/Excel attachments inside emails |
 | Max attachment size | **20 MB** | Skip attachments larger than this threshold |
 | Max emails per user | **2000** | Cap per mailbox to avoid very long scans |
-| **Δ Delta scan** | Off | Fetch only changed items since the last scan (see [Delta scan](#delta-scan) below) |
 | **Δ Delta scan** | Off | Fetch only changed items since the last scan — hover the **?** for details (see [Delta scan](#delta-scan) below) |
-| ** Scan photos for faces** | Off | Detect faces in image files and flag as Art. 9 biometric data — hover the **?** for details (see [Photo scanning](#photo--biometric-scanning) below) |
+| **Scan photos for faces** | Off | Detect faces in image files and flag as Art. 9 biometric data — hover the **?** for details (see [Photo scanning](#photo--biometric-scanning) below) |
+| **Ignore GPS in images** | Off | Skip images whose only PII signal is an embedded GPS coordinate. Useful for student scans where smartphones embed location in every camera photo. GPS is still shown in the detail card if the image is flagged for another reason (faces, EXIF author). |
+| **Min. CPR count per file** | **1** | Only flag a file if it contains at least this many *distinct* CPR numbers. Set to 2 to suppress false positives in student scans (e.g. a student's own consent form with a single CPR) while still reporting class lists and grade sheets with multiple CPRs. |
 | **Retention policy** | Off | Flag items older than N years — hover the **?** for details (see [Retention policy](#retention-policy-enforcement)) |
 
 #### Results grid

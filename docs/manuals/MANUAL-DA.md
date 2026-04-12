@@ -496,6 +496,10 @@ Disse indstillinger findes i venstre panel under **Indstillinger**:
 
 **Søg efter ansigter i billeder** — langsommere scanning, der registrerer fotografier med genkendelige menneskelige ansigter. Markerer dem som artikel 9 biometriske data. Anbefales til skoler, der opbevarer elevfotos.
 
+**Ignorer GPS i billeder** — når aktiveret, flagges billeder ikke, hvis GPS-koordinater i billedets metadata er det eneste PII-signal. Nyttigt ved scanning af elevkonti: smartphones indlejrer automatisk GPS-koordinater i alle kamerabilleder, hvilket ellers ville generere mange lavprioriterede fund i en skolekontekst. Hvis et billede allerede er flagget af en anden årsag (ansigter, EXIF-forfatterfelter), vises GPS-koordinaterne stadig i detaljekortet.
+
+**Min. CPR-antal pr. fil** — en fil flagges kun, hvis den indeholder mindst dette antal *distinkte* CPR-numre. Standardværdien er 1 (nuværende adfærd). Sæt til 2 for at undgå falske positive ved elevscanninger: en elevs samtykkeerklæring eller indmeldelsesformular indeholder typisk kun elevens eget CPR-nummer, mens en klasselist eller karakteroversigt med flere elevers CPR-numre stadig vil blive rapporteret.
+
 **Opbevaringspolitik** — når aktiveret, markeres elementer ældre end det angivne antal år som forældet. Regnskabsårets afslutning bestemmer, hvordan skæringsdatoen beregnes:
 
 | Indstilling | Beregning af skæringsdato |

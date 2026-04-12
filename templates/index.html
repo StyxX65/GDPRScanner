@@ -119,6 +119,23 @@ document.addEventListener('DOMContentLoaded', applyI18n);
           <label class="toggle"><input type="checkbox" id="optScanPhotos"><span class="toggle-slider"></span></label>
         </div>
 
+        <!-- Skip GPS in images -->
+        <div class="toggle-row">
+          <span class="toggle-label" style="flex:1">
+            <span data-i18n="m365_opt_skip_gps">Ignorer GPS i billeder</span><span class="hint-wrap"><span class="hint-icon" onclick="toggleHint(this)">?</span><span class="hint-bubble" data-i18n="m365_opt_skip_gps_hint">Billeder med GPS-koordinater flagges ikke — nyttigt ved elevscanninger, hvor smartphones indlejrer placering i alle fotos.</span></span>
+          </span>
+          <label class="toggle"><input type="checkbox" id="optSkipGps"><span class="toggle-slider"></span></label>
+        </div>
+
+        <!-- Minimum CPR count per file -->
+        <div class="toggle-row">
+          <span class="toggle-label" style="flex:1">
+            <span data-i18n="m365_opt_min_cpr">Min. CPR-antal pr. fil</span><span class="hint-wrap"><span class="hint-icon" onclick="toggleHint(this)">?</span><span class="hint-bubble" data-i18n="m365_opt_min_cpr_hint">Filer med færre distinkte CPR-numre end denne tærskel rapporteres ikke. Sæt til 2 for at undgå falske positive, når elever har egne CPR-numre i filer.</span></span>
+          </span>
+          <input type="number" id="optMinCpr" value="1" min="1" max="50"
+                 style="width:46px;padding:3px 6px;font-size:11px;text-align:right">
+        </div>
+
         <!-- Retention policy (suggestion #1) -->
         <div class="toggle-row">
           <span class="toggle-label" style="flex:1">

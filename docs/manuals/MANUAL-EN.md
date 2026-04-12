@@ -496,6 +496,10 @@ These options are in the left sidebar under **Indstillinger**:
 
 **Scan photos for faces** — slower scan that detects photographs containing recognisable human faces. Flags them as Article 9 biometric data. Recommended for schools storing student photos.
 
+**Ignore GPS in images** — when enabled, images whose only PII signal is an embedded GPS location are not flagged. Useful when scanning student accounts: smartphones embed GPS coordinates in every photo taken with the camera app, which would otherwise generate large numbers of flags that are low-priority for a school context. If an image is already flagged for another reason (faces, EXIF author field), the GPS coordinate is still shown in the detail card.
+
+**Min. CPR count per file** — only flag a file if it contains at least this many *distinct* CPR numbers. The default is 1 (current behaviour). Setting it to 2 avoids false positives in student scans: a student's own consent form or registration document typically contains only their own CPR number, while a class list or grade sheet containing multiple students' CPRs will still be reported.
+
 **Retention policy** — when enabled, marks items older than the specified number of years as overdue. The fiscal year end setting determines how the cutoff date is calculated:
 
 | Option | Cutoff date calculation |
