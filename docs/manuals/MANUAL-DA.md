@@ -226,6 +226,7 @@ Brug filterbjælken over resultaterne til at indsnævre visningen:
 - **Disposition** — vis elementer efter gennemgangsstatus.
 - **Deling** — filtrer på delt / ekstern / alle.
 - **Risiko** — vis kun Art. 9, fotos, GPS eller høj-risiko-elementer.
+- **Rolle** — vis kun **Ansatte** eller **Elever**. Påvirker også eksporten: klikker du på **Excel** eller **Art.30**, mens en rolle er valgt, indeholder rapporten kun den pågældende gruppe, og filnavnet får suffikset `_elever` eller `_ansatte`.
 
 ---
 

@@ -86,6 +86,7 @@ Large M365 tenants can generate enormous memory pressure. Key rules to preserve:
 - **`GDPRDb.get_session_sources()`** — returns a `set` of source-key strings (e.g. `{"gmail", "gdrive", "email"}`) for every scan in the current session window. Used by both `_build_excel_bytes()` and `_build_article30_docx()` to include zero-hit sources in summary tables. Do not derive the scanned-source set from `by_source` alone — that dict only contains sources with flagged items.
 - **Excel Summary sheet vs. per-source tabs** — the Summary sheet shows all scanned sources (even with 0 items). Per-source tabs are only created for sources with items; an empty tab has no value.
 - **ART.30 breakdown table** — iterates `scanned_sources` (not `by_source`) so Gmail, Google Drive, etc. appear with `0 | 0 | 0 | —` when the scan found nothing.
+- **Role-filtered exports** — `_build_excel_bytes(role='')` and `_build_article30_docx(role='')` accept `role='student'` or `role='staff'`. A local `_items` list is built at the top of each function and used everywhere instead of `state.flagged_items` directly — GPS sheet, External transfers sheet, and Art.30 staff/student tables all see only the filtered subset. Route handlers read `request.args.get('role', '')` and forward it. Filenames get `_elever` / `_ansatte` suffix. The `#filterRole` dropdown in the filter bar drives both the client-side grid filter and the export URL param — do not separate them.
 
 ## SSE teardown — static/js/scan.js
 

@@ -24,9 +24,10 @@ bp = Blueprint("export", __name__)
 logger = logging.getLogger(__name__)
 
 
-def _build_excel_bytes() -> tuple[bytes, str]:
+def _build_excel_bytes(role: str = "") -> tuple[bytes, str]:
     """Build the M365 scan Excel workbook and return (bytes, filename).
-    Raises on error. Used by export_excel() and send_report()."""
+    Raises on error. Used by export_excel() and send_report().
+    role: '' = all, 'student' = students only, 'staff' = staff + other."""
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from openpyxl.utils import get_column_letter
@@ -131,11 +132,20 @@ def _build_excel_bytes() -> tuple[bytes, str]:
 
         ws.auto_filter.ref = f"A1:{get_column_letter(len(COLS))}1"
 
+    # Apply role filter — '' means all roles
+    if role == "student":
+        _items = [i for i in state.flagged_items if i.get("user_role") == "student"]
+    elif role == "staff":
+        _items = [i for i in state.flagged_items if i.get("user_role") != "student"]
+    else:
+        _items = list(state.flagged_items)
+
     wb     = Workbook()
     ws_sum = wb.active
     ws_sum.title = "Summary"
     ws_sum.sheet_properties.tabColor = "1F3864"
-    ws_sum["A1"] = "GDPRScanner — Export"
+    _role_label = {"student": " — Elever", "staff": " — Ansatte"}.get(role, "")
+    ws_sum["A1"] = f"GDPRScanner — Export{_role_label}"
     ws_sum["A1"].font = Font(name="Arial", bold=True, size=14, color=HEADER_FG)
     ws_sum["A1"].fill = _fill(HEADER_BG)
     ws_sum.merge_cells("A1:D1")
@@ -146,8 +156,8 @@ def _build_excel_bytes() -> tuple[bytes, str]:
     ws_sum["A2"] = "Generated:"
     ws_sum["B2"] = _dt.datetime.now().strftime("%Y-%m-%d %H:%M")
     ws_sum["A3"] = "Total flagged items:"
-    ws_sum["B3"] = len(state.flagged_items)
-    gps_count = sum(1 for i in state.flagged_items if (i.get("exif") or {}).get("gps"))
+    ws_sum["B3"] = len(_items)
+    gps_count = sum(1 for i in _items if (i.get("exif") or {}).get("gps"))
     if gps_count:
         ws_sum["A4"] = "Items with GPS data:"
         ws_sum["B4"] = gps_count
@@ -168,7 +178,7 @@ def _build_excel_bytes() -> tuple[bytes, str]:
     ws_sum.column_dimensions["C"].width = 16
 
     by_source: dict = {}
-    for item in state.flagged_items:
+    for item in _items:
         by_source.setdefault(item.get("source_type", "other"), []).append(item)
 
     # Determine which sources were actually scanned (even if they found nothing)
@@ -204,7 +214,7 @@ def _build_excel_bytes() -> tuple[bytes, str]:
         _write_sheet(wb.create_sheet(title=clean_label), items, tab_bg)
 
     # GPS items sheet
-    gps_items = [i for i in state.flagged_items if (i.get("exif") or {}).get("gps")]
+    gps_items = [i for i in _items if (i.get("exif") or {}).get("gps")]
     if gps_items:
         ws_gps = wb.create_sheet(title="GPS locations")
         ws_gps.sheet_properties.tabColor = "1A7A6E"
@@ -242,7 +252,7 @@ def _build_excel_bytes() -> tuple[bytes, str]:
         ws_gps.auto_filter.ref = f"A1:{get_column_letter(len(GPS_COLS))}1"
 
     # External transfers sheet
-    ext_items = [i for i in state.flagged_items
+    ext_items = [i for i in _items
                  if i.get("transfer_risk") in ("external-recipient", "external-share", "shared")]
     if ext_items:
         ws_ext = wb.create_sheet(title="External transfers")
@@ -258,8 +268,11 @@ def _build_excel_bytes() -> tuple[bytes, str]:
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
-    fname = f"m365_scan_{_dt.datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    _role_suffix = {"student": "_elever", "staff": "_ansatte"}.get(role, "")
+    fname = f"m365_scan{_role_suffix}_{_dt.datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     return buf.read(), fname
+
+
 @bp.route("/api/export_excel")
 def export_excel():
     """Export flagged items as an Excel workbook with per-source tabs."""
@@ -275,8 +288,9 @@ def export_excel():
                     state.flagged_items[:] = db_items
         except Exception:
             pass
+    role = request.args.get("role", "")
     try:
-        xl_bytes, fname = _build_excel_bytes()
+        xl_bytes, fname = _build_excel_bytes(role=role)
         return Response(
             xl_bytes,
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -292,9 +306,10 @@ def export_excel():
 
 # ── Article 30 report ─────────────────────────────────────────────────────────
 
-def _build_article30_docx() -> tuple[bytes, str]:
+def _build_article30_docx(role: str = "") -> tuple[bytes, str]:
     """Generate a GDPR Article 30 Register of Processing Activities as .docx.
-    Returns (bytes, filename). Strings are translated using the active state.LANG dict."""
+    Returns (bytes, filename). Strings are translated using the active state.LANG dict.
+    role: '' = all, 'student' = students only, 'staff' = staff + other."""
     try:
         from docx import Document as _Document
         from docx.shared import Pt, RGBColor, Inches, Cm
@@ -314,6 +329,10 @@ def _build_article30_docx() -> tuple[bytes, str]:
     db    = _get_db() if DB_OK else None
     stats   = db.get_stats() if db else {}
     items   = db.get_session_items() if db else list(state.flagged_items)
+    if role == "student":
+        items = [i for i in items if i.get("user_role") == "student"]
+    elif role == "staff":
+        items = [i for i in items if i.get("user_role") != "student"]
     trend   = db.get_trend(10) if db else []
     overdue = db.get_overdue_items(5) if db else []
 
@@ -357,7 +376,8 @@ def _build_article30_docx() -> tuple[bytes, str]:
 
     now_str   = _dt.datetime.now().strftime("%Y-%m-%d %H:%M")
     date_str  = _dt.datetime.now().strftime("%Y-%m-%d")
-    fname     = f"article30_{date_str}.docx"
+    _role_suffix = {"student": "_elever", "staff": "_ansatte"}.get(role, "")
+    fname     = f"article30{_role_suffix}_{date_str}.docx"
 
     # Aggregate by source
     by_source: dict = {}
@@ -1121,7 +1141,8 @@ def export_article30():
     if not state.flagged_items:
         return jsonify({"error": "No results to export — run a scan first"}), 400
     try:
-        docx_bytes, fname = _build_article30_docx()
+        role = request.args.get("role", "")
+        docx_bytes, fname = _build_article30_docx(role=role)
         return Response(
             docx_bytes,
             mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",

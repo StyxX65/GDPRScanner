@@ -669,6 +669,7 @@ function applyFilters() {
   const dispVal     = document.getElementById('filterDisposition')?.value || '';
   const transferVal = document.getElementById('filterTransfer')?.value || '';
   const specialVal  = document.getElementById('filterSpecial')?.value || '';
+  const roleVal     = document.getElementById('filterRole')?.value || '';
   S.filteredData = S.flaggedData.filter(f => {
     if (search && !f.name.toLowerCase().includes(search)) return false;
     if (srcVal       && f.source_type !== srcVal) return false;
@@ -676,6 +677,8 @@ function applyFilters() {
     if (transferVal  && (f.transfer_risk || '') !== transferVal) return false;
     if (specialVal === '1' && !(f.special_category && f.special_category.length)) return false;
     if (specialVal === 'photo' && !(f.face_count > 0)) return false;
+    if (roleVal === 'student' && f.user_role !== 'student') return false;
+    if (roleVal === 'staff'   && f.user_role === 'student') return false;
     return true;
   });
   const grid = document.getElementById('grid');
@@ -721,7 +724,8 @@ async function exportExcel() {
       return;
     }
     // Browser / localhost fallback: fetch as blob and trigger download
-    const r = await fetch('/api/export_excel');
+    const _roleParam = document.getElementById('filterRole')?.value || '';
+    const r = await fetch('/api/export_excel' + (_roleParam ? '?role=' + encodeURIComponent(_roleParam) : ''));
     if (!r.ok) {
       const err = await r.json().catch(() => ({error: 'Export failed'}));
       log('Export error: ' + (err.error || r.status), 'err');
@@ -762,7 +766,8 @@ async function exportArticle30() {
   const btn = document.getElementById('exportA30Btn');
   if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
   try {
-    const r = await fetch('/api/export_article30');
+    const _roleParam30 = document.getElementById('filterRole')?.value || '';
+    const r = await fetch('/api/export_article30' + (_roleParam30 ? '?role=' + encodeURIComponent(_roleParam30) : ''));
     if (!r.ok) {
       const err = await r.json().catch(() => ({error: 'Export failed'}));
       log('Article 30 export error: ' + (err.error || r.status), 'err');
@@ -796,6 +801,8 @@ function clearFilters() {
   if (ft) ft.value = '';
   const fs = document.getElementById('filterSpecial');
   if (fs) fs.value = '';
+  const fr = document.getElementById('filterRole');
+  if (fr) fr.value = '';
   applyFilters();
 }
 

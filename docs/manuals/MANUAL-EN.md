@@ -226,6 +226,7 @@ Use the filter bar above the results to narrow down what you see:
 - **Disposition dropdown** — show items by their review status.
 - **Transfer dropdown** — filter by shared / external / all.
 - **Risk dropdown** — show only Art. 9, photos, GPS, or high-risk items.
+- **Role dropdown** — show only **Ansatte** (staff) or **Elever** (students). Also scopes exports: clicking **Excel** or **Art.30** while a role is selected produces a report containing only that group, with `_elever` or `_ansatte` appended to the filename.
 
 ---
 

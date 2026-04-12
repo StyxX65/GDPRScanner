@@ -361,6 +361,11 @@ document.addEventListener('DOMContentLoaded', applyI18n);
             <option value="1" data-i18n="m365_filter_special_only">⚠ Art. 9 only</option>
             <option value="photo" data-i18n="m365_filter_photo_only">📷 Photos / biometric</option>
           </select>
+          <select id="filterRole" onchange="applyFilters()" style="width:120px">
+            <option value="" data-i18n="m365_filter_all_roles">All roles</option>
+            <option value="staff" data-i18n="m365_filter_staff">Ansatte</option>
+            <option value="student" data-i18n="m365_filter_student">Elever</option>
+          </select>
           <button class="filter-clear" onclick="clearFilters()" data-i18n="m365_filter_clear">Ryd</button>
           <div class="spacer"></div>
           <button id="exportBtn" onclick="exportExcel()" style="background:none;border:1px solid var(--border);color:var(--muted)" data-i18n="m365_btn_export_excel" title="Export results as Excel">Excel</button>

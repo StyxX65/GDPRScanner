@@ -145,14 +145,17 @@ Each flagged item appears as a card showing:
 - **Ext.** / **** badge — external email recipient or externally shared file (Art. 44–46 transfer risk)
 - **delete button** — appears on hover (grid view) or always visible (list view)
 
-**Filter bar** — always visible above both the results grid and the preview panel. Narrow results by source, disposition, transfer risk, and risk level:
+**Filter bar** — always visible above both the results grid and the preview panel. Narrow results by source, disposition, transfer risk, risk level, and role:
 
 | Filter | Options |
 |---|---|
 | Source | All / Email / OneDrive / SharePoint / Teams |
 | Disposition | All / Unreviewed / Retain (legal/legitimate/contract) / Delete-scheduled / Deleted |
 | Transfer risk | All / External recipient / External share / Shared |
-| Risk level | All risk levels /  Art. 9 special category /  Photos / biometric |
+| Risk level | All risk levels / Art. 9 special category / Photos / biometric |
+| **Role** | **All roles / Ansatte (staff) / Elever (students)** |
+
+The Role filter also scopes exports — selecting **Elever** before clicking **Excel** or **Art.30** produces a report containing only student items. The exported filename gets an `_elever` or `_ansatte` suffix so recipients can distinguish the files.
 
 #### Delete items
 

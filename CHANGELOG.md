@@ -11,6 +11,8 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ### Added
 
+- **Role filter in results + role-scoped exports** — a new **Role** dropdown in the filter bar (All roles / Ansatte / Elever) narrows the results grid to staff or student items. Clicking **Excel** or **Art.30** while a role is selected exports only that group — the `?role=student|staff` param is forwarded to both export endpoints. `_build_excel_bytes()` and `_build_article30_docx()` now accept a `role` param; all internal sheets (GPS, External transfers, Art.30 staff/student tables) respect the filter. Filenames get an `_elever` or `_ansatte` suffix.
+
 - **Scan filter options for student environments** — two new profile options reduce noise when scanning student accounts:
   - **Ignore GPS in images** (`skip_gps_images`) — images whose only PII signal is an embedded GPS coordinate are not flagged. Smartphones embed location in every camera photo by default, generating large numbers of low-priority flags in school contexts. GPS data is still extracted and shown in the detail card when the image is flagged by another signal (faces, EXIF author/comment). Applies to M365, Google, and file scans.
   - **Min. CPR count per file** (`min_cpr_count`, default 1) — a file is only flagged if it contains at least this many *distinct* CPR numbers. Set to 2 to avoid reporting a student's own consent form or registration document (one CPR) while still flagging class lists and grade sheets with multiple students' CPRs. Deduplication is by value — a CPR repeated 10 times counts as 1 distinct number. Applies to M365, Google, and file scans.
