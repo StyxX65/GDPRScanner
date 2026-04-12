@@ -1,6 +1,6 @@
 # TODO — Pending features and sustainability
 
-Quick overview of what's still to be done. Full details in [SUGGESTIONS.md](SUGGESTIONS.md).
+Quick overview of what's still to be done.
 
 ---
 
@@ -45,6 +45,20 @@ A shareable URL (token-protected) or numeric PIN that gives a DPO, school princi
 404 on `drive/root/delta` during delta scans was being broadcast as a red `scan_error`. Root cause: `_get()` hit `raise_for_status()` for 404s, which fell through to the generic `except Exception` handler in `_scan_user_onedrive`. The full-scan path silently swallowed the same 404 via `except Exception: return` in `_iter_drive_folder_for`.
 
 Fixed by adding `M365DriveNotFound(M365Error)` exception, raising it from `_get()` on 404, and catching it explicitly in `_scan_user_onedrive` with a lower-severity `scan_phase` broadcast ("OneDrive (user): not provisioned — skipped") instead of a red error card.
+
+---
+
+### #34 — User-scoped viewer tokens
+Extend viewer token scope from `{"role": "student"|"staff"}` to also support `{"user": "alice@school.dk"}`, filtering `flagged_items` by `account_id`. Lets a single employee see only their own flagged files.
+
+**Infrastructure already in place:** `account_id` is an indexed column on `flagged_items`, populated for M365 (UPN) and Google (email). File-scan items have `account_id = ""` and won't appear in user-scoped views — document this in the token-creation UI.
+
+**Changes needed:**
+1. Token creation UI — add a "specific user" option (email input) alongside the role dropdown
+2. `GET /api/db/flagged` — filter by `account_id` when `session["viewer_scope"].get("user")` is set (same pattern as existing role filter)
+3. Viewer header — show locked identity (similar to locked `#filterRole` for role-scoped tokens)
+
+**Size:** Small · **Priority:** Medium
 
 ---
 
