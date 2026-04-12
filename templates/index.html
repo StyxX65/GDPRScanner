@@ -12,7 +12,8 @@
 // ── i18n ─────────────────────────────────────────────────────────────────────
 var LANG = {{ lang_json | safe }};
 // ── Viewer mode ───────────────────────────────────────────────────────────────
-window.VIEWER_MODE = {{ 'true' if viewer_mode else 'false' }};
+window.VIEWER_MODE  = {{ 'true' if viewer_mode else 'false' }};
+window.VIEWER_SCOPE = {{ viewer_scope | safe if viewer_scope is defined else '{}' }};
 function t(key, fallback) {
   return LANG[key] !== undefined ? LANG[key] : (fallback !== undefined ? fallback : key);
 }
@@ -880,6 +881,14 @@ document.addEventListener('DOMContentLoaded', applyI18n);
         <div style="flex:1;min-width:120px">
           <div style="font-size:11px;color:var(--muted);margin-bottom:3px" data-i18n="share_label_lbl">Label (optional)</div>
           <input id="shareLabel" type="text" data-i18n-placeholder="share_label_placeholder" placeholder="e.g. DPO review 2026" style="width:100%;box-sizing:border-box;font-size:12px;padding:5px 8px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text)">
+        </div>
+        <div style="width:100px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px" data-i18n="share_scope_lbl">Role scope</div>
+          <select id="shareScope" style="width:100%;font-size:12px;padding:5px 6px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text)">
+            <option value="" data-i18n="share_scope_all">All roles</option>
+            <option value="staff" data-i18n="share_scope_staff">Ansatte</option>
+            <option value="student" data-i18n="share_scope_student">Elever</option>
+          </select>
         </div>
         <div style="width:100px">
           <div style="font-size:11px;color:var(--muted);margin-bottom:3px" data-i18n="share_expires_in">Expires in</div>

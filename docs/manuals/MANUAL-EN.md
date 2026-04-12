@@ -1,6 +1,6 @@
 # GDPR Scanner — User Manual
 
-Version 1.6.14
+Version 1.6.15
 
 ---
 
@@ -359,15 +359,18 @@ You can give a DPO, school principal, or compliance coordinator read-only access
 Click the **🔗** button in the top-right of the top bar to open the Share panel.
 
 1. Optionally enter a **Label** to identify who the link is for (e.g. "DPO review April 2026").
-2. Choose an **Expiry** — 7 days, 30 days, 90 days, 1 year, or Never.
-3. Click **Create**. A unique link is generated: `http://host:5100/view?token=…`
-4. Click **Copy** to copy the link to your clipboard, then send it to the reviewer.
+2. Choose a **Role scope** — **All roles**, **Ansatte** (staff only), or **Elever** (students only). A scoped link restricts the recipient to items belonging to that role group; they cannot see any other items, and the role filter is locked in their view.
+3. Choose an **Expiry** — 7 days, 30 days, 90 days, 1 year, or Never.
+4. Click **Create**. A unique link is generated: `http://host:5100/view?token=…`
+5. Click **Copy** to copy the link to your clipboard, then send it to the reviewer.
 
-The reviewer opens the link in any browser. They see the full results grid and can tag dispositions but cannot start scans, change settings, view credentials, or delete items.
+The reviewer opens the link in any browser. They see the results grid (filtered to their permitted scope) and can tag dispositions but cannot start scans, change settings, view credentials, or delete items.
 
 **Managing existing links**
 
-The Share panel lists all active links. Each row shows the label, expiry date, and when the link was last used. Click **Copy** to copy a link again, or **Revoke** to invalidate it immediately.
+The Share panel lists all active links. Each row shows the label, role badge (if scoped), expiry date, and when the link was last used. Click **Copy** to copy a link again, or **Revoke** to invalidate it immediately.
+
+> **Tip:** In schools and municipalities it is common to have separate DPOs or compliance officers for staff data and student data. Create one scoped link for each — the student DPO will only ever see student items, and the staff DPO will only see staff items.
 
 ### 10.2 Viewer PIN
 
@@ -375,7 +378,7 @@ As an alternative to token links, you can set a numeric PIN (4–8 digits) in **
 
 To set or change the PIN, enter the new PIN in the **New PIN** field and click **Save PIN**. To remove it, click **Clear PIN**.
 
-> **Security note:** Token links are more secure than a PIN because each link can be individually revoked and has an expiry date. Use the PIN option only for trusted internal reviewers on your local network.
+> **Security note:** Token links are more secure than a PIN because each link can be individually revoked, has an expiry date, and can be role-scoped. Use the PIN option only for trusted internal reviewers on your local network who need access to all results.
 
 ### 10.3 What the reviewer can do
 
@@ -392,6 +395,7 @@ To set or change the PIN, enter the new PIN in the **New PIN** field and click *
 | Delete items | No |
 | Access Settings | No |
 | Create or revoke viewer links | No |
+| See items outside their role scope | No |
 
 ---
 

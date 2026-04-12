@@ -1,6 +1,6 @@
 # GDPR Scanner — Brugermanual
 
-Version 1.6.14
+Version 1.6.15
 
 ---
 
@@ -359,15 +359,18 @@ Du kan give en DPO, skoleleder eller compliance-koordinator skrivebeskyttet adga
 Klik på **🔗**-knappen øverst til højre i topbjælken for at åbne delingspanelet.
 
 1. Angiv eventuelt en **Betegnelse** for at identificere, hvem linket er til (f.eks. "DPO-gennemgang april 2026").
-2. Vælg en **Udløbsdato** — 7 dage, 30 dage, 90 dage, 1 år eller Aldrig.
-3. Klik på **Opret**. Der genereres et unikt link: `http://host:5100/view?token=…`
-4. Klik på **Kopiér** for at kopiere linket til udklipsholderen, og send det til gennemgangeren.
+2. Vælg et **Rolleomfang** — **Alle roller**, **Ansatte** eller **Elever**. Et afgrænset link begrænser modtageren til elementer tilhørende den valgte rollegruppe; de kan ikke se andre elementer, og rollefilteret er låst i deres visning.
+3. Vælg en **Udløbsdato** — 7 dage, 30 dage, 90 dage, 1 år eller Aldrig.
+4. Klik på **Opret**. Der genereres et unikt link: `http://host:5100/view?token=…`
+5. Klik på **Kopiér** for at kopiere linket til udklipsholderen, og send det til gennemgangeren.
 
-Gennemgangeren åbner linket i en browser. De kan se det fulde resultatgitter og mærke dispositioner, men kan ikke starte scanninger, ændre indstillinger, se loginoplysninger eller slette elementer.
+Gennemgangeren åbner linket i en browser. De kan se resultatgitteret (afgrænset til det tilladte rolleomfang) og mærke dispositioner, men kan ikke starte scanninger, ændre indstillinger, se loginoplysninger eller slette elementer.
 
 **Administrer eksisterende links**
 
-Delingspanelet viser alle aktive links. Hver række viser betegnelse, udløbsdato og hvornår linket sidst blev brugt. Klik på **Kopiér** for at kopiere et link igen, eller **Tilbagekald** for at gøre det ugyldigt med det samme.
+Delingspanelet viser alle aktive links. Hver række viser betegnelse, rollemærkat (hvis afgrænset), udløbsdato og hvornår linket sidst blev brugt. Klik på **Kopiér** for at kopiere et link igen, eller **Tilbagekald** for at gøre det ugyldigt med det samme.
+
+> **Tip:** I skoler og kommuner er det almindeligt at have separate DPO'er eller compliance-ansvarlige for henholdsvis ansatte og elever. Opret ét afgrænset link til hver — eleve-DPO'en vil kun se elevdata, og ansatte-DPO'en vil kun se ansattedata.
 
 ### 10.2 Viewer-PIN
 
@@ -375,7 +378,7 @@ Som alternativ til token-links kan du angive en numerisk PIN-kode (4–8 cifre) 
 
 For at angive eller ændre PIN-koden skal du indtaste den nye kode i feltet **Ny PIN** og klikke på **Gem PIN**. Klik på **Ryd PIN** for at fjerne den.
 
-> **Sikkerhedsnote:** Token-links er mere sikre end en PIN-kode, fordi hvert link kan tilbagekaldes individuelt og har en udløbsdato. Brug PIN-indstillingen kun til betroede interne gennemgangere på dit lokale netværk.
+> **Sikkerhedsnote:** Token-links er mere sikre end en PIN-kode, fordi hvert link kan tilbagekaldes individuelt, har en udløbsdato og kan afgrænses til en bestemt rollegruppe. Brug PIN-indstillingen kun til betroede interne gennemgangere på dit lokale netværk, der har brug for adgang til alle resultater.
 
 ### 10.3 Hvad gennemgangeren kan gøre
 
@@ -392,6 +395,7 @@ For at angive eller ændre PIN-koden skal du indtaste den nye kode i feltet **Ny
 | Slette elementer | Nej |
 | Tilgå indstillinger | Nej |
 | Oprette eller tilbagekalde viewer-links | Nej |
+| Se elementer uden for deres rolleomfang | Nej |
 
 ---
 

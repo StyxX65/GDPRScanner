@@ -558,12 +558,14 @@ def _save_viewer_tokens(tokens: list) -> None:
         logger.error("[viewer_tokens] write failed: %s", e)
 
 
-def create_viewer_token(label: str = "", expires_days: int | None = None) -> dict:
+def create_viewer_token(label: str = "", expires_days: int | None = None, scope: dict | None = None) -> dict:
     """Generate a new viewer token, persist it, and return the token dict.
 
     Args:
-        label:       Human-readable description (e.g. "DPO review April 2026").
+        label:        Human-readable description (e.g. "DPO review April 2026").
         expires_days: Days until expiry.  None = no expiry.
+        scope:        Optional access scope, e.g. {"role": "student"} or {"role": "staff"}.
+                      Empty dict / None means unrestricted.
     """
     import secrets as _secrets
     token = _secrets.token_hex(32)   # 64-char URL-safe hex string
@@ -571,6 +573,7 @@ def create_viewer_token(label: str = "", expires_days: int | None = None) -> dic
     entry: dict = {
         "token":        token,
         "label":        label or "",
+        "scope":        scope or {},
         "created_at":   now,
         "expires_at":   now + expires_days * 86400 if expires_days else None,
         "last_used_at": None,

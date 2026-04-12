@@ -766,6 +766,10 @@
   "share_create_error": "Kunne ikke oprette link:",
   "share_revoke_confirm": "Tilbagekald dette link? Alle der bruger det, mister straks adgang.",
   "share_revoke_error": "Kunne ikke tilbagekalde:",
+  "share_scope_lbl": "Rolleomfang",
+  "share_scope_all": "Alle roller",
+  "share_scope_staff": "Ansatte",
+  "share_scope_student": "Elever",
 
   "viewer_pin_group_title": "Seerens PIN",
   "viewer_pin_desc": "En numerisk PIN (4–8 cifre), der lader alle åbne <code style=\"font-size:10px\">/view</code> i en browser for skrivebeskyttet adgang til resultater uden et token-link.",

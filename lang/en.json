@@ -766,6 +766,10 @@
   "share_create_error": "Failed to create link:",
   "share_revoke_confirm": "Revoke this link? Anyone using it will immediately lose access.",
   "share_revoke_error": "Failed to revoke:",
+  "share_scope_lbl": "Role scope",
+  "share_scope_all": "All roles",
+  "share_scope_staff": "Staff",
+  "share_scope_student": "Students",
 
   "viewer_pin_group_title": "Viewer PIN",
   "viewer_pin_desc": "A numeric PIN (4\u20138 digits) that lets anyone open <code style=\"font-size:10px\">/view</code> in a browser for read-only access to results without a token URL.",

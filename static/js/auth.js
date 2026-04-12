@@ -159,6 +159,12 @@ if (window.VIEWER_MODE) {
   document.body.classList.add('viewer-mode');
   document.getElementById('authScreen').style.display    = 'none';
   document.getElementById('scannerScreen').style.display = 'flex';
+  // If this token is role-scoped, lock the filter to that role and hide the dropdown.
+  const _scopeRole = (window.VIEWER_SCOPE || {}).role || '';
+  if (_scopeRole) {
+    const _fr = document.getElementById('filterRole');
+    if (_fr) { _fr.value = _scopeRole; _fr.style.display = 'none'; }
+  }
   try { loadTrend(); } catch(e) {}
 } else {
 (async function() {

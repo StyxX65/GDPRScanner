@@ -20,6 +20,8 @@ function openShareModal() {
   document.getElementById('shareNewLinkRow').style.display = 'none';
   document.getElementById('shareLabel').value = '';
   document.getElementById('shareExpiry').value = '30';
+  const scopeSel = document.getElementById('shareScope');
+  if (scopeSel) scopeSel.value = '';
   _renderTokenList();
   fetch('/api/viewer/pin').then(function(r){ return r.json(); }).then(function(d) {
     const el = document.getElementById('sharePinStatus');
@@ -51,10 +53,18 @@ async function _renderTokenList() {
         : '—';
       const row = document.createElement('div');
       row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:12px';
+      const roleVal  = tok.scope?.role || '';
+      const roleLbl  = roleVal === 'student' ? t('share_scope_student', 'Elever')
+                     : roleVal === 'staff'   ? t('share_scope_staff',   'Ansatte')
+                     : '';
+      const roleBadge = roleLbl
+        ? '<span style="font-size:9px;padding:1px 5px;border-radius:10px;background:var(--accent);color:#fff;margin-left:5px;font-weight:600;vertical-align:middle">' + roleLbl + '</span>'
+        : '';
       row.innerHTML =
         '<div style="flex:1;min-width:0">' +
           '<div style="font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
             (tok.label || '<span style="color:var(--muted);font-style:italic">' + t('share_unlabelled', 'Unlabelled') + '</span>') +
+            roleBadge +
           '</div>' +
           '<div style="font-size:10px;color:var(--muted);margin-top:1px">' +
             t('share_expires_prefix', 'Expires:') + ' ' + expires + ' &nbsp;·&nbsp; ' + t('share_last_used', 'Last used:') + ' ' + lastUsed +
@@ -74,8 +84,10 @@ async function _renderTokenList() {
 async function createShareLink() {
   const label   = document.getElementById('shareLabel').value.trim();
   const expiry  = document.getElementById('shareExpiry').value;
+  const role    = document.getElementById('shareScope')?.value || '';
   const body    = {label};
   if (expiry) body.expires_days = parseInt(expiry);
+  if (role)   body.scope = {role};
   try {
     const r = await fetch('/api/viewer/tokens', {
       method: 'POST', headers: {'Content-Type':'application/json'},

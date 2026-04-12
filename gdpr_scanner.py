@@ -383,17 +383,21 @@ def viewer():
     from app_config import validate_viewer_token, get_viewer_pin_hash
     token = request.args.get("token", "").strip()
     if token:
-        if validate_viewer_token(token) is None:
+        entry = validate_viewer_token(token)
+        if entry is None:
             return render_template("viewer_denied.html"), 403
         # Bind a session so the viewer doesn't need the token on every navigation
-        session["viewer_ok"] = True
+        session["viewer_ok"]    = True
+        session["viewer_scope"] = entry.get("scope", {})
         return render_template("index.html", app_version=APP_VERSION,
                                 lang_json=json.dumps(LANG, ensure_ascii=False),
-                                viewer_mode=True)
+                                viewer_mode=True,
+                                viewer_scope=json.dumps(entry.get("scope", {}), ensure_ascii=False))
     if session.get("viewer_ok"):
         return render_template("index.html", app_version=APP_VERSION,
                                 lang_json=json.dumps(LANG, ensure_ascii=False),
-                                viewer_mode=True)
+                                viewer_mode=True,
+                                viewer_scope=json.dumps(session.get("viewer_scope", {}), ensure_ascii=False))
     # No token, no session — show PIN form if a PIN is configured, else deny
     pin_hash = get_viewer_pin_hash()
     if pin_hash:

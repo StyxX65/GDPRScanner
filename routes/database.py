@@ -148,13 +148,19 @@ def db_get_disposition(item_id):
 def db_flagged_items():
     """Return flagged items from the most recent completed scan session.
     Used by the read-only viewer to load results without an active SSE connection.
+    Respects viewer_scope.role stored in the session for scoped tokens.
     """
     if not DB_OK: return jsonify([])
+    from flask import session as _session
+    scope     = _session.get("viewer_scope", {})
+    role_filt = scope.get("role", "") if isinstance(scope, dict) else ""
     items = _get_db().get_session_items()
     # Normalise JSON-encoded columns the same way scan_engine does for SSE cards
     import json as _json
     out = []
     for row in items:
+        if role_filt and row.get("role", "") != role_filt:
+            continue
         row["special_category"] = _json.loads(row.get("special_category") or "[]") if isinstance(row.get("special_category"), str) else row.get("special_category", [])
         row["exif"] = _json.loads(row.get("exif_json") or "{}") if isinstance(row.get("exif_json"), str) else row.get("exif", {})
         row.pop("exif_json", None)

@@ -11,6 +11,8 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ### Added
 
+- **Role-scoped viewer tokens** — viewer token links can now be restricted to a single role so the recipient can only see student or staff items. A new **Role scope** dropdown (All roles / Ansatte / Elever) in the Share modal is selected when creating a token. The scope is stored as `"scope": {"role": "student"|"staff"}` in `viewer_tokens.json`. Enforcement is two-layered: `GET /api/db/flagged` filters items server-side using `session["viewer_scope"].role` set at token validation time; the `#filterRole` dropdown in the viewer is pre-set and hidden so the constraint cannot be bypassed client-side. Tokens without a scope field (existing tokens, PIN sessions) remain unrestricted. Role badge (Ansatte / Elever) shown on each scoped token row in the Active links list.
+
 - **Role filter in results + role-scoped exports** — a new **Role** dropdown in the filter bar (All roles / Ansatte / Elever) narrows the results grid to staff or student items. Clicking **Excel** or **Art.30** while a role is selected exports only that group — the `?role=student|staff` param is forwarded to both export endpoints. `_build_excel_bytes()` and `_build_article30_docx()` now accept a `role` param; all internal sheets (GPS, External transfers, Art.30 staff/student tables) respect the filter. Filenames get an `_elever` or `_ansatte` suffix.
 
 - **Scan filter options for student environments** — two new profile options reduce noise when scanning student accounts:

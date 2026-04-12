@@ -52,6 +52,7 @@ def list_tokens():
             "token_hint":  t["token"][:8] + "…",
             "token":       t["token"],
             "label":       t.get("label", ""),
+            "scope":       t.get("scope", {}),
             "created_at":  t.get("created_at"),
             "expires_at":  t.get("expires_at"),
             "last_used_at": t.get("last_used_at"),
@@ -73,7 +74,14 @@ def create_token():
                 return jsonify({"error": "expires_days must be a positive integer"}), 400
         except (TypeError, ValueError):
             return jsonify({"error": "expires_days must be a positive integer"}), 400
-    entry = create_viewer_token(label=label, expires_days=expires_days)
+    raw_scope = body.get("scope", {})
+    if not isinstance(raw_scope, dict):
+        return jsonify({"error": "scope must be an object"}), 400
+    role = str(raw_scope.get("role", "")).strip()
+    if role not in ("", "student", "staff"):
+        return jsonify({"error": "scope.role must be '', 'student', or 'staff'"}), 400
+    scope = {"role": role} if role else {}
+    entry = create_viewer_token(label=label, expires_days=expires_days, scope=scope)
     return jsonify(entry), 201
 
 

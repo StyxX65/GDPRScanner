@@ -766,6 +766,10 @@
   "share_create_error": "Link konnte nicht erstellt werden:",
   "share_revoke_confirm": "Diesen Link widerrufen? Alle Nutzer verlieren sofort den Zugriff.",
   "share_revoke_error": "Widerrufen fehlgeschlagen:",
+  "share_scope_lbl": "Rollenumfang",
+  "share_scope_all": "Alle Rollen",
+  "share_scope_staff": "Mitarbeitende",
+  "share_scope_student": "Schüler",
 
   "viewer_pin_group_title": "Betrachter-PIN",
   "viewer_pin_desc": "Eine numerische PIN (4–8 Stellen), die es jedem ermöglicht, <code style=\"font-size:10px\">/view</code> im Browser zu öffnen und schreibgeschützt auf Ergebnisse zuzugreifen \u2013 ohne Token-Link.",
