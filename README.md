@@ -260,6 +260,8 @@ Delta tokens are stored **per-source**:
 
 If a token expires (Graph returns HTTP 410 Gone), that source falls back to a full collection automatically and a fresh token is saved. Other sources are unaffected.
 
+If a user's OneDrive returns HTTP 404 during a delta scan (no licence assigned, service plan disabled, or drive never provisioned because the account has never signed in), the user is silently skipped with a grey log entry — no red error card is shown. Full scans already skipped these users silently; delta scans now behave the same way.
+
 Deleted items returned by delta (items with a `deleted` or `@removed` marker) are skipped during CPR scanning.
 
 After each delta scan, the log panel shows:
