@@ -243,7 +243,7 @@ function switchSettingsTab(tab) {
     if (pane) pane.classList.toggle('active', t === tab);
     if (btn)  btn.classList.toggle('active', t === tab);
   });
-  if (tab === 'security')  { stLoadPinStatus(); if (typeof stLoadViewerPinStatus === 'function') stLoadViewerPinStatus(); }
+  if (tab === 'security')  { stLoadPinStatus(); if (typeof stLoadViewerPinStatus === 'function') stLoadViewerPinStatus(); if (typeof stLoadInterfacePinStatus === 'function') stLoadInterfacePinStatus(); }
   if (tab === 'email')     stLoadSmtp();
   if (tab === 'database')  stLoadDbStats();
   if (tab === 'scheduler') schedLoad();

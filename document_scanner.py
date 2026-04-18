@@ -53,6 +53,21 @@ import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
+try:
+    import psutil as _psutil
+    _PSUTIL_OK = True
+except ImportError:
+    _PSUTIL_OK = False
+
+_OCR_MEM_THRESHOLD_MB = 500
+
+
+def _ocr_mem_ok() -> bool:
+    """Return False if available RAM is below the threshold for OCR rendering."""
+    if not _PSUTIL_OK:
+        return True
+    return _psutil.virtual_memory().available >= _OCR_MEM_THRESHOLD_MB * 1024 * 1024
+
 # Suppress pdfminer's noisy font-descriptor warnings that appear when PDFs
 # contain malformed or incomplete font definitions.  These do not affect text
 # extraction or CPR detection — the warning is informational only.
@@ -1144,11 +1159,6 @@ def redact_pdf_secure(input_path: Path, output_path: Path, results: dict,
 
     page_methods = results["page_methods"]
 
-    images = None
-    ocr_pages = [p for p, m in page_methods.items() if m == "ocr"]
-    if ocr_pages and OCR_AVAILABLE:
-        images = convert_from_path(str(input_path), dpi=dpi, poppler_path=poppler_path)
-
     total = 0
     doc = _fitz.open(str(input_path))
 
@@ -1161,10 +1171,20 @@ def redact_pdf_secure(input_path: Path, output_path: Path, results: dict,
             if method == "text":
                 bboxes = (find_pii_char_bboxes(plumb_page, use_ner=use_ner)
                           if use_ner else find_cpr_char_bboxes(plumb_page))
-            elif method == "ocr" and images is not None:
-                img    = images[page_num - 1]
-                bboxes = (find_pii_image_bboxes(img, lang, use_ner=use_ner)
-                          if use_ner else find_cpr_image_bboxes(img, lang))
+            elif method == "ocr" and OCR_AVAILABLE:
+                if not _ocr_mem_ok():
+                    print(f"  Page {page_num}: skipped redact — less than {_OCR_MEM_THRESHOLD_MB} MB RAM available.", flush=True)
+                    bboxes = []
+                else:
+                    _imgs = convert_from_path(
+                        str(input_path), dpi=dpi, poppler_path=poppler_path,
+                        first_page=page_num, last_page=page_num,
+                    )
+                    img = _imgs[0]
+                    del _imgs
+                    bboxes = (find_pii_image_bboxes(img, lang, use_ner=use_ner)
+                              if use_ner else find_cpr_image_bboxes(img, lang))
+                    del img
             else:
                 bboxes = []
 
@@ -1227,11 +1247,6 @@ def redact_pdf(input_path: Path, output_path: Path, results: dict,
     reader = PdfReader(str(input_path))
     writer = PdfWriter()
 
-    images = None
-    ocr_pages = [p for p, m in page_methods.items() if m == "ocr"]
-    if ocr_pages and OCR_AVAILABLE:
-        images = convert_from_path(str(input_path), dpi=dpi, poppler_path=poppler_path)
-
     total = 0
     with pdfplumber.open(input_path) as plumb_pdf:
         for page_num, plumb_page in enumerate(plumb_pdf.pages, start=1):
@@ -1247,8 +1262,17 @@ def redact_pdf(input_path: Path, output_path: Path, results: dict,
                 else:
                     writer.add_page(reader_page)
 
-            elif method == "ocr" and images is not None:
-                img = images[page_num - 1]
+            elif method == "ocr" and OCR_AVAILABLE:
+                if not _ocr_mem_ok():
+                    print(f"  Page {page_num}: skipped redact — less than {_OCR_MEM_THRESHOLD_MB} MB RAM available.", flush=True)
+                    writer.add_page(reader_page)
+                    continue
+                _imgs = convert_from_path(
+                    str(input_path), dpi=dpi, poppler_path=poppler_path,
+                    first_page=page_num, last_page=page_num,
+                )
+                img = _imgs[0]
+                del _imgs
                 bboxes = (find_pii_image_bboxes(img, lang, use_ner=use_ner)
                           if use_ner else find_cpr_image_bboxes(img, lang))
                 if bboxes:
@@ -1260,6 +1284,7 @@ def redact_pdf(input_path: Path, output_path: Path, results: dict,
                     total += len(bboxes)
                 else:
                     writer.add_page(reader_page)
+                del img
             else:
                 writer.add_page(reader_page)
 
@@ -2048,30 +2073,31 @@ def scan_pdf(pdf_path: Path, force_ocr=False, lang="dan+eng",
     results = {"cprs": [], "dates": [], "page_methods": {}}
 
     with pdfplumber.open(pdf_path) as pdf:
-        images = None
-        if OCR_AVAILABLE:
-            needs_ocr = (list(range(len(pdf.pages))) if force_ocr
-                         else [i for i, p in enumerate(pdf.pages) if not is_text_page(p)])
-            if needs_ocr:
-                print(f"  Rendering pages to images for OCR (DPI={dpi})...", flush=True)
-                images = convert_from_path(str(pdf_path), dpi=dpi, poppler_path=poppler_path)
-
         for page_num, page in enumerate(pdf.pages, start=1):
             use_text = not force_ocr and is_text_page(page)
             if use_text:
                 method = "text"
                 text = page.extract_text() or ""
                 cprs, dates = extract_matches(text, page_num, "text")
-            elif OCR_AVAILABLE and images is not None:
-                method = "ocr"
-                _img = images[page_num-1]
-                images[page_num-1] = None  # release PIL image as soon as OCR is done
-                cprs, dates = extract_matches(ocr_page_cached(_img, lang), page_num, "ocr")
-                del _img
+            elif OCR_AVAILABLE:
+                if not _ocr_mem_ok():
+                    print(f"  Page {page_num}: skipped — less than {_OCR_MEM_THRESHOLD_MB} MB RAM available.", flush=True)
+                    method = "skipped"
+                    cprs, dates = [], []
+                else:
+                    print(f"  Rendering page {page_num} for OCR (DPI={dpi})...", flush=True)
+                    _imgs = convert_from_path(
+                        str(pdf_path), dpi=dpi, poppler_path=poppler_path,
+                        first_page=page_num, last_page=page_num,
+                    )
+                    _img = _imgs[0]
+                    del _imgs
+                    method = "ocr"
+                    cprs, dates = extract_matches(ocr_page_cached(_img, lang), page_num, "ocr")
+                    del _img
             else:
                 method = "skipped"
-                if not OCR_AVAILABLE:
-                    print(f"  Page {page_num}: image-based but OCR unavailable.")
+                print(f"  Page {page_num}: image-based but OCR unavailable.")
                 cprs, dates = [], []
 
             results["page_methods"][page_num] = method

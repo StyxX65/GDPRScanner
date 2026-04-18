@@ -41,7 +41,8 @@ an IDE with intelligent completion. The result is the author's work.
 - **Account name on cards** — when scanning multiple users, each card displays the owner's display name so results from different mailboxes are instantly distinguishable
 - **Retention policy enforcement** — flag items older than a configurable retention period with a Overdue badge; supports both rolling and fiscal-year-aligned cutoffs (e.g. Bogføringsloven Dec 31); headless auto-delete via `--retention-years`
 - **Data subject lookup** — find all flagged items containing a specific CPR number across all scans; CPR is SHA-256 hashed before querying — never stored in plaintext
-- **Disposition tagging** — compliance officers can tag each flagged item with a legal basis (retain / delete-scheduled / deleted) directly from the preview panel
+- **Disposition tagging** — compliance officers can tag each flagged item with a legal basis (retain / delete-scheduled / deleted) directly from the preview panel; **bulk disposition tagging** lets you select multiple cards with checkboxes and apply a disposition to all of them at once. A stats bar above the grid shows total · unreviewed · retain · delete counts and the percentage reviewed
+- **Interface PIN** — optional session-level PIN that gates the main scanner interface (`/`). Set a 4–8 digit PIN in **Settings → Security → Interface PIN**; unauthenticated visitors are redirected to `/login`. The `/view` viewer route and all viewer API endpoints are exempt — reviewers are unaffected. Salted SHA-256 hash; brute-force protection (5 attempts / 5 min per IP)
 - **Read-only viewer mode** — share scan results with a DPO or manager via a secure token URL (`/view?token=…`) or a numeric PIN; viewers see the full results grid and disposition panel but cannot scan, delete, or change settings. Tokens can be **role-scoped** (Ansatte / Elever) so a recipient only sees items for their group, or **user-scoped** so an individual employee only sees their own flagged files (supports dual M365 + Google Workspace identity)
 - **Article 30 report** — one-click export of a structured Word document (`.docx`) satisfying the GDPR Article 30 register of processing activities obligation
 - **SQLite results database** — scan results, CPR index, PII breakdown, disposition decisions, and scan history are persisted to `~/.gdprscanner/scanner.db` alongside the JSON cache, enabling cross-scan queries and trend tracking
@@ -144,6 +145,10 @@ Each flagged item appears as a card showing:
 - ** N faces** badge — teal pill on image files where face detection found identifiable persons (biometric data)
 - **Ext.** / **** badge — external email recipient or externally shared file (Art. 44–46 transfer risk)
 - **delete button** — appears on hover (grid view) or always visible (list view)
+
+**Disposition stats bar** — always visible above the results grid when items are loaded. Shows: Total · Unreviewed · Retain · Delete · percentage reviewed. Updates live after every disposition save.
+
+**Select mode** — click **Vælg** in the filter bar to enter bulk-selection mode. Per-card checkboxes appear; a bulk tag bar at the bottom of the grid shows the count of selected items, a **Select all visible** button, a disposition dropdown, and an **Apply** button. Click **Done** to exit select mode.
 
 **Filter bar** — always visible above both the results grid and the preview panel. Narrow results by source, disposition, transfer risk, risk level, and role:
 
@@ -251,7 +256,7 @@ The checkpoint is keyed by a hash of the scan configuration (sources + users + d
 
 ### Delta scan
 
-Delta scan uses the Microsoft Graph `/delta` API to fetch only items that have **changed since the last scan**, dramatically reducing Graph API quota usage and scan time on large tenants.
+Delta scan uses the Microsoft Graph `/delta` API (M365) and the Google Drive **Changes API** (Google Workspace) to fetch only items that have **changed since the last scan**, dramatically reducing API quota usage and scan time on large tenants.
 
 #### How it works
 
@@ -268,6 +273,7 @@ Delta tokens are stored **per-source**:
 | `sharepoint:{drive_id}` | One SharePoint document library |
 | `teams:{drive_id}` | One Teams channel file store |
 | `email:{user_id}:{folder_id}` | One mail folder for one user |
+| `gdrive:{email}` | One Google Workspace user's Google Drive |
 
 If a token expires (Graph returns HTTP 410 Gone), that source falls back to a full collection automatically and a fresh token is saved. Other sources are unaffected.
 
@@ -355,6 +361,12 @@ Every flagged item can be tagged with a compliance decision from the preview pan
 | Deleted | Already actioned |
 
 Dispositions are saved to the `dispositions` table in the SQLite database and included in the Article 30 report.
+
+#### Bulk disposition tagging
+
+Click **Vælg** in the filter bar to enter select mode. Per-card checkboxes appear. Select individual cards or use **Select all visible** to select every card matching the current filters. Choose a disposition from the bulk tag bar at the bottom of the grid and click **Apply** — the selected items are updated in a single request to `POST /api/db/disposition/bulk`. Click **Done** to exit select mode.
+
+A **disposition stats bar** above the results grid shows totals at a glance and updates after every save.
 
 ---
 

@@ -24,9 +24,16 @@ function appendCard(f) {
     : '/api/thumb?name=' + encodeURIComponent(f.name) + '&type=' + encodeURIComponent(f.source_type);
 
   const card = document.createElement('div');
-  card.className = 'card' + (S.isListView ? ' list-view' : '');
+  card.className = 'card' + (S.isListView ? ' list-view' : '') + (S._selectedIds.has(f.id) ? ' card-selected-bulk' : '');
   card.dataset.id = f.id;
-  card.onclick = () => openPreview(f);
+  card.onclick = (e) => { if (S._selectMode) { toggleCardSelect(f.id, e); } else { openPreview(f); } };
+
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.className = 'card-cb';
+  cb.checked = S._selectedIds.has(f.id);
+  cb.onclick = (e) => { e.stopPropagation(); toggleCardSelect(f.id, e); };
+  card.appendChild(cb);
 
   const delBtn = window.VIEWER_MODE ? '' : `<button class="card-delete-btn" title="${t('m365_delete_confirm','Delete')}" onclick="event.stopPropagation();deleteItem(${JSON.stringify(f).replace(/"/g,'&quot;')},this.closest('.card'))">🗑</button>`;
 
@@ -62,6 +69,8 @@ function renderGrid(files) {
   const grid = document.getElementById('grid');
   grid.innerHTML = '';
   files.forEach(f => appendCard(f));
+  _updateBulkBar();
+  updateDispositionStats();
 }
 
 // ── Preview panel ─────────────────────────────────────────────────────────────
@@ -367,11 +376,139 @@ async function saveDisposition() {
     // Update cached value on the S.flaggedData item
     const item = S.flaggedData.find(f => f.id === _dispositionItemId);
     if (item) item.disposition = status;
+    updateDispositionStats();
     // Refresh card badge if a disposition filter is active
     const dispFilter = document.getElementById("filterDisposition")?.value;
     if (dispFilter) applyFilters();
   } catch(e) {
     savedEl.textContent = "Error";
+  }
+}
+
+// ── Disposition stats ─────────────────────────────────────────────────────────
+
+function updateDispositionStats() {
+  const el = document.getElementById('dispStats');
+  if (!el) return;
+  const data = S.flaggedData;
+  if (!data.length) { el.style.display = 'none'; return; }
+  let unreviewed = 0, retain = 0, del = 0, other = 0;
+  for (const f of data) {
+    const d = f.disposition || 'unreviewed';
+    if (d === 'unreviewed')             unreviewed++;
+    else if (d.startsWith('retain'))    retain++;
+    else if (d.startsWith('delete') || d === 'deleted') del++;
+    else                                other++;
+  }
+  const reviewed = data.length - unreviewed;
+  const pct = data.length ? Math.round(reviewed / data.length * 100) : 0;
+  el.style.display = 'flex';
+  el.innerHTML =
+    `<span>${data.length} ${t('disp_stats_total','total')}</span>` +
+    `<span class="disp-stat-sep"></span>` +
+    `<span class="${unreviewed ? 'disp-stat-warn' : 'disp-stat-ok'}">${unreviewed} ${t('disp_stats_unreviewed','unreviewed')}</span>` +
+    `<span class="disp-stat-sep"></span>` +
+    `<span>${retain} ${t('disp_stats_retain','retain')}</span>` +
+    `<span class="disp-stat-sep"></span>` +
+    `<span>${del} ${t('disp_stats_delete','delete')}</span>` +
+    (other ? `<span class="disp-stat-sep"></span><span>${other} ${t('disp_stats_other','other')}</span>` : '') +
+    `<span class="disp-stat-sep" style="margin-left:auto"></span>` +
+    `<span style="font-weight:600;color:var(--accent)">${pct}% ${t('disp_stats_reviewed','reviewed')}</span>`;
+}
+
+// ── Bulk disposition tagging ──────────────────────────────────────────────────
+
+function toggleSelectMode() {
+  S._selectMode = !S._selectMode;
+  document.body.classList.toggle('select-mode', S._selectMode);
+  const btn = document.getElementById('selectModeBtn');
+  if (btn) {
+    btn.style.background   = S._selectMode ? 'var(--accent)' : 'none';
+    btn.style.color        = S._selectMode ? '#fff'          : 'var(--muted)';
+    btn.style.borderColor  = S._selectMode ? 'var(--accent)' : 'var(--border)';
+  }
+  if (!S._selectMode) {
+    S._selectedIds.clear();
+    _updateBulkBar();
+  } else {
+    closePreview();
+  }
+  // Re-render so card onclick handlers respect new mode
+  renderGrid(S.filteredData.length ? S.filteredData : S.flaggedData);
+}
+
+function toggleCardSelect(id, ev) {
+  if (ev) ev.stopPropagation();
+  if (S._selectedIds.has(id)) S._selectedIds.delete(id);
+  else S._selectedIds.add(id);
+  const cb = document.querySelector(`.card[data-id="${CSS.escape(id)}"] .card-cb`);
+  if (cb) cb.checked = S._selectedIds.has(id);
+  const card = document.querySelector(`.card[data-id="${CSS.escape(id)}"]`);
+  if (card) card.classList.toggle('card-selected-bulk', S._selectedIds.has(id));
+  _updateBulkBar();
+}
+
+function selectAllVisible() {
+  const allChecked = S.filteredData.every(f => S._selectedIds.has(f.id));
+  if (allChecked) {
+    S.filteredData.forEach(f => { S._selectedIds.delete(f.id); });
+  } else {
+    S.filteredData.forEach(f => { S._selectedIds.add(f.id); });
+  }
+  renderGrid(S.filteredData.length ? S.filteredData : S.flaggedData);
+  _updateBulkBar();
+}
+
+function _updateBulkBar() {
+  const bar  = document.getElementById('bulkTagBar');
+  const cnt  = document.getElementById('bulkTagCount');
+  const saEl = document.getElementById('bulkSelectAll');
+  if (!bar) return;
+  const n = S._selectedIds.size;
+  bar.style.display = (S._selectMode && n > 0) ? 'flex' : 'none';
+  if (cnt) cnt.textContent = n + ' ' + t('bulk_selected', 'selected');
+  if (saEl) {
+    const allVis = S.filteredData.length > 0 && S.filteredData.every(f => S._selectedIds.has(f.id));
+    saEl.textContent = allVis
+      ? t('bulk_deselect_all', 'Deselect all')
+      : t('bulk_select_all',   'Select all visible');
+  }
+}
+
+async function applyBulkDisposition() {
+  const status = document.getElementById('bulkDispSelect')?.value;
+  if (!status || S._selectedIds.size === 0) return;
+  const ids    = [...S._selectedIds];
+  const btn    = document.getElementById('bulkTagApplyBtn');
+  const statusEl = document.getElementById('bulkTagStatus');
+  if (btn) btn.disabled = true;
+  if (statusEl) statusEl.textContent = '';
+  try {
+    const r = await fetch('/api/db/disposition/bulk', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({item_ids: ids, status}),
+    });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    // Update in-memory items
+    for (const f of S.flaggedData) {
+      if (S._selectedIds.has(f.id)) f.disposition = status;
+    }
+    if (statusEl) {
+      statusEl.textContent = '✓ ' + d.saved + ' ' + t('bulk_applied', 'updated');
+      setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 2000);
+    }
+    S._selectedIds.clear();
+    _updateBulkBar();
+    // Refresh filter if disposition filter is active
+    const dispFilter = document.getElementById('filterDisposition')?.value;
+    if (dispFilter) applyFilters();
+    else renderGrid(S.filteredData.length ? S.filteredData : S.flaggedData);
+    updateDispositionStats();
+  } catch(e) {
+    if (statusEl) statusEl.textContent = e.message;
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 

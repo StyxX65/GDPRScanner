@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GDPRScanner — {{ LANG.get('interface_pin_login_btn', 'Sign in') }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+    .pin-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 32px 40px;
+      width: min(340px, 92vw);
+      box-sizing: border-box;
+    }
+    .pin-card h1 { font-size: 15px; font-weight: 600; margin: 0 0 6px; color: var(--text); }
+    .pin-card p  { font-size: 12px; color: var(--muted); margin: 0 0 18px; }
+    .pin-input {
+      width: 100%; box-sizing: border-box;
+      font-size: 22px; letter-spacing: .3em; text-align: center;
+      padding: 10px 12px; border-radius: 6px;
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--text); outline: none; margin-bottom: 12px;
+    }
+    .pin-input:focus { border-color: var(--accent); }
+    .pin-btn {
+      width: 100%; padding: 10px; border: none; border-radius: 6px;
+      background: var(--accent); color: #fff; font-size: 13px;
+      font-weight: 600; cursor: pointer; font-family: var(--sans);
+    }
+    .pin-btn:disabled { opacity: .5; cursor: default; }
+    .pin-error { font-size: 12px; color: var(--danger); margin-top: 8px; min-height: 16px; text-align: center; }
+  </style>
+</head>
+<body data-theme="dark">
+  <div class="pin-card">
+    <h1>GDPRScanner</h1>
+    <p>{{ LANG.get('interface_pin_login_desc', 'Enter the interface PIN to continue.') }}</p>
+    <input id="pinInput" class="pin-input" type="password" inputmode="numeric"
+           maxlength="8" placeholder="••••" autocomplete="off"
+           onkeydown="if(event.key==='Enter')submitPin()">
+    <button class="pin-btn" id="pinBtn" onclick="submitPin()">{{ LANG.get('interface_pin_login_btn', 'Continue') }}</button>
+    <div class="pin-error" id="pinError"></div>
+  </div>
+  <script>
+    const _L = {
+      incorrect: {{ LANG.get('interface_pin_err_incorrect', 'Incorrect PIN.') | tojson }},
+      tooMany:   {{ LANG.get('interface_pin_err_too_many',  'Too many attempts. Try again later.') | tojson }},
+      network:   {{ LANG.get('interface_pin_err_network',   'Network error. Please try again.') | tojson }}
+    };
+    async function submitPin() {
+      const pin = document.getElementById('pinInput').value.trim();
+      if (!pin) return;
+      const btn = document.getElementById('pinBtn');
+      const err = document.getElementById('pinError');
+      btn.disabled = true;
+      err.textContent = '';
+      try {
+        const r = await fetch('/api/interface/pin/verify', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({pin})
+        });
+        if (r.ok) {
+          const next = new URLSearchParams(window.location.search).get('next') || '/';
+          window.location.href = next;
+        } else {
+          const d = await r.json().catch(() => ({}));
+          err.textContent = r.status === 429 ? (d.error || _L.tooMany) : (d.error || _L.incorrect);
+          if (r.status !== 429) {
+            document.getElementById('pinInput').value = '';
+            document.getElementById('pinInput').focus();
+          }
+          btn.disabled = false;
+        }
+      } catch(e) {
+        err.textContent = _L.network;
+        btn.disabled = false;
+      }
+    }
+    document.getElementById('pinInput').focus();
+  </script>
+</body>
+</html>

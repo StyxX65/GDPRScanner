@@ -334,7 +334,16 @@ async function stSmtpTest() {
       body:JSON.stringify({})});
     const d = await r.json();
     if (d.ok) {
-      if (st) { st.style.color='var(--accent)'; st.textContent='\u2714 ' + (d.message || t('m365_smtp_test_ok','Connection successful')); }
+      let msg;
+      if (d.method === 'graph') {
+        msg = t('m365_smtp_test_ok_graph','Test email sent via Microsoft Graph to') + ' ' + (d.recipients||[]).join(', ');
+      } else if (d.method === 'smtp') {
+        msg = t('m365_smtp_test_ok_smtp','Test email sent via SMTP to') + ' ' + (d.recipients||[]).join(', ');
+        if (d.graph_also_failed) msg += ' ' + t('m365_smtp_graph_also_failed','(⚠ Graph also failed — Mail.Send not granted)');
+      } else {
+        msg = d.message || t('m365_smtp_test_ok','Test email sent');
+      }
+      if (st) { st.style.color='var(--accent)'; st.textContent='\u2714 ' + msg; }
     } else {
       if (st) { st.style.color='var(--danger)'; st.textContent='\u2717 ' + (d.error || t('m365_smtp_test_fail','Connection failed')); }
     }

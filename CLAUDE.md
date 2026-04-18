@@ -16,6 +16,12 @@ python -m pytest tests/ -q
 
 **Split modules:** `scan_engine.py` (M365 + file scan), `sse.py` (SSE broadcast), `checkpoint.py`, `app_config.py` (all persistence), `cpr_detector.py`
 
+**Google Drive delta scan** — `routes/google_scan.py` reads `scan_opts.get("delta", False)` (same flag as M365). Per user, delta key is `f"gdrive:{user_email}"` stored in `~/.gdprscanner/delta.json` alongside M365 tokens. First delta-enabled scan fetches all files then records a Changes API start page token via `conn.get_drive_start_token(user_email)`. Subsequent scans call `conn.get_drive_changes(user_email, token)` (Changes API) and update the token. Token save loads the current file fresh before writing (`{**current_tokens, **_new_drive_tokens}`) to avoid overwriting M365 tokens written by a concurrent scan thread. Invalid/expired tokens fall back to full scan automatically. `google_scan_done` now includes `"delta": bool` and `"delta_sources": int`.
+
+**Shared content processing** — all three scan engines (M365, Google, file) funnel downloaded bytes through a single function: `cpr_detector._scan_bytes(content, filename)`. It dispatches to the correct parser by file extension. `scan_engine.py` uses the `_scan_bytes_timeout` wrapper for PDFs (subprocess + hard timeout). `routes/google_scan.py` uses `_scan_bytes` directly. Do not duplicate file-type handling in per-source code.
+
+**`_scan_bytes` injection pattern** — `scan_engine.py` defines a no-op stub for `_scan_bytes` / `_scan_bytes_timeout` at module level (avoids circular import). `gdpr_scanner.py` overwrites them with the real `cpr_detector` implementations at startup. `routes/google_scan.py` resolves them lazily via `gdpr_scanner.__getattr__`. This is intentional — do not try to import them directly in those modules.
+
 **Blueprints** in `routes/` — see `routes/CLAUDE.md` for state/SSE rules.
 
 **Frontend:** `templates/index.html` (SPA), `static/style.css` (all styles), `static/js/*.js` (11 ES modules + `state.js`). `static/app.js` is an archived monolith — no longer loaded.
@@ -96,7 +102,8 @@ Large M365 tenants can generate enormous memory pressure. Key rules to preserve:
 - **`work_items` → `deque` before processing** — converted with `deque(work_items)` and drained via `popleft()` so each item's memory is released immediately after processing. Do not convert back to a list or iterate with `enumerate()`.
 - **`del content` in file branch** — raw download bytes are deleted as soon as `content.decode()` is done (before NER/PII counting). Both the hit and no-hit paths have explicit `del content`.
 - **`del body_text` in email branch** — deleted after `_broadcast_card` call.
-- **PDF OCR images freed page-by-page** — in `document_scanner.scan_pdf`, `images[page_num-1] = None` immediately after OCR. Do not cache or accumulate page images.
+- **PDF OCR rendered page-by-page** — `document_scanner.scan_pdf` (and the redact paths) call `convert_from_path(first_page=N, last_page=N)` inside the loop, so only one page image is in memory at a time. Do NOT move back to a bulk `convert_from_path()` call — that allocates all pages at once and triggers OOM kills on large PDFs.
+- **OCR memory guard** — `_ocr_mem_ok()` checks `psutil.virtual_memory().available >= 500 MB` before each page render. Pages that would exceed this threshold are skipped with a printed warning and recorded as `"skipped"` in `page_methods`.
 - **Memory guard** — `psutil.virtual_memory().available` checked before each M365 file download; scan skips the file if < 300 MB free.
 
 ## Export — routes/export.py

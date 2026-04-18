@@ -374,6 +374,85 @@ async function stClearViewerPin() {
   }
 }
 
+// ── Interface PIN — Settings UI ───────────────────────────────────────────────
+
+async function stLoadInterfacePinStatus() {
+  try {
+    const r = await fetch('/api/interface/pin');
+    const d = await r.json();
+    const statusEl   = document.getElementById('stInterfacePinStatus');
+    const currentRow = document.getElementById('stInterfaceCurrentPinRow');
+    const clearBtn   = document.getElementById('stInterfacePinClearBtn');
+    if (d.pin_set) {
+      if (statusEl)   statusEl.textContent   = '\u2714 ' + t('interface_pin_is_set', 'Interface PIN is set');
+      if (currentRow) currentRow.style.display = '';
+      if (clearBtn)   clearBtn.style.display   = '';
+    } else {
+      if (statusEl)   statusEl.textContent   = t('interface_pin_not_set_msg', 'No PIN set \u2014 interface is open to anyone on the network');
+      if (currentRow) currentRow.style.display = 'none';
+      if (clearBtn)   clearBtn.style.display   = 'none';
+    }
+  } catch(e) {}
+}
+
+async function stSaveInterfacePin() {
+  const newPin     = (document.getElementById('stInterfaceNewPin')?.value    || '').trim();
+  const currentPin = (document.getElementById('stInterfaceCurrentPin')?.value || '').trim();
+  const st         = document.getElementById('stInterfacePinSaveStatus');
+  if (!newPin) {
+    if (st) { st.style.color = 'var(--danger)'; st.textContent = t('m365_settings_pin_required', 'PIN is required.'); }
+    return;
+  }
+  if (!/^\d{4,8}$/.test(newPin)) {
+    if (st) { st.style.color = 'var(--danger)'; st.textContent = t('viewer_pin_format', 'PIN must be 4\u20138 digits.'); }
+    return;
+  }
+  if (st) { st.style.color = 'var(--muted)'; st.textContent = t('viewer_pin_saving', 'Saving\u2026'); }
+  try {
+    const r = await fetch('/api/interface/pin', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({pin: newPin, current_pin: currentPin})
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      if (st) { st.style.color = 'var(--danger)'; st.textContent = d.error || 'Error.'; }
+      return;
+    }
+    if (st) { st.style.color = 'var(--accent)'; st.textContent = '\u2714 ' + t('interface_pin_saved', 'PIN saved'); }
+    if (document.getElementById('stInterfaceNewPin'))    document.getElementById('stInterfaceNewPin').value    = '';
+    if (document.getElementById('stInterfaceCurrentPin')) document.getElementById('stInterfaceCurrentPin').value = '';
+    stLoadInterfacePinStatus();
+  } catch(e) {
+    if (st) { st.style.color = 'var(--danger)'; st.textContent = e.message; }
+  }
+}
+
+async function stClearInterfacePin() {
+  const currentPin = (document.getElementById('stInterfaceCurrentPin')?.value || '').trim();
+  const st         = document.getElementById('stInterfacePinSaveStatus');
+  if (!currentPin) {
+    if (st) { st.style.color = 'var(--danger)'; st.textContent = t('m365_settings_pin_required', 'PIN is required.'); }
+    document.getElementById('stInterfaceCurrentPin')?.focus();
+    return;
+  }
+  if (!confirm(t('interface_pin_clear_confirm', 'Remove the interface PIN? The scanner will be accessible to anyone on the network.'))) return;
+  try {
+    const r = await fetch('/api/interface/pin', {
+      method: 'DELETE', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({current_pin: currentPin})
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      if (st) { st.style.color = 'var(--danger)'; st.textContent = d.error || 'Error.'; }
+      return;
+    }
+    if (st) { st.style.color = 'var(--muted)'; st.textContent = t('interface_pin_cleared', 'PIN cleared'); }
+    stLoadInterfacePinStatus();
+  } catch(e) {
+    if (st) { st.style.color = 'var(--danger)'; st.textContent = e.message; }
+  }
+}
+
 // ── Window exports ────────────────────────────────────────────────────────────
 window._shareScopeTypeChanged = _shareScopeTypeChanged;
 window.openShareModal       = openShareModal;
@@ -382,6 +461,9 @@ window.createShareLink      = createShareLink;
 window.copyShareLink        = copyShareLink;
 window.copyTokenLink        = copyTokenLink;
 window.revokeToken          = revokeToken;
-window.stLoadViewerPinStatus = stLoadViewerPinStatus;
-window.stSaveViewerPin      = stSaveViewerPin;
-window.stClearViewerPin     = stClearViewerPin;
+window.stLoadViewerPinStatus  = stLoadViewerPinStatus;
+window.stSaveViewerPin        = stSaveViewerPin;
+window.stClearViewerPin       = stClearViewerPin;
+window.stLoadInterfacePinStatus = stLoadInterfacePinStatus;
+window.stSaveInterfacePin     = stSaveInterfacePin;
+window.stClearInterfacePin    = stClearInterfacePin;

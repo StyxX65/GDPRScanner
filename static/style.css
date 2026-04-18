@@ -253,6 +253,28 @@
   .card-delete-btn { position:absolute; top:6px; right:6px; background:rgba(0,0,0,0.45); color:#fff; border:none; border-radius:50%; width:22px; height:22px; font-size:13px; line-height:22px; text-align:center; cursor:pointer; opacity:0.35; transition:opacity .15s; padding:0; z-index:1; }
   .card:hover .card-delete-btn { opacity:1; }
   .card.list-view .card-delete-btn { position:static; opacity:1; background:transparent; color:var(--muted); flex-shrink:0; }
+
+  /* Per-card checkbox (select mode) */
+  .card-cb { position:absolute; top:6px; left:6px; width:16px; height:16px; margin:0; cursor:pointer; z-index:2;
+             display:none; accent-color:var(--accent); }
+  body.select-mode .card-cb { display:block; }
+  .card.card-selected-bulk { outline:2px solid var(--accent); outline-offset:2px; background:color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+  body.select-mode .card { cursor:default; }
+  body.select-mode .card:hover { border-color:var(--accent); }
+
+  /* Disposition stats bar */
+  .disp-stats-bar { display:flex; align-items:center; gap:8px; padding:4px 16px;
+                    background:var(--bg); border-bottom:1px solid var(--border);
+                    font-size:11px; color:var(--muted); flex-shrink:0; flex-wrap:wrap; }
+  .disp-stat-sep  { width:1px; height:10px; background:var(--border); flex-shrink:0; }
+  .disp-stat-warn { color:var(--danger); font-weight:600; }
+  .disp-stat-ok   { color:var(--success); }
+
+  /* Bulk tag bar */
+  .bulk-tag-bar { display:flex; align-items:center; gap:8px; padding:6px 16px;
+                  background:var(--surface); border-top:1px solid var(--border);
+                  font-size:12px; color:var(--text); flex-shrink:0; flex-wrap:wrap; }
+  .bulk-tag-bar button { height:26px; padding:0 10px; border-radius:5px; font-size:12px; cursor:pointer; box-sizing:border-box; }
   .bulk-delete-modal { max-width:460px; }
   .bulk-criteria-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:12px; }
   .bulk-criteria-row label { flex:0 0 130px; color:var(--muted); }
@@ -607,6 +629,8 @@
   body.viewer-mode .config-group { display: none !important; }
   body.viewer-mode #resumeBanner { display: none !important; }
   body.viewer-mode #bulkDeleteBtn { display: none !important; }
+  body.viewer-mode #selectModeBtn { display: none !important; }
+  body.viewer-mode #bulkTagBar    { display: none !important; }
   body.viewer-mode .card-delete-btn { display: none !important; }
   body.viewer-mode #dsubDeleteBtn { display: none !important; }
   body.viewer-mode #shareBtn { display: none !important; }

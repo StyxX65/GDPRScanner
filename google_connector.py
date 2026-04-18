@@ -260,6 +260,30 @@ class GoogleConnector:
             raise GoogleError(f"Drive auth failed for {user_email}: {e}") from e
         yield from _drive_iter(service, user_email, max_files, max_file_mb)
 
+    def get_drive_start_token(self, user_email: str) -> str:
+        """Return the current Changes API start page token for user's Drive."""
+        try:
+            creds   = self._creds_for(user_email, DRIVE_SCOPES)
+            service = build("drive", "v3", credentials=creds, cache_discovery=False)
+        except HttpError as e:
+            raise GoogleError(f"Drive auth failed for {user_email}: {e}") from e
+        return _drive_get_start_page_token(service)
+
+    def get_drive_changes(
+        self,
+        user_email: str,
+        page_token: str,
+        max_files: int = 5000,
+        max_file_mb: float = 50.0,
+    ) -> "tuple[list[tuple[dict, bytes]], str]":
+        """Return (changed_files, new_page_token) since page_token."""
+        try:
+            creds   = self._creds_for(user_email, DRIVE_SCOPES)
+            service = build("drive", "v3", credentials=creds, cache_discovery=False)
+        except HttpError as e:
+            raise GoogleError(f"Drive auth failed for {user_email}: {e}") from e
+        return _drive_changes_collect(service, user_email, page_token, max_files, max_file_mb)
+
 
 # ── Persistence helpers ───────────────────────────────────────────────────────
 
@@ -412,6 +436,77 @@ def _gmail_iter(
                 yield (att_meta, data)
 
 
+def _download_drive_file(
+    service,
+    f: dict,
+    user_email: str,
+    max_bytes: int,
+) -> "tuple[dict, bytes] | None":
+    """Download one Drive file entry. Returns (meta, data) or None if skipped."""
+    mime  = f.get("mimeType", "")
+    fid   = f.get("id", "")
+    fname = f.get("name", "")
+    size  = int(f.get("size", 0) or 0)
+
+    meta = {
+        "id":           f"gdrive:{fid}",
+        "name":         fname,
+        "_source":      "gdrive",
+        "_source_type": "gdrive",
+        "_account":     user_email,
+        "_account_id":  user_email,
+        "_url":         f.get("webViewLink", ""),
+        "lastModifiedDateTime": f.get("modifiedTime", "")[:10],
+        "size":         size,
+    }
+
+    if mime in _EXPORT_MAP:
+        export_mime, ext = _EXPORT_MAP[mime]
+        try:
+            req   = service.files().export_media(fileId=fid, mimeType=export_mime)
+            buf   = io.BytesIO()
+            dl    = MediaIoBaseDownload(buf, req, chunksize=4 * 1024 * 1024)
+            done  = False
+            total = 0
+            while not done:
+                _, done = dl.next_chunk()
+                total = buf.tell()
+                if total > _MAX_EXPORT_BYTES:
+                    break
+            if total > _MAX_EXPORT_BYTES:
+                return None
+            meta["name"] = fname + ext
+            meta["size"] = total
+            data = buf.getvalue()
+            del buf
+            return (meta, data)
+        except HttpError as e:
+            if "exportSizeLimitExceeded" in str(e):
+                print(
+                    f"[gdrive] skip '{fname}' — file too large for Google export API"
+                    f" (exportSizeLimitExceeded); fid={fid}",
+                    flush=True,
+                )
+            return None
+    else:
+        if mime.startswith("application/vnd.google-apps."):
+            return None
+        if size == 0 or size > max_bytes:
+            return None
+        try:
+            req  = service.files().get_media(fileId=fid)
+            buf  = io.BytesIO()
+            dl   = MediaIoBaseDownload(buf, req, chunksize=4 * 1024 * 1024)
+            done = False
+            while not done:
+                _, done = dl.next_chunk()
+            data = buf.getvalue()
+            del buf
+            return (meta, data)
+        except HttpError:
+            return None
+
+
 def _drive_iter(
     service,
     user_email: str,
@@ -439,72 +534,75 @@ def _drive_iter(
 
         for f in resp.get("files", []):
             fetched += 1
-            mime  = f.get("mimeType", "")
-            fid   = f.get("id", "")
-            fname = f.get("name", "")
-            size  = int(f.get("size", 0) or 0)
-
-            meta = {
-                "id":           f"gdrive:{fid}",
-                "name":         fname,
-                "_source":      "gdrive",
-                "_source_type": "gdrive",
-                "_account":     user_email,
-                "_account_id":  user_email,
-                "_url":         f.get("webViewLink", ""),
-                "lastModifiedDateTime": f.get("modifiedTime", "")[:10],
-                "size":         size,
-            }
-
-            if mime in _EXPORT_MAP:
-                export_mime, ext = _EXPORT_MAP[mime]
-                try:
-                    req   = service.files().export_media(fileId=fid, mimeType=export_mime)
-                    buf   = io.BytesIO()
-                    dl    = MediaIoBaseDownload(buf, req, chunksize=4 * 1024 * 1024)
-                    done  = False
-                    total = 0
-                    while not done:
-                        status, done = dl.next_chunk()
-                        total = buf.tell()
-                        if total > _MAX_EXPORT_BYTES:
-                            break
-                    if total > _MAX_EXPORT_BYTES:
-                        continue
-                    meta["name"] = fname + ext
-                    meta["size"] = total
-                    data = buf.getvalue()
-                    del buf
-                    yield (meta, data)
-                except HttpError as e:
-                    if "exportSizeLimitExceeded" in str(e):
-                        print(
-                            f"[gdrive] skip '{fname}' — file too large for Google export API"
-                            f" (exportSizeLimitExceeded); fid={fid}",
-                            flush=True,
-                        )
-                    continue
-            else:
-                if mime.startswith("application/vnd.google-apps."):
-                    continue   # other native formats we can't export — skip
-                if size == 0 or size > max_bytes:
-                    continue
-                try:
-                    req  = service.files().get_media(fileId=fid)
-                    buf  = io.BytesIO()
-                    dl   = MediaIoBaseDownload(buf, req, chunksize=4 * 1024 * 1024)
-                    done = False
-                    while not done:
-                        _, done = dl.next_chunk()
-                    data = buf.getvalue()
-                    del buf
-                    yield (meta, data)
-                except HttpError:
-                    continue
+            result = _download_drive_file(service, f, user_email, max_bytes)
+            if result:
+                yield result
 
         page_token = resp.get("nextPageToken")
         if not page_token:
             break
+
+
+def _drive_get_start_page_token(service) -> str:
+    """Return the current Changes API start page token for this Drive."""
+    resp = service.changes().getStartPageToken().execute()
+    return resp["startPageToken"]
+
+
+def _drive_changes_collect(
+    service,
+    user_email: str,
+    page_token: str,
+    max_files: int,
+    max_file_mb: float,
+) -> "tuple[list[tuple[dict, bytes]], str]":
+    """
+    Collect Drive changes since page_token using the Changes API.
+    Returns (list_of_(meta, data)_tuples, new_start_page_token).
+    Skips removed/trashed files.
+    Raises GoogleError on API failure so the caller can fall back to a full scan.
+    """
+    max_bytes = int(max_file_mb * 1024 * 1024)
+    fields = (
+        "nextPageToken,newStartPageToken,"
+        "changes(removed,file(id,name,mimeType,size,webViewLink,modifiedTime,owners,parents))"
+    )
+    results: list = []
+    new_token = page_token
+    fetched = 0
+
+    while fetched < max_files:
+        params: dict = {
+            "pageToken":      page_token,
+            "spaces":         "drive",
+            "fields":         fields,
+            "includeRemoved": True,
+            "pageSize":       min(1000, max_files - fetched),
+        }
+        try:
+            resp = service.changes().list(**params).execute()
+        except HttpError as e:
+            raise GoogleError(f"Drive changes error for {user_email}: {e}") from e
+
+        for change in resp.get("changes", []):
+            if change.get("removed"):
+                continue
+            f = change.get("file")
+            if not f:
+                continue
+            fetched += 1
+            result = _download_drive_file(service, f, user_email, max_bytes)
+            if result:
+                results.append(result)
+
+        if "newStartPageToken" in resp:
+            new_token = resp["newStartPageToken"]
+            break
+        page_token = resp.get("nextPageToken")
+        if not page_token:
+            break
+
+    return results, new_token
 
 
 # ── Personal Google account (OAuth device-code) connector ────────────────────
@@ -620,6 +718,30 @@ class PersonalGoogleConnector:
         except HttpError as e:
             raise GoogleError(f"Drive auth failed: {e}") from e
         yield from _drive_iter(service, user_email, max_files, max_file_mb)
+
+    def get_drive_start_token(self, user_email: str) -> str:
+        """Return the current Changes API start page token for this Drive."""
+        self._refresh_if_needed()
+        try:
+            service = build("drive", "v3", credentials=self._creds, cache_discovery=False)
+        except HttpError as e:
+            raise GoogleError(f"Drive auth failed: {e}") from e
+        return _drive_get_start_page_token(service)
+
+    def get_drive_changes(
+        self,
+        user_email: str,
+        page_token: str,
+        max_files: int = 5000,
+        max_file_mb: float = 50.0,
+    ) -> "tuple[list[tuple[dict, bytes]], str]":
+        """Return (changed_files, new_page_token) since page_token."""
+        self._refresh_if_needed()
+        try:
+            service = build("drive", "v3", credentials=self._creds, cache_discovery=False)
+        except HttpError as e:
+            raise GoogleError(f"Drive auth failed: {e}") from e
+        return _drive_changes_collect(service, user_email, page_token, max_files, max_file_mb)
 
     @staticmethod
     def get_device_code_flow(client_id: str, client_secret: str) -> dict:

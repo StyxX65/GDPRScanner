@@ -14,6 +14,9 @@ All three scan engines must include `"source": "m365"` / `"google"` / `"file"` i
 ## Circular import prohibition
 `scan_engine.py` and `gdpr_scanner.py` must not import each other. `scan_engine` imports from `sse`, `checkpoint`, `app_config`, `cpr_detector`; `gdpr_scanner` imports scan functions from `scan_engine`.
 
+## `_scan_bytes` injection
+`scan_engine.py` declares stub versions of `_scan_bytes` / `_scan_bytes_timeout` at module level. `gdpr_scanner.py` replaces them with the real `cpr_detector` implementations at startup. `routes/google_scan.py` pulls them from `gdpr_scanner` via `__getattr__`. Never import these directly in blueprint or engine modules — that breaks the circular-import barrier.
+
 ## Gotchas
 
 - **`_load_settings()` return** — does NOT include `file_sources`. Returns only: sources, user_ids, options, retention_years, fiscal_year_end, email_to.

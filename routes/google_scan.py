@@ -140,6 +140,11 @@ def _run_google_scan(options: dict):
     max_file_mb   = float(scan_opts.get("max_file_mb",   50.0))
     scan_body     = bool(scan_opts.get("scan_body",        True))
     scan_att      = bool(scan_opts.get("scan_attachments", True))
+    delta_enabled = bool(scan_opts.get("delta", False))
+
+    from checkpoint import _load_delta_tokens, _save_delta_tokens
+    _drive_delta_tokens: dict = _load_delta_tokens() if delta_enabled else {}
+    _new_drive_tokens:   dict = {}
 
     # Resolve users: explicit list → Admin SDK → fall back to SA email itself
     _user_role_map:    dict = {}  # email → role
@@ -283,12 +288,35 @@ def _run_google_scan(options: dict):
         # ── Google Drive ──────────────────────────────────────────────────────
         if "gdrive" in sources:
             try:
-                broadcast("scan_phase", {"phase": f"{user_email} — Google Drive"})
-                for meta, data in conn.iter_drive_files(
-                    user_email,
-                    max_files=max_files,
-                    max_file_mb=max_file_mb,
-                ):
+                delta_key   = f"gdrive:{user_email}"
+                saved_token = _drive_delta_tokens.get(delta_key) if delta_enabled else None
+
+                if delta_enabled and saved_token:
+                    broadcast("scan_phase", {"phase": f"{user_email} — Google Drive (delta)"})
+                    try:
+                        drive_items, new_token = conn.get_drive_changes(
+                            user_email, saved_token,
+                            max_files=max_files, max_file_mb=max_file_mb,
+                        )
+                        _new_drive_tokens[delta_key] = new_token
+                    except Exception as delta_err:
+                        broadcast("scan_phase", {"phase": f"{user_email} — Google Drive (delta token invalid — full scan)"})
+                        logger.warning("[gdrive delta] %s: %s — falling back to full scan", user_email, delta_err)
+                        drive_items = list(conn.iter_drive_files(user_email, max_files=max_files, max_file_mb=max_file_mb))
+                        try:
+                            _new_drive_tokens[delta_key] = conn.get_drive_start_token(user_email)
+                        except Exception:
+                            pass
+                else:
+                    broadcast("scan_phase", {"phase": f"{user_email} — Google Drive"})
+                    drive_items = list(conn.iter_drive_files(user_email, max_files=max_files, max_file_mb=max_file_mb))
+                    if delta_enabled:
+                        try:
+                            _new_drive_tokens[delta_key] = conn.get_drive_start_token(user_email)
+                        except Exception:
+                            pass
+
+                for meta, data in drive_items:
                     if _check_abort():
                         return
                     total_scanned += 1
@@ -306,7 +334,7 @@ def _run_google_scan(options: dict):
                     except Exception as e:
                         broadcast("scan_error", {"file": meta.get("name", ""), "error": str(e)})
                         continue
-                    cprs      = result.get("cprs", [])
+                    cprs       = result.get("cprs", [])
                     pii_counts = result.get("pii_counts")
                     if cprs or (pii_counts and any(pii_counts.values())):
                         _broadcast_card(meta, cprs, pii_counts)
@@ -315,11 +343,20 @@ def _run_google_scan(options: dict):
             except Exception as e:
                 broadcast("scan_error", {"file": f"Drive/{user_email}", "error": str(e)})
 
+    if delta_enabled and _new_drive_tokens:
+        try:
+            current_tokens = _load_delta_tokens()
+            _save_delta_tokens({**current_tokens, **_new_drive_tokens})
+        except Exception as e:
+            logger.warning("[gdrive delta] token save failed: %s", e)
+
     elapsed = _time.monotonic() - t_start
     broadcast("google_scan_done", {
-        "flagged_count":  total_flagged,
-        "total_scanned":  total_scanned,
+        "flagged_count":   total_flagged,
+        "total_scanned":   total_scanned,
         "elapsed_seconds": round(elapsed, 1),
+        "delta":           delta_enabled and bool(_new_drive_tokens),
+        "delta_sources":   len(_new_drive_tokens),
     })
     if _db and _db_scan_id:
         try:

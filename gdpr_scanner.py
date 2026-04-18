@@ -146,7 +146,7 @@ _migrate_to_data_dir()
 
 # ── Flask ─────────────────────────────────────────────────────────────────────
 try:
-    from flask import Flask, Response, jsonify, render_template, request, session
+    from flask import Flask, Response, jsonify, redirect, render_template, request, session
 except ImportError:
     print("Flask required: pip install flask")
     sys.exit(1)
@@ -368,7 +368,72 @@ def _sync_state():
 # JavaScript served from static/app.js via Flask static file handling.
 
 
-# ── Auth state ─────────────────────────────────────────────────────────────────
+# ── Interface PIN auth ────────────────────────────────────────────────────────
+
+_iface_pin_attempts: dict[str, list[float]] = {}
+_IFACE_MAX_ATTEMPTS = 5
+_IFACE_WINDOW_S     = 300
+
+
+def _iface_rate_limited(ip: str) -> bool:
+    now   = time.time()
+    times = [t for t in _iface_pin_attempts.get(ip, []) if now - t < _IFACE_WINDOW_S]
+    _iface_pin_attempts[ip] = times
+    return len(times) >= _IFACE_MAX_ATTEMPTS
+
+
+@app.before_request
+def _require_interface_pin():
+    from app_config import get_interface_pin_hash
+    if not get_interface_pin_hash():
+        return  # feature disabled — open access
+    path = request.path
+    # Always-exempt paths
+    if (path.startswith("/static/")
+            or path in ("/login", "/view", "/manual", "/favicon.ico")
+            or path == "/api/interface/pin/verify"
+            or path == "/api/viewer/pin/verify"):
+        return
+    # Authenticated sessions (interface or viewer) pass through
+    if session.get("interface_ok") or session.get("viewer_ok"):
+        return
+    if path.startswith("/api/"):
+        return jsonify({"error": "authentication required"}), 401
+    return redirect("/login")
+
+
+@app.route("/login")
+def login_page():
+    from app_config import get_interface_pin_hash
+    if not get_interface_pin_hash():
+        return redirect("/")
+    if session.get("interface_ok"):
+        return redirect("/")
+    return render_template("interface_login.html", LANG=LANG)
+
+
+@app.route("/api/interface/pin/verify", methods=["POST"])
+def interface_pin_verify():
+    from app_config import verify_interface_pin
+    ip = request.remote_addr or "unknown"
+    if _iface_rate_limited(ip):
+        return jsonify({"error": "Too many failed attempts. Try again later."}), 429
+    body = request.get_json(silent=True) or {}
+    pin  = str(body.get("pin", "")).strip()
+    if not verify_interface_pin(pin):
+        _iface_pin_attempts.setdefault(ip, []).append(time.time())
+        return jsonify({"error": "Incorrect PIN"}), 401
+    _iface_pin_attempts.pop(ip, None)
+    session["interface_ok"] = True
+    return jsonify({"ok": True})
+
+
+@app.route("/api/interface/logout", methods=["POST"])
+def interface_logout():
+    session.pop("interface_ok", None)
+    return jsonify({"ok": True})
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @app.route("/")

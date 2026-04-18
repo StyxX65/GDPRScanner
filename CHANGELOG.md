@@ -7,6 +7,26 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **Interface PIN** — optional session-level authentication gate for the main scanner interface. Set a 4–8 digit PIN in **Settings → Security → Interface PIN**; anyone reaching `http://host:5100` is redirected to `/login` and must enter the PIN before accessing scan controls, settings, or results. Viewer tokens and the `/view` route are completely unaffected — reviewers continue to use their own auth chain. The PIN is stored as a salted SHA-256 hash in `config.json`. Brute-force protection: 5 failed attempts per IP locks out for 5 minutes. A `POST /api/interface/logout` endpoint clears the session. PIN management via `GET/POST/DELETE /api/interface/pin`.
+
+### Fixed
+
+- **PDF OCR kills process on large files** — `document_scanner` previously called `convert_from_path()` once for the entire PDF before the processing loop, allocating all page images in memory simultaneously. A 50-page A4 PDF at 300 DPI required ~1.3 GB in a single allocation, triggering the OS OOM killer. Fixed by rendering one page at a time with `convert_from_path(first_page=N, last_page=N)` inside the loop across `scan_pdf`, `redact_fitz_pdf`, and `redact_pdf`. Peak OCR memory is now bounded to roughly one page (~26 MB at 300 DPI) regardless of document length.
+
+- **No bulk disposition tagging** — each result card had to be opened individually to set a disposition. Added a Select mode (filter bar "Vælg" button) that reveals per-card checkboxes. Selecting one or more items shows a bulk tag bar at the bottom of the grid with a disposition dropdown and Apply button. Calls `POST /api/db/disposition/bulk`; updates all selected items in-memory and clears the selection. "Select all visible" / "Deselect all" toggle available in the bar. Hidden in viewer mode.
+
+- **No disposition progress summary** — added a thin stats bar between the filter bar and the grid showing total · unreviewed · retain · delete · % reviewed. Updates after every single or bulk disposition save and after each grid render. Unreviewed count is highlighted in red until everything is tagged; turns green at 100%.
+
+- **Google Drive always did a full scan** — Drive scanning in `routes/google_scan.py` used `conn.iter_drive_files()` on every run, re-downloading every file regardless of what changed. Added Google Drive delta scan using the Drive Changes API. When `delta` is enabled in scan options, the first run records a Changes API start page token per user (`gdrive:{email}` key in `delta.json`). Subsequent runs call `conn.get_drive_changes(user_email, token)` and only process files that have been added or modified since the last scan. Invalid or expired tokens fall back to a full scan automatically. Token save loads the current `delta.json` fresh before writing to avoid racing with concurrent M365 token saves. `google_scan_done` SSE event now includes `delta` and `delta_sources` fields.
+
+- **No memory guard before OCR page renders** — added `_ocr_mem_ok()` check (`psutil.virtual_memory().available >= 500 MB`) before each page render in all three OCR paths. Pages that would exceed the threshold are skipped and recorded as `"skipped"` in `page_methods` with a printed warning rather than crashing the scan.
+
+---
+
 ## [1.6.20] — 2026-04-18
 
 ### Fixed

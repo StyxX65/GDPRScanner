@@ -143,6 +143,26 @@ def db_set_disposition():
     return jsonify({"status": "saved"})
 
 
+@bp.route("/api/db/disposition/bulk", methods=["POST"])
+def db_set_disposition_bulk():
+    """Set the same disposition on multiple items at once.
+    Body: {item_ids: [...], status, legal_basis?, notes?, reviewed_by?}
+    """
+    if not DB_OK: return jsonify({"error": "database not available"}), 503
+    data     = request.get_json() or {}
+    item_ids = data.get("item_ids", [])
+    status   = data.get("status", "")
+    if not item_ids or not status:
+        return jsonify({"error": "item_ids and status required"}), 400
+    db = _get_db()
+    for iid in item_ids:
+        db.set_disposition(iid, status,
+                           legal_basis=data.get("legal_basis", ""),
+                           notes=data.get("notes", ""),
+                           reviewed_by=data.get("reviewed_by", ""))
+    return jsonify({"saved": len(item_ids)})
+
+
 @bp.route("/api/db/disposition/<item_id>")
 def db_get_disposition(item_id):
     """Get the current disposition for an item."""

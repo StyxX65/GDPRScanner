@@ -1,6 +1,6 @@
 # GDPR Scanner — Brugermanual
 
-Version 1.6.17
+Version 1.6.20
 
 ---
 
@@ -270,6 +270,22 @@ Hvert element har en **Disposition**-rullemenu i forhåndsvisningspanelet. Vælg
 
 Klik på **Gem** efter valget. En lille **✓ Gemt**-bekræftelse vises.
 
+### Massemarkering af flere elementer på én gang
+
+Hvis du skal anvende den samme disposition på mange elementer, kan du bruge **Vælg-tilstand** i stedet for at åbne hvert kort enkeltvis.
+
+1. Klik på **Vælg** i filterbjælken. Der vises afkrydsningsfelter på hvert resultatkort.
+2. Sæt hak ved de elementer, du vil mærke, eller klik på **Vælg alle synlige** i massetag-bjælken nederst på skærmen for at vælge alt, der matcher de aktuelle filtre.
+3. Vælg en disposition fra rullemenuen i massetag-bjælken.
+4. Klik på **Anvend**. Alle valgte elementer opdateres med det samme.
+5. Klik på **Afslut** (eller **Vælg**-knappen igen) for at forlade vælg-tilstanden.
+
+> **Tip:** Brug filterbjælken til f.eks. at afgrænse til alle ikke-gennemgåede elevfund, og klik derefter på **Vælg alle synlige** — så kan du mærke en hel kategori med to klik.
+
+### Dispositionsstatistikbjælke
+
+En tynd statistikbjælke over resultatgitteret viser: **I alt · Ikke gennemgået · Opbevar · Slet** og en **% gennemgået**-angivelse. Den opdateres automatisk efter hvert gem og giver dig et løbende overblik over, hvor langt du er i gennemgangen.
+
 ### Find alle elementer for en bestemt person
 
 Klik på **🔍** i venstre panel (under Statistik) for at åbne **Registreret person**-opslaget. Indtast et CPR-nummer, og scanneren finder alle fundne elementer, der indeholder dette nummer. Du kan derefter slette dem alle i ét trin — i overensstemmelse med retten til sletning (GDPR artikel 17).
@@ -507,6 +523,7 @@ Klik på **Nulstil database** for at slette alle scanningsdata, dispositioner og
 |-------------|-------------|
 | Admin-PIN | Valgfri PIN-kode, der beskytter destruktive handlinger (nulstil database, erstat ved import) |
 | Viewer-PIN | Valgfri 4–8-cifret PIN-kode, der giver alle adgang til `/view` i en browser som skrivebeskyttet gennemganger uden et token-link |
+| Interface-PIN | Valgfri 4–8-cifret PIN-kode, der skal indtastes, inden man får adgang til selve scannerens brugerflade. Alle, der tilgår scanner-URL'en, omdirigeres til en loginside, indtil den korrekte kode er indtastet. Adgang via `/view` er ikke berørt. |
 
 ### Avancerede scanningsindstillinger
 
@@ -542,7 +559,7 @@ E-mails flyttes til brugerens **Slettet post**-mappe i Exchange — de slettes i
 Ja. Du kan scanne lokale og SMB-filshares uden nogen M365- eller Google-forbindelse. Åbn **Kilder**, gå til fanen **Filkilder**, og tilføj dine filstier.
 
 **Hvad er delta-scanning, og hvornår skal jeg bruge det?**  
-Delta-scanning bruger Microsoft Graphs ændringstokens til kun at hente elementer ændret siden den seneste scanning. Det er ideelt til regelmæssige (f.eks. ugentlige) compliance-tjek efter, at du har gennemført en fuld basisscan. Aktiver det i afsnittet Indstillinger i venstre panel.
+Delta-scanning bruger Microsoft Graphs ændringstokens (for M365) og Google Drive Changes API (for Google Workspace) til kun at hente elementer ændret siden den seneste scanning. Det er ideelt til regelmæssige (f.eks. ugentlige) compliance-tjek efter, at du har gennemført en fuld basisscan. Aktiver det i afsnittet Indstillinger i venstre panel.
 
 **Scanningen stoppede — kan jeg fortsætte, hvor den slap?**  
 Ja. Når du starter scanningen igen, vil et gult banner tilbyde at genoptage fra kontrolpunktet. Klik på **▶ Genoptag** for at fortsætte. Hvis du foretrækker at starte forfra, klikker du på **Start forfra**.
@@ -559,9 +576,12 @@ I kontoafsnittet i venstre panel er der et felt **+ Tilføj konto manuelt**. Ind
 **Kører scanneren? Jeg kan ikke se en statuslinje.**  
 Tjek aktivitetsloggen nederst på skærmen. Hvis en scanning kører, vises der beskeder her. Hvis du ikke ser noget, er scanningen muligvis afsluttet eller ikke startet. Kontrollér også, at du har valgt mindst én kilde og mindst én konto.
 
+**Kan jeg beskytte scanneren med adgangskode, så elever eller kolleger ikke kan tilgå den på netværket?**  
+Ja. Gå til **Indstillinger → Sikkerhed → Interface-PIN** og angiv en 4–8-cifret PIN-kode. Fra da af vises alle, der åbner scanner-URL'en i en browser, en loginside og kan ikke komme videre uden den korrekte kode. Interface-PIN er adskilt fra Admin-PIN (der beskytter destruktive handlinger) og Viewer-PIN (der beskytter skrivebeskyttet adgang). Eksisterende viewer-token-links fungerer fortsat uden interface-PIN.
+
 **Kan en gennemganger mærke dispositioner uden adgang til scanningskontrollerne?**  
 Ja. Brug **🔗 Del**-knappen til at oprette et skrivebeskyttet viewer-link eller angiv en Viewer-PIN under Indstillinger → Sikkerhed. Gennemgangeren åbner linket i sin browser og kan gennemse resultater og mærke dispositioner uden at se loginoplysninger, kilder eller scanningsknapper. Se afsnit 10 for detaljer.
 
 ---
 
-*GDPR Scanner v1.6.17 — teknisk opsætning og konfiguration: se README.md*
+*GDPR Scanner v1.6.20 — teknisk opsætning og konfiguration: se README.md*

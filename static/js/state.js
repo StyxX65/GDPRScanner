@@ -30,4 +30,7 @@ export const S = {
   _fileSources:         [],
   // History browser
   _historyRefScanId:    null,   // null = live/SSE, number = viewing a past session
+  // Bulk disposition
+  _selectMode:          false,
+  _selectedIds:         new Set(),
 };

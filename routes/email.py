@@ -147,8 +147,7 @@ def smtp_test():
     if state.connector and state.connector.is_authenticated():
         try:
             _send_email_graph(subject, body_html, recipients)
-            return jsonify({"ok": True,
-                            "message": f"Test email sent via Microsoft Graph to {', '.join(recipients)}"})
+            return jsonify({"ok": True, "method": "graph", "recipients": recipients})
         except Exception as graph_err:
             graph_error_str = str(graph_err)
     else:
@@ -193,8 +192,8 @@ def smtp_test():
             if username and password:
                 server.login(username, password)
             server.sendmail(from_addr, recipients, msg.as_string())
-        suffix = " (⚠ Graph also failed — Mail.Send permission not granted)" if graph_error_str else ""
-        return jsonify({"ok": True, "message": f"Test email sent via SMTP to {', '.join(recipients)}{suffix}"})
+        return jsonify({"ok": True, "method": "smtp", "recipients": recipients,
+                        "graph_also_failed": bool(graph_error_str)})
     except Exception as smtp_err:
         err_str = str(smtp_err)
         _h = host.lower()

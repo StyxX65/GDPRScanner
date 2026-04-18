@@ -384,8 +384,12 @@ document.addEventListener('DOMContentLoaded', applyI18n);
           <button id="exportBtn" onclick="exportExcel()" style="background:none;border:1px solid var(--border);color:var(--muted)" data-i18n="m365_btn_export_excel" title="Export results as Excel">Excel</button>
           <button id="exportA30Btn" onclick="exportArticle30()" style="background:none;border:1px solid var(--accent);color:var(--accent)" data-i18n="m365_btn_export_article30" title="Export GDPR Article 30 report as Word document">Art.30</button>
           <button id="bulkDeleteBtn" onclick="openBulkDelete()" style="background:none;border:1px solid var(--danger);color:var(--danger)" data-i18n="m365_btn_bulk_delete" title="Bulk delete">Slet</button>
+          <button id="selectModeBtn" style="background:none;border:1px solid var(--border);color:var(--muted)" onclick="toggleSelectMode()" data-i18n="bulk_select_mode">Vælg</button>
           <button id="listViewBtn" style="background:none;border:1px solid var(--border);color:var(--muted)" onclick="toggleView()" data-i18n="m365_btn_list_view">Liste</button>
       </div>
+
+      <!-- Disposition stats bar -->
+      <div id="dispStats" class="disp-stats-bar" style="display:none"></div>
 
       <!-- Content area: grid + preview panel -->
       <div class="content-area">
@@ -399,6 +403,24 @@ document.addEventListener('DOMContentLoaded', applyI18n);
           </div>
           <div id="lastScanSummary" style="display:none" class="empty-state last-scan-summary"></div>
           <div class="grid" id="grid" style="display:none"></div>
+
+          <!-- Bulk disposition tag bar (visible only in select mode with items selected) -->
+          <div id="bulkTagBar" class="bulk-tag-bar" style="display:none">
+            <span id="bulkTagCount" style="font-weight:600;white-space:nowrap"></span>
+            <button id="bulkSelectAll" type="button" onclick="selectAllVisible()" data-i18n="bulk_select_all">Vælg alle synlige</button>
+            <select id="bulkDispSelect" style="height:26px;font-size:12px;padding:0 8px;flex:0 0 auto">
+              <option value="retain-legal"      data-i18n="m365_disp_retain_legal">Behold — juridisk</option>
+              <option value="retain-legitimate" data-i18n="m365_disp_retain_legit">Behold — legitimt</option>
+              <option value="retain-contract"   data-i18n="m365_disp_retain_contract">Behold — kontrakt</option>
+              <option value="delete-scheduled"  data-i18n="m365_disp_delete_sched">Slet — planlagt</option>
+              <option value="deleted"           data-i18n="m365_disp_deleted">Slettet</option>
+              <option value="personal-use"      data-i18n="m365_disp_personal_use">Personlig brug</option>
+              <option value="unreviewed"        data-i18n="m365_disp_unreviewed">Ikke gennemgået</option>
+            </select>
+            <button id="bulkTagApplyBtn" type="button" onclick="applyBulkDisposition()" style="background:var(--accent);color:#fff;border:none;height:26px;padding:0 14px;border-radius:5px;font-size:12px;cursor:pointer;font-weight:600" data-i18n="bulk_apply">Anvend</button>
+            <span id="bulkTagStatus" style="font-size:11px;color:var(--accent)"></span>
+            <button type="button" onclick="toggleSelectMode()" style="margin-left:auto;background:none;border:1px solid var(--border);color:var(--muted);height:26px;padding:0 10px;border-radius:5px;font-size:12px;cursor:pointer" data-i18n="bulk_done">Afslut</button>
+          </div>
         </div>
 
         <!-- Progress bar -->
@@ -617,6 +639,24 @@ document.addEventListener('DOMContentLoaded', applyI18n);
             <div id="stViewerPinSaveStatus" style="flex:1;font-size:11px;color:var(--muted);align-self:center"></div>
             <button type="button" onclick="stClearViewerPin()" id="stViewerPinClearBtn" style="display:none;background:none;border:1px solid var(--danger);color:var(--danger);height:26px;padding:0 12px;border-radius:6px;font-size:12px;cursor:pointer;box-sizing:border-box" data-i18n="viewer_pin_clear">Clear PIN</button>
             <button type="button" onclick="stSaveViewerPin()" style="background:var(--accent);color:#fff;border:none;height:26px;padding:0 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;box-sizing:border-box" data-i18n="m365_settings_save_pin">Save PIN</button>
+          </div>
+        </div>
+        <div class="settings-group">
+          <div class="settings-group-title" data-i18n="interface_pin_group_title">Interface PIN</div>
+          <div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:4px" data-i18n="interface_pin_desc">A numeric PIN (4–8 digits) that must be entered before accessing the main scanner interface. Viewers accessing <code style="font-size:10px">/view</code> are not affected.</div>
+          <div id="stInterfacePinStatus" style="font-size:10px;color:var(--muted);margin-bottom:6px"></div>
+          <div class="settings-row" id="stInterfaceCurrentPinRow" style="display:none">
+            <label data-i18n="m365_settings_current_pin">Current PIN</label>
+            <input id="stInterfaceCurrentPin" type="password" autocomplete="off" placeholder="••••">
+          </div>
+          <div class="settings-row">
+            <label data-i18n="m365_settings_new_pin">New PIN</label>
+            <input id="stInterfaceNewPin" type="password" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="4–8 digits">
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px">
+            <div id="stInterfacePinSaveStatus" style="flex:1;font-size:11px;color:var(--muted);align-self:center"></div>
+            <button type="button" onclick="stClearInterfacePin()" id="stInterfacePinClearBtn" style="display:none;background:none;border:1px solid var(--danger);color:var(--danger);height:26px;padding:0 12px;border-radius:6px;font-size:12px;cursor:pointer;box-sizing:border-box" data-i18n="interface_pin_clear">Clear PIN</button>
+            <button type="button" onclick="stSaveInterfacePin()" style="background:var(--accent);color:#fff;border:none;height:26px;padding:0 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;box-sizing:border-box" data-i18n="m365_settings_save_pin">Save PIN</button>
           </div>
         </div>
       </div>

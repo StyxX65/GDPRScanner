@@ -1,6 +1,6 @@
 # GDPR Scanner — User Manual
 
-Version 1.6.17
+Version 1.6.20
 
 ---
 
@@ -270,6 +270,22 @@ Every item has a **Disposition** dropdown in the preview panel. Choose one of:
 
 After choosing, click **Gem**. A small **✓ Gemt** confirmation appears.
 
+### Bulk tagging multiple items at once
+
+If you need to apply the same disposition to many items, use **Select mode** instead of opening each card individually.
+
+1. Click **Vælg** (Select) in the filter bar. Per-card checkboxes appear on every result card.
+2. Tick the items you want to tag, or click **Select all visible** in the bulk tag bar at the bottom of the screen to select everything matching the current filters.
+3. Choose a disposition from the dropdown in the bulk tag bar.
+4. Click **Apply**. All selected items are updated immediately.
+5. Click **Done** (or the same **Vælg** button again) to leave select mode.
+
+> **Tip:** Use the filter bar to narrow down to, for example, all unreviewed student items before clicking **Select all visible** — this lets you tag an entire category in two clicks.
+
+### Disposition stats bar
+
+A thin stats bar sits above the results grid showing: **Total · Unreviewed · Retain · Delete** counts and a **% reviewed** figure. It updates automatically after every disposition save, giving you a live overview of how far through the review you are.
+
 ### Finding all items for a specific person
 
 Click **🔍** in the sidebar (under Stats) to open the **Data Subject Lookup**. Enter a CPR number and the scanner will find all flagged items containing that number. You can then delete all of them in one step — supporting the GDPR right to erasure (Article 17).
@@ -507,6 +523,7 @@ Click **Reset DB** to wipe all scan data, dispositions, and deletion log. This i
 |---------|-------------|
 | Admin PIN | Optional PIN that protects destructive actions (database reset, replace import) |
 | Viewer PIN | Optional 4–8 digit PIN that lets anyone open `/view` in a browser for read-only access to results without a token link |
+| Interface PIN | Optional 4–8 digit PIN that must be entered before accessing the main scanner interface. Anyone reaching the scanner URL is redirected to a login page until the correct PIN is entered. Viewer access via `/view` is not affected. |
 
 ### Advanced scan options
 
@@ -542,7 +559,7 @@ Emails are moved to the user's **Deleted Items** folder in Exchange — they are
 Yes. You can scan local and SMB file shares without any M365 or Google connection. Open **Sources**, go to the **Filkilder** tab, and add your file paths.
 
 **What is delta scanning and when should I use it?**  
-Delta scanning uses Microsoft Graph change tokens to fetch only items modified since the last scan. It is ideal for regular (e.g. weekly) compliance checks after you have done a full baseline scan. Enable it in the Options section of the sidebar.
+Delta scanning uses Microsoft Graph change tokens (for M365) and the Google Drive Changes API (for Google Workspace) to fetch only items modified since the last scan. It is ideal for regular (e.g. weekly) compliance checks after you have done a full baseline scan. Enable it in the Options section of the sidebar.
 
 **The scan stopped — can I continue where it left off?**  
 Yes. When you restart the scan, a yellow banner will offer to resume from the checkpoint. Click **▶ Genoptag** to continue. If you prefer to start over, click **Start fresh**.
@@ -559,9 +576,12 @@ In the accounts section of the sidebar, there is an **+ Tilføj konto manuelt** 
 **Is the scanner running? I cannot see a progress bar.**  
 Check the activity log at the bottom of the screen. If a scan is running it will show messages there. If you see nothing, the scan may have completed or not started. Also check that you have at least one source ticked and at least one account selected.
 
+**Can I password-protect the scanner so students or colleagues cannot access it on the network?**  
+Yes. Go to **Settings → Security → Interface PIN** and set a 4–8 digit PIN. From that point on, anyone who opens the scanner URL in a browser is shown a PIN entry page and cannot proceed without the correct code. This is separate from the Admin PIN (which protects destructive actions) and the Viewer PIN (which protects read-only access). Existing viewer token links still work without the interface PIN.
+
 **Can a reviewer tag dispositions without access to the scan controls?**  
 Yes. Use the **🔗 Share** button to create a read-only viewer link or set a Viewer PIN in Settings → Security. The reviewer opens the link in their browser and can browse results and tag dispositions without seeing credentials, sources, or scan buttons. See section 10 for details.
 
 ---
 
-*GDPR Scanner v1.6.17 — for technical setup and configuration see README.md*
+*GDPR Scanner v1.6.20 — for technical setup and configuration see README.md*

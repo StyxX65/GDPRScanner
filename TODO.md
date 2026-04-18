@@ -6,6 +6,30 @@ Quick overview of what's still to be done.
 
 ## Recently completed
 
+### Bulk disposition tagging + disposition stats ✅
+Select mode (filter bar "Vælg" button) reveals per-card checkboxes. Bulk tag bar appears at bottom of grid when items are selected; a single disposition dropdown + Apply sends `POST /api/db/disposition/bulk`. Stats bar shows total · unreviewed · retain · delete · % reviewed and updates after every save.
+
+---
+
+### Google Drive delta scan ✅
+Drive scanning now uses the Google Drive Changes API when `delta` is enabled in scan options. First run records a start page token per user (`gdrive:{email}` in `delta.json`). Subsequent runs fetch only changed/new files. Invalid tokens fall back to a full scan automatically. Token save is load-then-merge to avoid overwriting concurrent M365 delta token writes.
+
+---
+
+### Auto-email after scheduled scan ✅ (already existed)
+The scheduler already has an "Email report automatically" checkbox (`auto_email` flag in job config). `_send_email_report()` in `scan_scheduler.py` handles it after each scheduled scan completes — tries Microsoft Graph first, falls back to SMTP. Enable it in the scheduler settings panel.
+
+---
+
+### PDF OCR OOM kills on large documents ✅
+`document_scanner` called `convert_from_path()` for the whole PDF before the processing loop, allocating all page images at once. A 50-page A4 at 300 DPI required ~1.3 GB in a single shot — enough to trigger the OS OOM killer.
+
+Fixed in `scan_pdf`, `redact_fitz_pdf`, and `redact_pdf`:
+- Replaced bulk pre-render with `convert_from_path(first_page=N, last_page=N)` inside the loop — one page in memory at a time
+- Added `_ocr_mem_ok()` guard (checks `psutil.virtual_memory().available >= 500 MB`) before each render; pages that fail the check are skipped and recorded as `"skipped"` in `page_methods` with a printed warning
+
+---
+
 ### Memory exhaustion during large M365 scans ✅
 Six root causes fixed in `scan_engine.py` and `document_scanner.py`:
 - Email body HTML stripped at collection time (`body` key deleted from each message dict before it enters `work_items`; plain text stored as `_precomputed_body` instead)
@@ -79,6 +103,11 @@ Review results from any past scan session without running a new scan.
 
 ### Gmail SMTP error message when App Password already in use ✅
 The `535` auth error from Gmail fires for wrong app password, revoked app password, spaces in the 16-char code, and wrong username — all indistinguishable at the SMTP level. The old message unconditionally told users to "create an App Password", which is unhelpful when they already have one. Both the `smtp_test` and `send_report` error handlers now emit a Gmail-specific message that lists the three common causes and links to the App Password page for regeneration.
+
+---
+
+### Interface PIN ✅
+Optional session-level authentication gate for the main scanner interface. Set in **Settings → Security → Interface PIN**. When set, any request to the main UI or API redirects to `/login` until the correct PIN is entered. `/view` and all viewer auth routes are exempt. Salted SHA-256 hash stored in `config.json`. Rate-limited: 5 failures per IP per 5 minutes.
 
 ---
 

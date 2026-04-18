@@ -276,6 +276,44 @@ def _admin_pin_is_set() -> bool:
     return bool(_get_admin_pin_hash())
 
 
+# ── Interface PIN ─────────────────────────────────────────────────────────────
+# Salted SHA-256, stored in config.json under "interface_pin".
+# When set, the main web interface requires PIN authentication before the
+# index page or any /api/* route is accessible (viewer routes are exempt).
+
+_INTERFACE_PIN_KEY = "interface_pin"
+
+
+def get_interface_pin_hash() -> "dict | None":
+    """Return the stored interface PIN hash dict, or None if not set."""
+    return _load_config().get(_INTERFACE_PIN_KEY)
+
+
+def set_interface_pin(pin: str) -> None:
+    import secrets as _sec
+    if not pin:
+        raise ValueError("PIN must not be empty")
+    salt = _sec.token_hex(16)
+    h    = _hashlib.sha256((salt + pin).encode()).hexdigest()
+    cfg  = _load_config()
+    cfg[_INTERFACE_PIN_KEY] = {"hash": h, "salt": salt}
+    _save_config(cfg)
+
+
+def verify_interface_pin(pin: str) -> bool:
+    """Return True if *pin* matches the stored hash."""
+    meta = get_interface_pin_hash()
+    if not meta:
+        return False
+    return _hashlib.sha256((meta["salt"] + pin).encode()).hexdigest() == meta["hash"]
+
+
+def clear_interface_pin() -> None:
+    cfg = _load_config()
+    cfg.pop(_INTERFACE_PIN_KEY, None)
+    _save_config(cfg)
+
+
 def _load_config() -> dict:
     if _CONFIG_FILE.exists():
         try:

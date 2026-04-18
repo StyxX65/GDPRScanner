@@ -14,6 +14,10 @@ from app_config import (
     set_viewer_pin,
     verify_viewer_pin,
     clear_viewer_pin,
+    get_interface_pin_hash,
+    set_interface_pin,
+    verify_interface_pin,
+    clear_interface_pin,
 )
 
 bp = Blueprint("viewer", __name__)
@@ -158,6 +162,44 @@ def pin_clear():
         if not verify_viewer_pin(str(body.get("current_pin", "")).strip()):
             return jsonify({"error": "current PIN is incorrect"}), 403
     clear_viewer_pin()
+    return jsonify({"ok": True})
+
+
+# ── Interface PIN management endpoints ───────────────────────────────────────
+
+@bp.route("/api/interface/pin", methods=["GET"])
+def interface_pin_status():
+    """Return whether an interface PIN is currently set."""
+    return jsonify({"pin_set": bool(get_interface_pin_hash())})
+
+
+@bp.route("/api/interface/pin", methods=["POST"])
+def interface_pin_set():
+    """Set or change the interface PIN.
+    Body: {pin: "...", current_pin: "..."}
+    current_pin required only when a PIN is already set.
+    """
+    body = request.get_json(silent=True) or {}
+    new_pin = str(body.get("pin", "")).strip()
+    if not new_pin:
+        return jsonify({"error": "pin required"}), 400
+    if not new_pin.isdigit() or not (4 <= len(new_pin) <= 8):
+        return jsonify({"error": "PIN must be 4–8 digits"}), 400
+    if get_interface_pin_hash():
+        if not verify_interface_pin(str(body.get("current_pin", "")).strip()):
+            return jsonify({"error": "current PIN is incorrect"}), 403
+    set_interface_pin(new_pin)
+    return jsonify({"ok": True})
+
+
+@bp.route("/api/interface/pin", methods=["DELETE"])
+def interface_pin_clear():
+    """Remove the interface PIN.  Requires current PIN if one is set."""
+    body = request.get_json(silent=True) or {}
+    if get_interface_pin_hash():
+        if not verify_interface_pin(str(body.get("current_pin", "")).strip()):
+            return jsonify({"error": "current PIN is incorrect"}), 403
+    clear_interface_pin()
     return jsonify({"ok": True})
 
 
