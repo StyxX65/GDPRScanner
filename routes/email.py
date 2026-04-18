@@ -164,6 +164,12 @@ def smtp_test():
     use_tls   = bool(saved.get("use_tls", True)) and not use_ssl
 
     if not host:
+        if graph_error_str:
+            return jsonify({"error": (
+                f"Microsoft Graph email failed: {graph_error_str}\n\n"
+                "Make sure Mail.Send is added to your Azure app registration and admin consent has been granted:\n"
+                "Azure AD → App registrations → [your app] → API permissions → Add → Microsoft Graph → Mail.Send → Grant admin consent."
+            )}), 400
         return jsonify({"error": "No SMTP host configured. To send via Microsoft 365 Graph (no SMTP needed), add Mail.Send to your Azure app registration."}), 400
 
     try:
@@ -210,11 +216,33 @@ def smtp_test():
                        "(Users → Active users → [user] → Mail → Manage email apps → Authenticated SMTP), "
                        "or add Mail.Send to your Azure app to use Graph instead.")
         elif (_personal_ms or _gmail_host) and _auth_err:
-            provider = "Microsoft" if _personal_ms else "Google"
-            url = "account.microsoft.com/security" if _personal_ms else "myaccount.google.com → Security → 2-Step Verification"
-            err_str = (f"Authentication failed — {provider} blocks regular passwords for SMTP when MFA is enabled.\n\n"
-                       f"Fix: create an App Password at {url} → App passwords "
-                       f"and use that instead of your normal password.")
+            if _gmail_host:
+                _gws_account = "@gmail.com" not in username.lower() and "@googlemail.com" not in username.lower()
+                if _gws_account:
+                    err_str = ("Google Workspace SMTP authentication failed.\n\n"
+                               "Your account uses a custom domain via Google Workspace. "
+                               "SMTP access is controlled by your organisation's Google Workspace admin, not your personal account settings.\n\n"
+                               "Ask your Google Workspace admin to:\n"
+                               "  • Enable 2-Step Verification for your account (required for App Passwords)\n"
+                               "  • Allow users to manage their own App Passwords (Admin console → Security → 2-Step Verification)\n"
+                               "  • Or configure SMTP relay: Admin console → Apps → Google Workspace → Gmail → Routing → SMTP relay service\n\n"
+                               "If App Passwords are available for your account, generate one at "
+                               "myaccount.google.com → Security → 2-Step Verification → App passwords "
+                               "and use it instead of your normal password.")
+                else:
+                    err_str = ("Gmail SMTP authentication failed.\n\n"
+                               "Google requires an App Password for SMTP — your normal password will not work.\n\n"
+                               "If you are already using an App Password, check:\n"
+                               "  • No spaces — the 16-character code must be entered without spaces\n"
+                               "  • The App Password has not been revoked — generate a new one at "
+                               "myaccount.google.com → Security → 2-Step Verification → App passwords\n"
+                               "  • The correct username (your full Gmail address, e.g. you@gmail.com)\n"
+                               "  • Port 587 with STARTTLS, or port 465 with SSL")
+            else:
+                url = "account.microsoft.com/security"
+                err_str = (f"Authentication failed — Microsoft blocks regular passwords for SMTP when MFA is enabled.\n\n"
+                           f"Fix: create an App Password at {url} → App passwords "
+                           f"and use that instead of your normal password.")
         elif graph_error_str:
             err_str = f"SMTP: {err_str} | Graph also unavailable (Mail.Send not granted)"
         return jsonify({"error": err_str}), 200
@@ -295,9 +323,32 @@ def send_report():
             err = (f"{err}\n\nTip: Enable SMTP AUTH for this mailbox in the Microsoft 365 admin centre, "
                    "or connect to M365 first so the scanner can send via Microsoft Graph instead.")
         elif (_personal_ms_2 or _gmail_2) and _auth_err_2:
-            provider2 = "Microsoft" if _personal_ms_2 else "Google"
-            url2 = "account.microsoft.com/security" if _personal_ms_2 else "myaccount.google.com → Security → 2-Step Verification"
-            err = (f"Authentication failed — {provider2} blocks regular passwords for SMTP when MFA is enabled.\n\n"
-                   f"Fix: create an App Password at {url2} → App passwords "
-                   f"and use that instead of your normal password.")
+            if _gmail_2:
+                _uname2 = smtp_cfg.get("username", "").lower()
+                _gws2   = "@gmail.com" not in _uname2 and "@googlemail.com" not in _uname2
+                if _gws2:
+                    err = ("Google Workspace SMTP authentication failed.\n\n"
+                           "Your account uses a custom domain via Google Workspace. "
+                           "SMTP access is controlled by your organisation's Google Workspace admin, not your personal account settings.\n\n"
+                           "Ask your Google Workspace admin to:\n"
+                           "  • Enable 2-Step Verification for your account (required for App Passwords)\n"
+                           "  • Allow users to manage their own App Passwords (Admin console → Security → 2-Step Verification)\n"
+                           "  • Or configure SMTP relay: Admin console → Apps → Google Workspace → Gmail → Routing → SMTP relay service\n\n"
+                           "If App Passwords are available for your account, generate one at "
+                           "myaccount.google.com → Security → 2-Step Verification → App passwords "
+                           "and use it instead of your normal password.")
+                else:
+                    err = ("Gmail SMTP authentication failed.\n\n"
+                           "Google requires an App Password for SMTP — your normal password will not work.\n\n"
+                           "If you are already using an App Password, check:\n"
+                           "  • No spaces — the 16-character code must be entered without spaces\n"
+                           "  • The App Password has not been revoked — generate a new one at "
+                           "myaccount.google.com → Security → 2-Step Verification → App passwords\n"
+                           "  • The correct username (your full Gmail address, e.g. you@gmail.com)\n"
+                           "  • Port 587 with STARTTLS, or port 465 with SSL")
+            else:
+                url2 = "account.microsoft.com/security"
+                err = (f"Authentication failed — Microsoft blocks regular passwords for SMTP when MFA is enabled.\n\n"
+                       f"Fix: create an App Password at {url2} → App passwords "
+                       f"and use that instead of your normal password.")
         return jsonify({"error": err}), 500

@@ -502,7 +502,7 @@ function _sseWatchdog() {
     }
     if (!_initialStatusChecked) {
       _initialStatusChecked = true;
-      if (!status.running) loadLastScanSummary();
+      if (!status.running) window.loadHistorySession?.(null);
     }
     // When no scan is running, we still keep polling — the SSE connection
     // may have died and we need to detect the *next* scheduled scan.

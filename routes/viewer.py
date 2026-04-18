@@ -78,9 +78,27 @@ def create_token():
     if not isinstance(raw_scope, dict):
         return jsonify({"error": "scope must be an object"}), 400
     role = str(raw_scope.get("role", "")).strip()
+    # user may be a single email string (legacy) or a list of email strings
+    raw_user = raw_scope.get("user", "")
+    if isinstance(raw_user, str):
+        user_emails = [raw_user.strip().lower()] if raw_user.strip() else []
+    elif isinstance(raw_user, list):
+        user_emails = [str(e).strip().lower() for e in raw_user if str(e).strip()]
+    else:
+        user_emails = []
+    display_name = str(raw_scope.get("display_name", "")).strip()
+    if role and user_emails:
+        return jsonify({"error": "scope.role and scope.user are mutually exclusive"}), 400
     if role not in ("", "student", "staff"):
         return jsonify({"error": "scope.role must be '', 'student', or 'staff'"}), 400
-    scope = {"role": role} if role else {}
+    if user_emails and not all("@" in e for e in user_emails):
+        return jsonify({"error": "scope.user entries must be valid email addresses"}), 400
+    if user_emails:
+        scope = {"user": user_emails, "display_name": display_name or user_emails[0]}
+    elif role:
+        scope = {"role": role}
+    else:
+        scope = {}
     entry = create_viewer_token(label=label, expires_days=expires_days, scope=scope)
     return jsonify(entry), 201
 

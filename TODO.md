@@ -48,17 +48,37 @@ Fixed by adding `M365DriveNotFound(M365Error)` exception, raising it from `_get(
 
 ---
 
-### #34 — User-scoped viewer tokens
-Extend viewer token scope from `{"role": "student"|"staff"}` to also support `{"user": "alice@school.dk"}`, filtering `flagged_items` by `account_id`. Lets a single employee see only their own flagged files.
+### #34 — User-scoped viewer tokens ✅
+Viewer token scope extended to `{"user": ["m365@…", "gws@…"], "display_name": "Alice Smith"}`, filtering `flagged_items` by `account_id IN (list)`. Lets a single employee see only their own flagged files across both M365 and Google Workspace.
 
-**Infrastructure already in place:** `account_id` is an indexed column on `flagged_items`, populated for M365 (UPN) and Google (email). File-scan items have `account_id = ""` and won't appear in user-scoped views — document this in the token-creation UI.
-
-**Changes needed:**
-1. Token creation UI — add a "specific user" option (email input) alongside the role dropdown
-2. `GET /api/db/flagged` — filter by `account_id` when `session["viewer_scope"].get("user")` is set (same pattern as existing role filter)
-3. Viewer header — show locked identity (similar to locked `#filterRole` for role-scoped tokens)
+**Implemented:**
+1. Scope format — `user` is a list of email strings (one per platform); `display_name` stored for UI display. Legacy single-string format coerced to list automatically.
+2. Token creation UI — scope-type selector (`All` / `Role` / `User`) reveals either the role select or a searchable name autocomplete. Autocomplete filters `S._allUsers` by display name or email; rows show name + both emails for dual-platform users. Selected user's full name fills the input; both emails stored in the scope.
+3. `GET /api/db/flagged` — filters `WHERE account_id IN (scope.user set)`, covering items from both platforms.
+4. Viewer header — `#viewerIdentityBadge` shows `scope.display_name` (full name); `#filterRole` hidden.
+5. `POST /api/viewer/tokens` — validates all entries in `scope.user` contain `@`; rejects combined `role`+`user` scope.
+6. Token list — shows display name badge; falls back to emails joined with `, `.
 
 **Size:** Small · **Priority:** Medium
+
+---
+
+### Scan history browser ✅
+Review results from any past scan session without running a new scan.
+
+**Implemented:**
+1. `gdpr_db.py` — `get_sessions(limit=50, window_seconds=300)`: groups `scans` rows into 300 s windows (same logic as `get_session_items`), returns newest-first list with `ref_scan_id` (highest scan_id in group), timestamps, sources set, flagged count, total scanned, and a delta flag.
+2. `gdpr_db.py` — `get_session_items(ref_scan_id=N)`: when `ref_scan_id` given, anchors the 300 s window to that scan's `started_at` instead of the latest scan.
+3. `GET /api/db/sessions` (new endpoint in `routes/database.py`) — returns the sessions list; viewer-mode sessions share the same `GET /api/db/flagged?ref=N` endpoint with scope enforcement intact.
+4. `static/js/history.js` (new module) — `loadHistorySession(refScanId)`, `openHistoryPicker()`, `closeHistoryPicker()`, `exitHistoryMode()`, `invalidateHistoryCache()` all exposed on `window.*`. Session cache (`_sessions`) invalidated by all `*_done` SSE handlers so the picker stays fresh after a new scan.
+5. History banner (`#historyBanner`) — shows session date/time, sources, item count; "Sessions" button opens picker dropdown; "Latest scan" button appears only when not already viewing the latest.
+6. Auto-load on page load — `results.js` calls `window.loadHistorySession?.(null)` when the SSE watchdog detects `!status.running`; `null` resolves to the latest completed session.
+7. Live→history transition: clicking a session in the picker sets `S._historyRefScanId` and shows the banner. History→live transition: `startScan()` calls `window.exitHistoryMode?.()`.
+
+---
+
+### Gmail SMTP error message when App Password already in use ✅
+The `535` auth error from Gmail fires for wrong app password, revoked app password, spaces in the 16-char code, and wrong username — all indistinguishable at the SMTP level. The old message unconditionally told users to "create an App Password", which is unhelpful when they already have one. Both the `smtp_test` and `send_report` error handlers now emit a Gmail-specific message that lists the three common causes and links to the App Password page for regeneration.
 
 ---
 

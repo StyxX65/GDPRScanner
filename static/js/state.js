@@ -28,4 +28,6 @@ export const S = {
   _pendingGoogleSources:  null,
   // Sources
   _fileSources:         [],
+  // History browser
+  _historyRefScanId:    null,   // null = live/SSE, number = viewing a past session
 };

@@ -327,6 +327,17 @@ document.addEventListener('DOMContentLoaded', applyI18n);
         <button onclick="clearCheckpointAndScan()" style="padding:3px 10px;border-radius:5px;background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:12px" data-i18n="m365_btn_start_fresh">Start fresh</button>
       </div>
 
+      <!-- History mode banner -->
+      <div id="historyBanner" style="display:none;align-items:center;gap:10px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border);font-size:12px">
+        <span style="font-size:11px;font-weight:600;color:var(--muted);flex-shrink:0" data-i18n="history_lbl">History</span>
+        <span id="historyBannerText" style="flex:1;font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+        <div data-history-wrap style="position:relative;flex-shrink:0">
+          <button id="historyPickerBtn" type="button" onclick="openHistoryPicker()" style="height:24px;padding:0 10px;background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;font-size:11px;cursor:pointer" data-i18n="history_btn_sessions">Sessions</button>
+          <div id="historyDropdown" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--surface);border:1px solid var(--border);border-radius:6px;z-index:9999;width:300px;max-height:260px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.25)"></div>
+        </div>
+        <button id="historyLatestBtn" type="button" onclick="loadHistorySession(null)" style="display:none;height:24px;padding:0 10px;background:none;border:1px solid var(--accent);color:var(--accent);border-radius:4px;font-size:11px;cursor:pointer;flex-shrink:0" data-i18n="history_btn_latest">Latest scan</button>
+      </div>
+
       <!-- Filter bar — full width, above grid + preview -->
       <div class="filter-bar" id="filterBar">
           <input type="text" id="filterSearch" data-i18n-placeholder="m365_filter_search" placeholder="Search…" oninput="applyFilters()">
@@ -362,6 +373,7 @@ document.addEventListener('DOMContentLoaded', applyI18n);
             <option value="1" data-i18n="m365_filter_special_only">⚠ Art. 9 only</option>
             <option value="photo" data-i18n="m365_filter_photo_only">📷 Photos / biometric</option>
           </select>
+          <span id="viewerIdentityBadge" style="display:none;font-size:11px;padding:2px 8px;border-radius:10px;background:var(--muted);color:#fff;font-weight:600;white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis"></span>
           <select id="filterRole" onchange="applyFilters()" style="width:120px">
             <option value="" data-i18n="m365_filter_all_roles">All roles</option>
             <option value="staff" data-i18n="m365_filter_staff">Ansatte</option>
@@ -882,13 +894,25 @@ document.addEventListener('DOMContentLoaded', applyI18n);
           <div style="font-size:11px;color:var(--muted);margin-bottom:3px" data-i18n="share_label_lbl">Label (optional)</div>
           <input id="shareLabel" type="text" data-i18n-placeholder="share_label_placeholder" placeholder="e.g. DPO review 2026" style="width:100%;box-sizing:border-box;font-size:12px;padding:5px 8px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text)">
         </div>
-        <div style="width:100px">
-          <div style="font-size:11px;color:var(--muted);margin-bottom:3px" data-i18n="share_scope_lbl">Role scope</div>
-          <select id="shareScope" style="width:100%;font-size:12px;padding:5px 6px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text)">
-            <option value="" data-i18n="share_scope_all">All roles</option>
-            <option value="staff" data-i18n="share_scope_staff">Ansatte</option>
-            <option value="student" data-i18n="share_scope_student">Elever</option>
+        <div style="width:120px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px" data-i18n="share_scope_lbl">Scope</div>
+          <select id="shareScopeType" onchange="_shareScopeTypeChanged()" style="width:100%;font-size:12px;padding:5px 6px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text)">
+            <option value="" data-i18n="share_scope_all">All</option>
+            <option value="role" data-i18n="share_scope_type_role">Role</option>
+            <option value="user" data-i18n="share_scope_type_user">User</option>
           </select>
+        </div>
+        <div id="shareScopeRoleWrap" style="width:110px;display:none">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px" data-i18n="share_scope_role_lbl">Role</div>
+          <select id="shareScope" style="width:100%;font-size:12px;padding:5px 6px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text)">
+            <option value="staff" data-i18n="share_scope_staff">Staff</option>
+            <option value="student" data-i18n="share_scope_student">Students</option>
+          </select>
+        </div>
+        <div id="shareScopeUserWrap" style="flex:1.5;min-width:140px;display:none;position:relative">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px" data-i18n="share_scope_user_lbl">User email</div>
+          <input id="shareScopeUser" type="text" autocomplete="off" data-i18n-placeholder="share_scope_user_placeholder" placeholder="alice@school.dk" style="width:100%;box-sizing:border-box;font-size:12px;padding:5px 8px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text)">
+          <div id="shareScopeUserDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;margin-top:2px;background:var(--surface);border:1px solid var(--border);border-radius:6px;z-index:9999;max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.3)"></div>
         </div>
         <div style="width:100px">
           <div style="font-size:11px;color:var(--muted);margin-bottom:3px" data-i18n="share_expires_in">Expires in</div>
@@ -1303,5 +1327,6 @@ document.addEventListener('DOMContentLoaded', applyI18n);
 <script type="module" src="/static/js/scheduler.js"></script>
 <script type="module" src="/static/js/connector.js"></script>
 <script type="module" src="/static/js/viewer.js"></script>
+<script type="module" src="/static/js/history.js"></script>
 </body>
 </html>

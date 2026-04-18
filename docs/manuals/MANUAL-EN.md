@@ -1,6 +1,6 @@
 # GDPR Scanner — User Manual
 
-Version 1.6.15
+Version 1.6.17
 
 ---
 
@@ -228,6 +228,18 @@ Use the filter bar above the results to narrow down what you see:
 - **Risk dropdown** — show only Art. 9, photos, GPS, or high-risk items.
 - **Role dropdown** — show only **Ansatte** (staff) or **Elever** (students). Also scopes exports: clicking **Excel** or **Art.30** while a role is selected produces a report containing only that group, with `_elever` or `_ansatte` appended to the filename.
 
+### Browsing past scan sessions
+
+Once a scan has completed, you can review results from any earlier scan session without running a new scan.
+
+- Click the **Sessions** button in the history banner (which appears above the results grid after a scan completes) to open the session picker.
+- Each row shows the date and time, which sources were scanned, and how many items were flagged. A **Δ** badge marks delta scans; **Latest** marks the most recent session.
+- Click any row to load that session's results into the grid. A history banner replaces the progress bar, showing the session details.
+- Click **Latest scan** in the banner to jump back to the most recent session.
+- Starting a new scan automatically exits history mode and switches back to live results.
+
+All filters, exports, and disposition tagging work normally while browsing past sessions.
+
 ---
 
 ## 6. Reviewing and Tagging Results
@@ -359,7 +371,10 @@ You can give a DPO, school principal, or compliance coordinator read-only access
 Click the **🔗** button in the top-right of the top bar to open the Share panel.
 
 1. Optionally enter a **Label** to identify who the link is for (e.g. "DPO review April 2026").
-2. Choose a **Role scope** — **All roles**, **Ansatte** (staff only), or **Elever** (students only). A scoped link restricts the recipient to items belonging to that role group; they cannot see any other items, and the role filter is locked in their view.
+2. Choose a **Scope**:
+   - **All roles** — the recipient sees all flagged items.
+   - **Ansatte** / **Elever** — the recipient sees only items belonging to that role group. The role filter is locked in their view.
+   - **User** — the recipient sees only the items belonging to a specific employee. Select the person from the search box; the scanner matches both their M365 and Google Workspace email addresses automatically. Use this when you want to give an individual employee access to their own scan results.
 3. Choose an **Expiry** — 7 days, 30 days, 90 days, 1 year, or Never.
 4. Click **Create**. A unique link is generated: `http://host:5100/view?token=…`
 5. Click **Copy** to copy the link to your clipboard, then send it to the reviewer.
@@ -549,4 +564,4 @@ Yes. Use the **🔗 Share** button to create a read-only viewer link or set a Vi
 
 ---
 
-*GDPR Scanner v1.6.14 — for technical setup and configuration see README.md*
+*GDPR Scanner v1.6.17 — for technical setup and configuration see README.md*

@@ -399,6 +399,7 @@ function _attachScanListeners(source) {
     if (d.delta) checkDeltaStatus();
     markOverdueCards();
     loadTrend();
+    window.invalidateHistoryCache?.();
   });
   source.addEventListener('google_scan_done', function(e) {
     var d = JSON.parse(e.data);
@@ -427,6 +428,7 @@ function _attachScanListeners(source) {
     log('Google scan complete \u2014 ' + d.flagged_count + ' flagged of ' + d.total_scanned, 'ok');
     markOverdueCards();
     loadTrend();
+    window.invalidateHistoryCache?.();
   });
   source.addEventListener('file_scan_done', function(e) {
     var d = JSON.parse(e.data);
@@ -452,9 +454,10 @@ function _attachScanListeners(source) {
         applyFilters();
       }
     }
-    log('Bestandsscan fuldfÃ¸rt \u2014 ' + d.flagged_count + ' flagget af ' + d.total_scanned, 'ok');
+    log('Bestandsscan fuldf\u00f8rt \u2014 ' + d.flagged_count + ' flagget af ' + d.total_scanned, 'ok');
     markOverdueCards();
     loadTrend();
+    window.invalidateHistoryCache?.();
   });
   // sse_replay_done marks end of buffer replay — log a note so the user knows
   // earlier events above were replayed from an already-running scan
@@ -520,6 +523,8 @@ function startScan(resume) {
     document.getElementById('statsSection').style.display = 'none';
     document.getElementById('statsPill').style.display = 'none';
   }
+  // Exit history mode — live SSE takes over
+  window.exitHistoryMode?.();
   document.getElementById('resumeBanner').style.display = 'none';
   document.getElementById('logPanel').innerHTML = '<div class="log-line log-live" id="logLive" style="display:none"></div>';
   try { sessionStorage.removeItem(_LOG_SESSION_KEY); } catch(e) {}

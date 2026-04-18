@@ -182,11 +182,11 @@ def run_file_scan(source: dict):
     _db_scan_id: int | None = None
     if _db:
         try:
-            _db_scan_id = _db.begin_scan(
-                sources=[source.get("source_type", "local")],
-                user_count=0,
-                options=source,
-            )
+            _db_scan_id = _db.begin_scan({
+                "sources":  [source.get("source_type", "local")],
+                "user_ids": [],
+                "options":  source,
+            })
         except Exception as e:
             logger.error("[db] start_scan failed: %s", e)
 

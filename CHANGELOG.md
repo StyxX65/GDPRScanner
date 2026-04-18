@@ -7,6 +7,62 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [1.6.20] — 2026-04-18
+
+### Fixed
+
+- **Graph `sendMail` reported as failure despite email being delivered** — `_post()` in `m365_connector.py` called `r.json()` unconditionally after `raise_for_status()`. The Graph `sendMail` endpoint returns HTTP 202 with an empty body on success, causing `json.JSONDecodeError: Expecting value: line 1 column 1 (char 0)`. This was caught by the `smtp_test` exception handler and surfaced as an error even though the email had been sent. Fixed by returning `r.json() if r.content else {}` so any Graph endpoint that responds with no body (sendMail, delete operations, etc.) is handled correctly.
+
+- **Graph error hidden when SMTP host not configured** — when Graph failed and no SMTP host was saved, `smtp_test` returned the generic "No SMTP host configured" message, swallowing the actual Graph error. The `if not host` branch now surfaces the Graph exception text alongside the Mail.Send permission guidance so the real cause is visible.
+
+- **Gmail vs Google Workspace SMTP error messages** — the auth failure handler now detects whether the username is a personal Gmail address (`@gmail.com`) or a Google Workspace custom-domain account, and shows a different message for each. Personal Gmail: existing App Password troubleshooting steps. Google Workspace: explains that SMTP access is controlled by the Workspace admin console (2-Step Verification policy, SMTP relay service), not the user's personal security settings.
+
+---
+
+## [1.6.19] — 2026-04-18
+
+### Fixed
+
+- **Gmail SMTP error message misleading when App Password already in use** — the auth failure handler in both `smtp_test` and `send_report` unconditionally told the user to "create an App Password", even when they were already using one. Gmail returns the same `535` / `Username and Password not accepted` error for a wrong app password, a revoked app password, spaces left in the 16-character code, or a wrong username — none of which are helped by the old message. The Gmail branch now lists the three most common causes (spaces in the code, revoked password, wrong username) and still links to the App Password page to generate a new one. The Microsoft personal account branch is unchanged.
+
+---
+
+## [1.6.18] — 2026-04-18
+
+### Fixed
+
+- **Art.30 and Excel exports missing GWS and local/SMB sources** — two silent failures caused Google Workspace and file-scan results to be absent from all exports after a page reload.
+  - `routes/google_scan.py`: called `_db.end_scan()` (method does not exist on `GDPRDb` — the correct name is `finish_scan`). The resulting `AttributeError` was swallowed by the bare `except Exception: pass` guard, so `finished_at` was never written on GWS scan records. Since `get_session_items()` requires `finished_at IS NOT NULL`, every GWS scan was permanently invisible to both export functions.
+  - `routes/google_scan.py`: emitted `"scan_done"` at completion instead of `"google_scan_done"`, causing the M365 done handler to fire for Google scans and breaking the SSE teardown logic.
+  - `scan_engine.py` (`run_file_scan`): called `_db.begin_scan(sources=…, user_count=0, options=source)` with keyword arguments, but `begin_scan(self, options: dict)` only accepts a single positional dict. The `TypeError` was caught silently, leaving `_db_scan_id = None`; all subsequent `save_item` calls were skipped, so local and SMB items were never written to the database.
+
+---
+
+## [1.6.17] — 2026-04-18
+
+### Added
+
+- **Scan history browser** — results from any past scan session can now be reviewed without running a new scan. On page load, when no scan is running, the last completed session is automatically loaded into the results grid. A **History** banner appears above the filter bar showing the session date, scanned sources, and item count. A **Sessions** button in the banner opens a dropdown listing all past sessions newest-first, each showing date, time, source labels, item count, and Delta / Latest badges. Clicking a session loads its items. A **Latest scan** button (shown only when browsing a past session) jumps back to the most recent session. Starting a new scan exits history mode and takes over the grid with live SSE results. Session cache is invalidated on each scan completion so the picker always reflects the true state of the database.
+
+  - `gdpr_db.py` — new `get_sessions(limit, window_seconds)` groups all completed scans by the 300-second concurrent-scan window and returns session summaries newest-first. `get_session_items()` gains an optional `ref_scan_id` parameter to anchor the session window to any past scan.
+  - `routes/database.py` — new `GET /api/db/sessions`; `GET /api/db/flagged` now accepts `?ref=<scan_id>` to serve items for a specific historical session.
+  - `static/js/history.js` (new) — `loadHistorySession(refScanId)`, `openHistoryPicker()`, `closeHistoryPicker()`, `exitHistoryMode()`, `invalidateHistoryCache()` all exposed on `window`.
+  - `state.js` — `_historyRefScanId: null` tracks which session is currently displayed (`null` = live/SSE).
+  - `results.js` — initial status check calls `loadHistorySession(null)` instead of `loadLastScanSummary()`.
+  - `scan.js` — `startScan()` calls `exitHistoryMode()`; all three `*_done` handlers call `invalidateHistoryCache()`.
+
+- **User-scoped viewer tokens (#34)** — viewer token links can now be restricted to a specific person so the recipient sees only their own flagged files, across both M365 and Google Workspace. The Share modal's scope selector gains a **User** option that opens a searchable name autocomplete backed by the already-loaded `S._allUsers` list. Typing filters by display name or email; each row shows the person's full name, role badge, and all associated email addresses (M365 UPN and GWS email shown together for dual-platform users). Selecting a name fills the input with the display name and stores both email addresses internally. Scope is stored as `{"user": ["alice@m365.dk", "alice@gws.dk"], "display_name": "Alice Smith"}`. Server-side enforcement in `GET /api/db/flagged` filters `WHERE account_id IN (list)` so items from either platform are included. The viewer header shows the person's full name in a locked identity badge (`#viewerIdentityBadge`); `#filterRole` is hidden. Token rows in the Active links list show the display name badge. Free-text email entry still works as a fallback when no accounts are loaded. File-scan items (`account_id = ""`) never appear in user-scoped views — consistent with the existing role-scope behaviour.
+
+---
+
+## [1.6.16] — 2026-04-18
+
+### Added
+
+- **User-scoped viewer tokens (#34)** — viewer token links can now be restricted to a specific person so the recipient sees only their own flagged files, across both M365 and Google Workspace. The Share modal's scope selector gains a **User** option that opens a searchable name autocomplete backed by the already-loaded `S._allUsers` list. Typing filters by display name or email; each row shows the person's full name, role badge, and all associated email addresses (M365 UPN and GWS email shown together for dual-platform users). Selecting a name fills the input with the display name and stores both email addresses internally. Scope is stored as `{"user": ["alice@m365.dk", "alice@gws.dk"], "display_name": "Alice Smith"}`. Server-side enforcement in `GET /api/db/flagged` filters `WHERE account_id IN (list)` so items from either platform are included. The viewer header shows the person's full name in a locked identity badge (`#viewerIdentityBadge`); `#filterRole` is hidden. Token rows in the Active links list show the display name badge. Free-text email entry still works as a fallback when no accounts are loaded. File-scan items (`account_id = ""`) never appear in user-scoped views — consistent with the existing role-scope behaviour.
+
+---
+
 ## [1.6.15] — 2026-04-12
 
 ### Added

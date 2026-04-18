@@ -316,13 +316,13 @@ def _run_google_scan(options: dict):
                 broadcast("scan_error", {"file": f"Drive/{user_email}", "error": str(e)})
 
     elapsed = _time.monotonic() - t_start
-    broadcast("scan_done", {
+    broadcast("google_scan_done", {
         "flagged_count":  total_flagged,
         "total_scanned":  total_scanned,
         "elapsed_seconds": round(elapsed, 1),
     })
     if _db and _db_scan_id:
         try:
-            _db.end_scan(_db_scan_id, total_scanned, total_flagged)
+            _db.finish_scan(_db_scan_id, total_scanned)
         except Exception:
             pass

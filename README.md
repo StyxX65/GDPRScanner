@@ -42,7 +42,7 @@ an IDE with intelligent completion. The result is the author's work.
 - **Retention policy enforcement** — flag items older than a configurable retention period with a Overdue badge; supports both rolling and fiscal-year-aligned cutoffs (e.g. Bogføringsloven Dec 31); headless auto-delete via `--retention-years`
 - **Data subject lookup** — find all flagged items containing a specific CPR number across all scans; CPR is SHA-256 hashed before querying — never stored in plaintext
 - **Disposition tagging** — compliance officers can tag each flagged item with a legal basis (retain / delete-scheduled / deleted) directly from the preview panel
-- **Read-only viewer mode** — share scan results with a DPO or manager via a secure token URL (`/view?token=…`) or a numeric PIN; viewers see the full results grid and disposition panel but cannot scan, delete, or change settings. Tokens can be **role-scoped** (Ansatte / Elever) so a recipient can only see the items relevant to their remit
+- **Read-only viewer mode** — share scan results with a DPO or manager via a secure token URL (`/view?token=…`) or a numeric PIN; viewers see the full results grid and disposition panel but cannot scan, delete, or change settings. Tokens can be **role-scoped** (Ansatte / Elever) so a recipient only sees items for their group, or **user-scoped** so an individual employee only sees their own flagged files (supports dual M365 + Google Workspace identity)
 - **Article 30 report** — one-click export of a structured Word document (`.docx`) satisfying the GDPR Article 30 register of processing activities obligation
 - **SQLite results database** — scan results, CPR index, PII breakdown, disposition decisions, and scan history are persisted to `~/.gdprscanner/scanner.db` alongside the JSON cache, enabling cross-scan queries and trend tracking
 - **Built-in user manual** — click the **?** button in the top bar to open the manual in a dedicated window. Available in Danish and English. Printable via the browser's print function. Served from `MANUAL-DA.md` / `MANUAL-EN.md` at `/manual?lang=da|en` — always in sync with the installed version, no internet required. In the packaged desktop app the manual opens as a native pywebview window; in the browser it opens as a popup.
@@ -156,6 +156,17 @@ Each flagged item appears as a card showing:
 | **Role** | **All roles / Ansatte (staff) / Elever (students)** |
 
 The Role filter also scopes exports — selecting **Elever** before clicking **Excel** or **Art.30** produces a report containing only student items. The exported filename gets an `_elever` or `_ansatte` suffix so recipients can distinguish the files.
+
+#### Scan history browser
+
+Review results from any past scan session without running a new scan. A **Sessions** button appears in the banner above the results grid once a scan has completed.
+
+- Click **Sessions** to open the session picker — lists all past scans with date, sources, and item count. Each entry shows a **Δ** badge for delta scans and a **Latest** badge for the most recent session.
+- Click any session row to load its results into the grid. A history banner replaces the progress bar, showing the session date, sources scanned, and item count.
+- **Latest scan** button in the banner jumps back to the most recent session.
+- Starting a new scan automatically exits history mode and switches to live SSE results.
+- All filters, dispositions, and exports work normally while browsing history — the Role filter and viewer-scope enforcement still apply.
+- Viewer tokens work with history mode: `GET /api/db/flagged?ref=N` applies scope filtering the same way as the live endpoint.
 
 #### Delete items
 
@@ -311,7 +322,7 @@ Scan results are persisted to `~/.gdprscanner/scanner.db` (SQLite) automatically
 | `dispositions` | Compliance officer decisions per item |
 | `scan_history` | Aggregated stats per scan for trend tracking |
 
-**API endpoints:** `GET /api/db/stats`, `GET /api/db/trend`, `GET /api/db/scans`, `POST /api/db/subject`, `GET /api/db/overdue`, `POST /api/db/disposition`, `GET /api/db/disposition/<id>`
+**API endpoints:** `GET /api/db/stats`, `GET /api/db/trend`, `GET /api/db/scans`, `POST /api/db/subject`, `GET /api/db/overdue`, `POST /api/db/disposition`, `GET /api/db/disposition/<id>`, `GET /api/db/sessions`, `GET /api/db/flagged`
 
 If `gdpr_db.py` is not present, the scanner falls back to JSON-only mode silently.
 
@@ -573,7 +584,7 @@ pip install pytest
 pytest tests/
 ```
 
-**112 tests across 4 modules — all expected to pass.**
+**128 tests across 4 modules — all expected to pass.**
 
 | Module | Tests | Covers |
 |---|---|---|
@@ -610,8 +621,8 @@ See [SUGGESTIONS.md](SUGGESTIONS.md) for the full feature roadmap with implement
 | `scan_scheduler.py` | In-process APScheduler wrapper — multi-job scheduled scan engine |
 | `templates/index.html` | Single-page HTML shell — Jinja2 template. Two variables: `app_version`, `lang_json`. |
 | `static/style.css` | All application CSS — custom properties, layout, components, light/dark themes |
-| `static/js/state.js` | Shared mutable state module (`export const S`) — imported by all 11 feature modules |
-| `static/js/*.js` | 11 ES modules: `ui`, `log`, `users`, `auth`, `profiles`, `scan`, `results`, `sources`, `scheduler`, `connector`, `viewer` |
+| `static/js/state.js` | Shared mutable state module (`export const S`) — imported by all 12 feature modules |
+| `static/js/*.js` | 12 ES modules: `ui`, `log`, `users`, `auth`, `profiles`, `scan`, `results`, `sources`, `scheduler`, `connector`, `viewer`, `history` |
 | `static/app.js` | Archived JS monolith — no longer loaded |
 | `routes/__init__.py` | Blueprint package marker |
 | `routes/state.py` | Shared mutable state (`connector`, `flagged_items`, `LANG`, scan locks) — imported by all blueprints |
@@ -626,7 +637,7 @@ See [SUGGESTIONS.md](SUGGESTIONS.md) for the full feature roadmap with implement
 | `routes/email.py` | `/api/smtp/*` and `/api/send_report` |
 | `routes/database.py` | `/api/db/*`, `/api/admin/*`, `/api/preview`, `/api/thumb` |
 | `routes/export.py` | `/api/export_excel`, `/api/export_article30`, `/api/delete_bulk` |
-| `routes/viewer.py` | `/view`, `/api/viewer/tokens`, `/api/viewer/pin` — read-only viewer mode: token + PIN auth, share-link management, role-scoped tokens |
+| `routes/viewer.py` | `/view`, `/api/viewer/tokens`, `/api/viewer/pin` — read-only viewer mode: token + PIN auth, share-link management, role-scoped and user-scoped tokens |
 | `routes/app_routes.py` | `/api/about`, `/api/langs`, `/api/lang`, `/manual` |
 | `docs/manuals/MANUAL-EN.md` | End-user manual in English (15 sections) — served at `/manual?lang=en` |
 | `docs/manuals/MANUAL-DA.md` | End-user manual in Danish (15 sections) — served at `/manual?lang=da` |

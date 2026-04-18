@@ -473,7 +473,7 @@ class M365Connector:
                     msg = r.text[:200]
                 raise M365PermissionError(path, msg)
             r.raise_for_status()
-            return r.json()
+            return r.json() if r.content else {}
         raise _requests.exceptions.RetryError(f"Gave up after {self._MAX_RETRIES} attempts: {url}")
 
     def _get_bytes(self, url: str, _retry: bool = True) -> bytes:

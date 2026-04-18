@@ -70,6 +70,13 @@ def db_scans():
     return jsonify(_get_db().scans_list())
 
 
+@bp.route("/api/db/sessions")
+def db_sessions():
+    """List scan sessions (grouped concurrent scans), newest first."""
+    if not DB_OK: return jsonify([])
+    return jsonify(_get_db().get_sessions())
+
+
 @bp.route("/api/db/subject", methods=["POST"])
 def db_subject_lookup():
     """Find all items containing a given CPR number.
@@ -154,12 +161,21 @@ def db_flagged_items():
     from flask import session as _session
     scope     = _session.get("viewer_scope", {})
     role_filt = scope.get("role", "") if isinstance(scope, dict) else ""
-    items = _get_db().get_session_items()
+    # user may be a list of emails (current) or a legacy single string
+    raw_user  = scope.get("user", "") if isinstance(scope, dict) else ""
+    if isinstance(raw_user, list):
+        user_filt = set(e.lower() for e in raw_user if e)
+    else:
+        user_filt = {raw_user.lower()} if raw_user else set()
+    ref_scan_id = request.args.get("ref", type=int)
+    items = _get_db().get_session_items(ref_scan_id=ref_scan_id)
     # Normalise JSON-encoded columns the same way scan_engine does for SSE cards
     import json as _json
     out = []
     for row in items:
         if role_filt and row.get("role", "") != role_filt:
+            continue
+        if user_filt and (row.get("account_id", "") or "").lower() not in user_filt:
             continue
         row["special_category"] = _json.loads(row.get("special_category") or "[]") if isinstance(row.get("special_category"), str) else row.get("special_category", [])
         row["exif"] = _json.loads(row.get("exif_json") or "{}") if isinstance(row.get("exif_json"), str) else row.get("exif", {})

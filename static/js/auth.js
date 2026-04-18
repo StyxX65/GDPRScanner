@@ -165,6 +165,18 @@ if (window.VIEWER_MODE) {
     const _fr = document.getElementById('filterRole');
     if (_fr) { _fr.value = _scopeRole; _fr.style.display = 'none'; }
   }
+  // If this token is user-scoped, show a locked identity badge and hide irrelevant filters.
+  const _scopeUserRaw = (window.VIEWER_SCOPE || {}).user;
+  if (_scopeUserRaw && (Array.isArray(_scopeUserRaw) ? _scopeUserRaw.length : _scopeUserRaw)) {
+    const _fr = document.getElementById('filterRole');
+    if (_fr) _fr.style.display = 'none';
+    const _badge = document.getElementById('viewerIdentityBadge');
+    if (_badge) {
+      _badge.textContent = (window.VIEWER_SCOPE || {}).display_name
+        || (Array.isArray(_scopeUserRaw) ? _scopeUserRaw[0] : _scopeUserRaw);
+      _badge.style.display = '';
+    }
+  }
   try { loadTrend(); } catch(e) {}
 } else {
 (async function() {

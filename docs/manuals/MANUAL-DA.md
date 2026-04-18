@@ -1,6 +1,6 @@
 # GDPR Scanner — Brugermanual
 
-Version 1.6.15
+Version 1.6.17
 
 ---
 
@@ -228,6 +228,18 @@ Brug filterbjælken over resultaterne til at indsnævre visningen:
 - **Risiko** — vis kun Art. 9, fotos, GPS eller høj-risiko-elementer.
 - **Rolle** — vis kun **Ansatte** eller **Elever**. Påvirker også eksporten: klikker du på **Excel** eller **Art.30**, mens en rolle er valgt, indeholder rapporten kun den pågældende gruppe, og filnavnet får suffikset `_elever` eller `_ansatte`.
 
+### Gennemse tidligere scanningssessioner
+
+Når en scanning er afsluttet, kan du gennemse resultaterne fra en tidligere scanningssession uden at køre en ny scanning.
+
+- Klik på **Sessioner**-knappen i historikbanneret (der vises over resultatgitteret, når en scanning er afsluttet) for at åbne sessionsvælgeren.
+- Hver række viser dato og tidspunkt, hvilke kilder der blev scannet, og hvor mange elementer der blev fundet. Et **Δ**-mærkat angiver delta-scanninger; **Seneste** markerer den nyeste session.
+- Klik på en række for at indlæse den pågældende sessions resultater i gitteret. Et historikbanner erstatter statuslinjen med sessionens oplysninger.
+- Klik på **Seneste scanning** i banneret for at vende tilbage til den nyeste session.
+- Start af en ny scanning afslutter automatisk historiktilstanden og skifter til live-resultater.
+
+Alle filtre, eksporter og dispositionsmærkning fungerer normalt, mens du gennemser tidligere sessioner.
+
 ---
 
 ## 6. Gennemgang og mærkning af fund
@@ -359,7 +371,10 @@ Du kan give en DPO, skoleleder eller compliance-koordinator skrivebeskyttet adga
 Klik på **🔗**-knappen øverst til højre i topbjælken for at åbne delingspanelet.
 
 1. Angiv eventuelt en **Betegnelse** for at identificere, hvem linket er til (f.eks. "DPO-gennemgang april 2026").
-2. Vælg et **Rolleomfang** — **Alle roller**, **Ansatte** eller **Elever**. Et afgrænset link begrænser modtageren til elementer tilhørende den valgte rollegruppe; de kan ikke se andre elementer, og rollefilteret er låst i deres visning.
+2. Vælg et **Omfang**:
+   - **Alle roller** — modtageren ser alle fundne elementer.
+   - **Ansatte** / **Elever** — modtageren ser kun elementer tilhørende den valgte rollegruppe. Rollefilteret er låst i deres visning.
+   - **Bruger** — modtageren ser kun elementer tilhørende en bestemt medarbejder. Vælg personen fra søgefeltet; scanneren matcher automatisk både deres M365- og Google Workspace-e-mailadresser. Brug denne mulighed, når du vil give en enkelt medarbejder adgang til sine egne scanningsresultater.
 3. Vælg en **Udløbsdato** — 7 dage, 30 dage, 90 dage, 1 år eller Aldrig.
 4. Klik på **Opret**. Der genereres et unikt link: `http://host:5100/view?token=…`
 5. Klik på **Kopiér** for at kopiere linket til udklipsholderen, og send det til gennemgangeren.
@@ -549,4 +564,4 @@ Ja. Brug **🔗 Del**-knappen til at oprette et skrivebeskyttet viewer-link elle
 
 ---
 
-*GDPR Scanner v1.6.14 — teknisk opsætning og konfiguration: se README.md*
+*GDPR Scanner v1.6.17 — teknisk opsætning og konfiguration: se README.md*

@@ -442,17 +442,63 @@ class ScanDB:
             result.append(d)
         return result
 
-    def get_session_items(self, window_seconds: int = 300) -> list[dict]:
+    def get_sessions(self, limit: int = 50, window_seconds: int = 300) -> list[dict]:
+        """Return scan sessions (groups of concurrent scans) newest-first.
+
+        Concurrent M365 + Google + File scans each get their own scan_id but start
+        within seconds of each other.  This method groups them into logical sessions
+        by the same 300-second window used by get_session_items().
+        """
+        rows = self._connect().execute(
+            """SELECT id, started_at, finished_at, sources, flagged_count, total_scanned, delta
+               FROM scans WHERE finished_at IS NOT NULL ORDER BY started_at ASC"""
+        ).fetchall()
+        # Group consecutive scans started within window_seconds of each other
+        groups: list[list[dict]] = []
+        for r in rows:
+            d = dict(r)
+            d["sources"] = json.loads(d.get("sources") or "[]")
+            if groups and d["started_at"] - groups[-1][0]["started_at"] <= window_seconds:
+                groups[-1].append(d)
+            else:
+                groups.append([d])
+        # Build session summaries newest-first
+        sessions: list[dict] = []
+        for grp in reversed(groups):
+            ref = grp[-1]   # highest scan_id in group (last in ASC order)
+            sessions.append({
+                "ref_scan_id":   ref["id"],
+                "started_at":    grp[0]["started_at"],
+                "finished_at":   ref.get("finished_at"),
+                "sources":       list({s for g in grp for s in g["sources"]}),
+                "flagged_count": sum(g["flagged_count"] or 0 for g in grp),
+                "total_scanned": sum(g["total_scanned"] or 0 for g in grp),
+                "delta":         any(bool(g["delta"]) for g in grp),
+            })
+            if len(sessions) >= limit:
+                break
+        return sessions
+
+    def get_session_items(self, window_seconds: int = 300,
+                          ref_scan_id: int | None = None) -> list[dict]:
         """Return flagged items from all scans in the same session as the latest scan.
 
         A session is all scans whose started_at is within *window_seconds* of the
         most recently started completed scan.  This captures concurrent M365, Google,
         and file scans which each create their own scan_id but start within seconds
         of each other.
+
+        If *ref_scan_id* is given, the session is anchored to that scan's started_at
+        instead of the latest scan.
         """
-        row = self._connect().execute(
-            "SELECT started_at FROM scans WHERE finished_at IS NOT NULL ORDER BY id DESC LIMIT 1"
-        ).fetchone()
+        if ref_scan_id:
+            row = self._connect().execute(
+                "SELECT started_at FROM scans WHERE id=?", (ref_scan_id,)
+            ).fetchone()
+        else:
+            row = self._connect().execute(
+                "SELECT started_at FROM scans WHERE finished_at IS NOT NULL ORDER BY id DESC LIMIT 1"
+            ).fetchone()
         if not row:
             return []
         latest_start = row[0]
