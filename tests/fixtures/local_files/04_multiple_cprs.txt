@@ -1,0 +1,31 @@
+Personalemappe — Fortroligt
+============================
+Afdeling: Administrationen, Skanderborg Kommune
+
+Medarbejder 1
+-------------
+Navn:            Christian Bøgh Hansen
+CPR:             150365-1102
+Stilling:        Skoleleder
+Ansættelsesdato: 1. august 2005
+Løngruppe:       L4
+
+Medarbejder 2
+-------------
+Navn:            Lise Ravn Johansen
+CPR:             020898-0203
+Stilling:        Pædagog, fuldtid
+Ansættelsesdato: 15. september 2021
+Løngruppe:       L2
+
+Medarbejder 3
+-------------
+Navn:            Anders Munk Mortensen
+CPR:             010172-1019
+Stilling:        Administrativ medarbejder
+Ansættelsesdato: 1. marts 2010
+Løngruppe:       L3
+
+Dokument oprettet: 20. april 2026
+Sidst opdateret:   20. april 2026
+Udarbejdet af:     HR-afdelingen

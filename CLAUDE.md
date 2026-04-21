@@ -44,6 +44,10 @@ python -m pytest tests/ -q
 
 128 tests in `tests/`. No integration tests for Flask routes or live M365/Google connections.
 
+**Local-file scan fixtures** — `tests/fixtures/local_files/` holds 13 documents for manual/UI-level testing of the file scanner. 10 should be flagged; 3 are true negatives. All CPR numbers verified against `is_valid_cpr`. `generate_fixtures.py` (requires `python-docx` + `openpyxl`, already in venv) regenerates the binary `.docx`/`.xlsx` files.
+
+**`_CPR_PREFIX_NOISE` in `.docx` fixtures** — `scan_docx` builds a single string by concatenating all run texts with no separators between paragraphs. If a CPR value run is immediately followed by text from the next paragraph without a word boundary, `\b` in `CPR_PATTERN` fails and the number is silently missed. The fixture generator appends a trailing `" "` to every value run so CPRs are always surrounded by word boundaries after concatenation. Do not remove this trailing space — the detection will silently regress.
+
 ## Viewer mode (#33) — routes/viewer.py + static/js/viewer.js
 
 Read-only access for DPOs and reviewers. Key invariants:

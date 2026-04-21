@@ -1,0 +1,31 @@
+FAKTURA
+=======
+Leverandør:   Kontor & Papir A/S
+              Industriparken 22, 8600 Silkeborg
+              CVR: 12345678
+
+Kunde:        Gudenaaskolen
+              Skolevej 1, 8680 Ry
+              EAN: 5790001234567
+
+Fakturanr:    250372-0100
+Fakturadato:  20. april 2026
+Forfaldsdato: 20. maj 2026
+
+Ordrenr:      020898-0203
+Varenr:       150365-1102
+
+Linjer:
+---------------------------------------------------------------------------
+Beskrivelse                         Antal   Enhedspris     Moms      Total
+---------------------------------------------------------------------------
+Kopipapir A4 80g, pk/500              20       89,00 kr    20%   2.136,00 kr
+Blækpatroner HP 305, sort              5      149,00 kr    20%     894,00 kr
+Whiteboardmarker, ass. farver          3       49,95 kr    20%     179,82 kr
+---------------------------------------------------------------------------
+Subtotal ekskl. moms:                                             2.561,95 kr
+Moms 25%:                                                           640,49 kr
+I alt inkl. moms:                                                 3.202,44 kr
+
+Betalingsbetingelser: Netto 30 dage
+Bank: Jyske Bank, Reg. 7600, Konto 1234567

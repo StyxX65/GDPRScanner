@@ -1,0 +1,19 @@
+Personoplysninger — Elevakt
+===========================
+
+Elevens navn:       Lars Bjerregaard Nielsen
+Klasse:             8B
+Skole:              Gudenaaskolen
+
+CPR-nummer:         010172-1019
+Fødselsdato:        1. januar 1972
+Adresse:            Skolevej 14, 8680 Ry
+Telefon:            +45 86 89 12 34
+E-mail:             lars.nielsen@privat.dk
+
+Notater:
+Eleven har haft fravær i uge 12 og 14. Forældrene er kontaktet.
+Der er afholdt møde den 3. marts 2024 med klasselærer og skoleleder.
+
+Underskrift: _______________________
+Dato: ___________________

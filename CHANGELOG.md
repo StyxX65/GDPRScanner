@@ -7,13 +7,19 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
-## [Unreleased]
+## [1.6.21] — 2026-04-20
 
 ### Added
+
+- **Local-file scan test fixtures** — `tests/fixtures/local_files/` contains 13 ready-made files (`.txt`, `.csv`, `.docx`, `.xlsx`) covering every detection scenario: CPR with explicit label, mod-11–valid CPR without label, post-2007 CPR with/without context keyword, protected number (day+40), multiple CPRs in one file, mixed PII (CPR + email + Art. 9 health data), and three true-negative cases (clean content, invoice false-positive, post-2007 serial number without context). All CPR numbers are mathematically valid; false-positive fixtures are verified to produce zero hits. Run `generate_fixtures.py` to regenerate the binary files.
 
 - **Interface PIN** — optional session-level authentication gate for the main scanner interface. Set a 4–8 digit PIN in **Settings → Security → Interface PIN**; anyone reaching `http://host:5100` is redirected to `/login` and must enter the PIN before accessing scan controls, settings, or results. Viewer tokens and the `/view` route are completely unaffected — reviewers continue to use their own auth chain. The PIN is stored as a salted SHA-256 hash in `config.json`. Brute-force protection: 5 failed attempts per IP locks out for 5 minutes. A `POST /api/interface/logout` endpoint clears the session. PIN management via `GET/POST/DELETE /api/interface/pin`.
 
 ### Fixed
+
+- **"Vælg" (select mode) button did nothing** — `toggleSelectMode`, `toggleCardSelect`, `selectAllVisible`, and `applyBulkDisposition` were defined inside an ES module but never assigned to `window`, so all `onclick` attributes calling them silently failed. Added the four missing `window.*` exports at the bottom of `results.js`.
+
+- **Progress counter frozen at M365 total during Google/file scan** — the `scan_progress` handler in `scan.js` only updated `progressStats` and `progressEta` for `source === "m365"`. When M365 finished first, the counter stayed at its final value (e.g. "15083 / 15083 ETA 0s") for the entire duration of the Google and file scans. Fixed in two places: `scan_done` now clears the stats/ETA elements immediately when another scan is still running; `scan_progress` for Google/file sources now shows a running `"X scanned"` count (using the `scanned` field those engines already send) and clears ETA, but only while M365 is not running — M365 stats continue to dominate during concurrent scans.
 
 - **PDF OCR kills process on large files** — `document_scanner` previously called `convert_from_path()` once for the entire PDF before the processing loop, allocating all page images in memory simultaneously. A 50-page A4 PDF at 300 DPI required ~1.3 GB in a single allocation, triggering the OS OOM killer. Fixed by rendering one page at a time with `convert_from_path(first_page=N, last_page=N)` inside the loop across `scan_pdf`, `redact_fitz_pdf`, and `redact_pdf`. Peak OCR memory is now bounded to roughly one page (~26 MB at 300 DPI) regardless of document length.
 

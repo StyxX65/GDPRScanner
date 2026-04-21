@@ -320,16 +320,16 @@ function _attachScanListeners(source) {
     var fill = document.getElementById('progressFill_' + src);
     if (fill) fill.style.width = pct + '%';
     document.getElementById('progressFile').textContent = d.file || '';
-    // Only update stats/ETA from M365 (has meaningful totals and ETA)
+    var statsEl = document.getElementById('progressStats');
+    var etaEl   = document.getElementById('progressEta');
     if (src === 'm365') {
-      var statsEl = document.getElementById('progressStats');
-      if (statsEl && d.total) {
-        statsEl.textContent = (d.index || 0) + ' / ' + d.total;
-      }
-      var etaEl = document.getElementById('progressEta');
-      if (etaEl && d.eta !== undefined) {
-        etaEl.textContent = d.eta ? ('ETA ' + d.eta) : '';
-      }
+      // M365 sends index + total + ETA — show exact counter
+      if (statsEl && d.total) statsEl.textContent = (d.index || 0) + ' / ' + d.total;
+      if (etaEl && d.eta !== undefined) etaEl.textContent = d.eta ? ('ETA ' + d.eta) : '';
+    } else if (!S._m365ScanRunning) {
+      // Google / file: no total known upfront — show running count once M365 is done
+      if (statsEl && d.scanned !== undefined) statsEl.textContent = d.scanned + ' scanned';
+      if (etaEl) etaEl.textContent = '';
     }
   });
   source.addEventListener('scan_file', function(e) {
@@ -369,6 +369,13 @@ function _attachScanListeners(source) {
     S._m365ScanRunning = false;
     _renderProgressSegments();
     var _anyRunning = S._googleScanRunning || S._fileScanRunning;
+    // Clear M365 counter/ETA so Google/file progress can take over the display
+    if (_anyRunning) {
+      var _se = document.getElementById('progressStats');
+      var _ee = document.getElementById('progressEta');
+      if (_se) _se.textContent = '';
+      if (_ee) _ee.textContent = '';
+    }
     // Only close SSE once all concurrent scans have finished.
     // Closing early would drop google_scan_done / file_scan_done events and
     // leave the UI stuck in scanning state.

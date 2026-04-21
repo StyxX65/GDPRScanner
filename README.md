@@ -609,6 +609,28 @@ Each new module (`cpr_detector.py`, `app_config.py`, `checkpoint.py`, `gdpr_db.p
 
 The test suite should be run before every release and after any change to `document_scanner.py`, `cpr_detector.py`, or `gdpr_db.py`. CPR detection is the legal core of the tool — a false negative means a real GDPR violation goes undetected.
 
+#### Local-file scan fixtures
+
+`tests/fixtures/local_files/` provides 13 hand-crafted documents for end-to-end testing of the file scanner via the UI or `file_scanner.py`. Drop the folder as a local source and run a scan — all 10 PII-bearing files should be flagged and all 3 negative-case files should produce zero hits.
+
+| File | Format | Expected | Scenario |
+|---|---|---|---|
+| `01_cpr_with_context_label.txt` | TXT | Flag | CPR with explicit `CPR-nummer:` label |
+| `02_cpr_mod11_valid_bare.txt` | TXT | Flag | mod-11–valid CPR without any context keyword |
+| `03_cpr_post2007_with_context.txt` | TXT | Flag | Post-2007 birth (fails mod-11), detected via `Personnummer:` keyword |
+| `04_multiple_cprs.txt` | TXT | Flag | 3 distinct CPR numbers in one staff-records file |
+| `05_student_register.csv` | CSV | Flag | 8 students incl. one protected-address (day+40) CPR |
+| `06_employee_list.csv` | CSV | Flag | 5 employees with CPRs |
+| `07_protected_number.txt` | TXT | Flag | Protected CPR (`410172-1200`, day+40 encoding) |
+| `08_mixed_pii.txt` | TXT | Flag | CPR + email + phone + GDPR Art. 9 health category |
+| `09_cpr_in_docx.docx` | DOCX | Flag | 2 CPRs in a Word document (paragraph format) |
+| `10_clean_no_pii.txt` | TXT | **No flag** | Meeting minutes — no personal data |
+| `11_false_positive_invoice.txt` | TXT | **No flag** | Invoice: CPR-shaped numbers suppressed by `faktura`/`varenr` context |
+| `12_post2007_no_context.txt` | TXT | **No flag** | Equipment serial that looks like a post-2007 CPR but has no context keyword |
+| `13_cpr_in_xlsx.xlsx` | XLSX | Flag | Excel workbook with two sheets: students + employees |
+
+All CPR numbers are mathematically valid (verified against `is_valid_cpr`). Run `generate_fixtures.py` inside the venv to regenerate the `.docx` and `.xlsx` binary files after any changes.
+
 ### Roadmap
 
 See [SUGGESTIONS.md](SUGGESTIONS.md) for the full feature roadmap with implementation status.
