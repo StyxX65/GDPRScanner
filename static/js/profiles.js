@@ -645,6 +645,7 @@ async function _pmgmtSaveFullEdit() {
     const d = await r.json();
     if (d.error) { alert(d.error); return; }
     await loadProfiles();
+    _renderProfileMgmt();
     window._pmgmtNewDraft = null;
     log(t('m365_profile_saved','Profile saved') + ': ' + name);
     // Show inline saved feedback without closing the modal
@@ -658,7 +659,10 @@ async function _pmgmtSaveFullEdit() {
     }
     // Re-open the editor for the saved profile so it reflects the saved state
     const saved = S._profiles.find(function(p) { return p.name === name; });
-    if (saved) { window._pmgmtEditId = saved.id; }
+    if (saved) {
+      window._pmgmtEditId = saved.id;
+      document.querySelectorAll('.pmgmt-row').forEach(r => r.classList.toggle('active', r.dataset.id === saved.id));
+    }
   } catch(e) { alert('Save failed: ' + e.message); }
 }
 

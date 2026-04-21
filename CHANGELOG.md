@@ -7,6 +7,14 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [1.6.23] — 2026-04-21
+
+### Fixed
+
+- **Profile copy rename not reflected in left column until modal reopen** — saving a renamed profile via the full editor (`_pmgmtSaveFullEdit`) called `loadProfiles()` to refresh `S._profiles` but never called `_renderProfileMgmt()`, so the left-column list was not repainted. The new name only appeared after closing and reopening the modal. Fixed by calling `_renderProfileMgmt()` immediately after `loadProfiles()` and re-applying the `.active` highlight to the correct row.
+
+---
+
 ## [1.6.22] — 2026-04-21
 
 ### Added
