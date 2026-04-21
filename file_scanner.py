@@ -24,6 +24,8 @@ import hashlib
 from pathlib import Path, PurePosixPath
 from typing import Iterator
 
+from cpr_detector import SUPPORTED_EXTS as DEFAULT_EXTENSIONS
+
 # ── Optional dependency flags ─────────────────────────────────────────────────
 
 try:
@@ -58,19 +60,8 @@ except ImportError:
 
 KEYCHAIN_SERVICE = "gdpr-scanner-nas"
 
-# File extensions passed through to _scan_bytes().  Matches SUPPORTED_EXTS in
-# gdpr_scanner.py; kept here too so FileScanner can filter without importing it.
-DEFAULT_EXTENSIONS = {
-    ".pdf", ".docx", ".doc", ".xlsx", ".xlsm", ".csv",
-    ".txt", ".eml", ".msg",
-    ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp",
-    ".heic", ".heif",
-}
-
-# Extensions for local/SMB file scans — PDFs now included; OCR runs in a spawned
-# subprocess with a 60-second hard timeout via _scan_bytes_timeout so hanging
-# Tesseract/Poppler processes can never block the scan thread indefinitely.
-FILE_SCAN_EXTENSIONS = DEFAULT_EXTENSIONS
+# DEFAULT_EXTENSIONS is imported from cpr_detector.SUPPORTED_EXTS — single source of truth.
+# Adding a new file type to cpr_detector.py automatically extends local/SMB scans too.
 
 # Maximum file size to load into memory (bytes).  Files larger than this are
 # skipped with a warning — same guard used by the M365 attachment scanner.
@@ -147,7 +138,7 @@ def store_smb_password(smb_host: str, smb_user: str,
 class FileScanner:
     """Unified local + SMB/CIFS file iterator."""
 
-    FILE_SCAN_EXTENSIONS = FILE_SCAN_EXTENSIONS  # excludes .pdf
+    FILE_SCAN_EXTENSIONS = DEFAULT_EXTENSIONS
     """Unified iterator over local paths and SMB/CIFS network shares.
 
     Usage::
@@ -209,7 +200,7 @@ class FileScanner:
 
         Args:
             extensions:  Set of lowercase extensions to include, e.g. {".pdf", ".docx"}.
-                         Defaults to DEFAULT_EXTENSIONS.
+                         Defaults to DEFAULT_EXTENSIONS (cpr_detector.SUPPORTED_EXTS).
             progress_cb: Optional callable(rel_path) called before each file is read,
                          so the caller can update a progress indicator.
 

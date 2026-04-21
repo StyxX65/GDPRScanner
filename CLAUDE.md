@@ -20,6 +20,8 @@ python -m pytest tests/ -q
 
 **Shared content processing** — all three scan engines (M365, Google, file) funnel downloaded bytes through a single function: `cpr_detector._scan_bytes(content, filename)`. It dispatches to the correct parser by file extension. `scan_engine.py` uses the `_scan_bytes_timeout` wrapper for PDFs (subprocess + hard timeout). `routes/google_scan.py` uses `_scan_bytes` directly. Do not duplicate file-type handling in per-source code.
 
+**`cpr_detector.SUPPORTED_EXTS` is the single source of truth** for which file extensions are scanned across all sources. `file_scanner.py` imports it as `DEFAULT_EXTENSIONS` so local/SMB scans stay in sync automatically. `scan_engine.py` uses it to gate M365/SharePoint/Teams file downloads. Do not maintain a separate extension list anywhere else.
+
 **`_scan_bytes` injection pattern** — `scan_engine.py` defines a no-op stub for `_scan_bytes` / `_scan_bytes_timeout` at module level (avoids circular import). `gdpr_scanner.py` overwrites them with the real `cpr_detector` implementations at startup. `routes/google_scan.py` resolves them lazily via `gdpr_scanner.__getattr__`. This is intentional — do not try to import them directly in those modules.
 
 **Blueprints** in `routes/` — see `routes/CLAUDE.md` for state/SSE rules.

@@ -19,6 +19,8 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ### Fixed
 
+- **Audio and video files not appearing in local/SMB file scan** — `file_scanner.py` maintained its own hardcoded `DEFAULT_EXTENSIONS` set that was never updated when video and audio extensions were added to `cpr_detector.SUPPORTED_EXTS`. Fixed by importing `SUPPORTED_EXTS` from `cpr_detector` directly; `DEFAULT_EXTENSIONS` is now an alias for it. `cpr_detector.SUPPORTED_EXTS` is the single source of truth for all scan sources (M365, Google Drive, local, SMB).
+
 - **Profile copy rename not reflected in left column until modal reopen** — saving a renamed profile via the full editor (`_pmgmtSaveFullEdit`) called `loadProfiles()` to refresh `S._profiles` but never called `_renderProfileMgmt()`, so the left-column list was not repainted. The new name only appeared after closing and reopening the modal. Fixed by calling `_renderProfileMgmt()` immediately after `loadProfiles()` and re-applying the `.active` highlight to the correct row. 10 new route integration tests added for all profile API endpoints; total test count: 182.
 
 ---

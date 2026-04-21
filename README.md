@@ -658,12 +658,12 @@ See [SUGGESTIONS.md](SUGGESTIONS.md) for the full feature roadmap with implement
 | `app_config.py` | All persistence — profiles, settings, SMTP config, lang loading, Fernet encryption |
 | `sse.py` | SSE broadcast queue and `_current_scan_id` |
 | `checkpoint.py` | Mid-scan checkpoint save/load, `_checkpoint_key()` |
-| `cpr_detector.py` | CPR pattern matching and validation |
+| `cpr_detector.py` | CPR pattern matching and validation. Defines `SUPPORTED_EXTS` — the single source of truth for which file extensions are scanned across all sources (M365, Google Drive, local/SMB). Also contains `VIDEO_EXTS` and `AUDIO_EXTS` subsets and the metadata extractors `_extract_video_metadata` / `_extract_audio_metadata`. |
 | `document_scanner.py` | Core scanning, redaction, OCR, NER, and PII detection engine |
 | `gdpr_db.py` | SQLite persistence layer — scan results, CPR index, PII hits, dispositions, scan history |
 | `m365_connector.py` | Microsoft Graph API client — auth, token refresh, email/OneDrive/SharePoint/Teams fetchers, delete methods |
 | `google_connector.py` | Google Workspace API client — Gmail, Drive, Admin SDK |
-| `file_scanner.py` | Unified local + SMB/CIFS file iterator — `FileScanner.iter_files()` yields `(path, bytes, metadata)`. SMB reads use a 1-slot sliding-window `ThreadPoolExecutor` (`PREFETCH_WINDOW=1`) with a 60-second per-file timeout. |
+| `file_scanner.py` | Unified local + SMB/CIFS file iterator — `FileScanner.iter_files()` yields `(path, bytes, metadata)`. SMB reads use a 1-slot sliding-window `ThreadPoolExecutor` (`PREFETCH_WINDOW=1`) with a 60-second per-file timeout. `DEFAULT_EXTENSIONS` is imported from `cpr_detector.SUPPORTED_EXTS` (not a local hardcoded set) so the scannable extension list stays in sync automatically. |
 | `scan_scheduler.py` | In-process APScheduler wrapper — multi-job scheduled scan engine |
 | `templates/index.html` | Single-page HTML shell — Jinja2 template. Two variables: `app_version`, `lang_json`. |
 | `static/style.css` | All application CSS — custom properties, layout, components, light/dark themes |
