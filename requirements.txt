@@ -13,10 +13,11 @@ pdfplumber>=0.11       # PDF text extraction
 python-docx>=1.1       # Word document scanning
 openpyxl>=3.1          # Excel scanning + export
 
-# ── Image processing ──────────────────────────────────────────────────────────
+# ── Image / video processing ─────────────────────────────────────────────────
 Pillow>=10.0           # Image thumbnails + EXIF extraction (always-on)
 opencv-python>=4.9     # Face detection (opt-in — Scan photos for faces)
 numpy>=1.26            # Required by opencv-python
+mutagen>=1.47          # Video metadata extraction (MP4/MOV/AVI — GPS, author, title)
 
 # ── NER / PII detection ───────────────────────────────────────────────────────
 # spaCy 3.7 supports Python 3.8–3.12. Do NOT upgrade past Python 3.12.

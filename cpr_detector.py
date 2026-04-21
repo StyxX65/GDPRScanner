@@ -2,15 +2,17 @@
 cpr_detector.py — File scanning and CPR/PII detection for GDPRScanner.
 
 Provides:
-  _scan_bytes(content, filename)    — dispatch to correct scanner by file type
-  _scan_text_direct(text)           — scan a plain text string
-  _extract_exif(content, filename)  — extract PII-bearing EXIF tags from images
-  _detect_photo_faces(content, fn)  — count faces in an image (OpenCV)
-  _get_pii_counts(text)             — NER-based PII type counts
-  _make_thumb(content, filename)    — JPEG thumbnail as base64 string
-  _placeholder_svg(ext, name)       — SVG file-type icon
+  _scan_bytes(content, filename)         — dispatch to correct scanner by file type
+  _scan_text_direct(text)                — scan a plain text string
+  _extract_exif(content, filename)       — extract PII-bearing EXIF tags from images
+  _extract_video_metadata(content, fn)   — extract PII-bearing metadata from video files
+  _extract_audio_metadata(content, fn)   — extract PII-bearing tags from audio files
+  _detect_photo_faces(content, fn)       — count faces in an image (OpenCV)
+  _get_pii_counts(text)                  — NER-based PII type counts
+  _make_thumb(content, filename)         — JPEG thumbnail as base64 string
+  _placeholder_svg(ext, name)            — SVG file-type icon
 
-Globals SCANNER_OK, PIL_OK, PHOTO_EXTS, SUPPORTED_EXTS, ds, PILImage, LANG,
+Globals SCANNER_OK, PIL_OK, PHOTO_EXTS, VIDEO_EXTS, AUDIO_EXTS, SUPPORTED_EXTS, ds, PILImage, LANG,
 and _check_special_category are injected at startup by gdpr_scanner.py via
 `from cpr_detector import *` AFTER those names are defined.  This keeps the
 module cleanly importable in isolation for unit tests (#26) while preserving
@@ -47,11 +49,17 @@ except ImportError:
     PILImage = None  # type: ignore[assignment]
     PIL_OK = False
 
+VIDEO_EXTS = {
+    ".mp4", ".mov", ".m4v", ".avi", ".mkv", ".wmv", ".flv", ".webm",
+}
+AUDIO_EXTS = {
+    ".mp3", ".flac", ".ogg", ".m4a", ".aac", ".wma", ".wav", ".opus", ".aiff", ".aif",
+}
 SUPPORTED_EXTS = {
     ".pdf", ".docx", ".doc", ".xlsx", ".xlsm", ".csv",
     ".txt", ".eml", ".msg",
     ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp",
-}
+} | VIDEO_EXTS | AUDIO_EXTS
 PHOTO_EXTS = {
     ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp", ".heic", ".heif",
 }
@@ -189,6 +197,226 @@ def _extract_exif(content: bytes, filename: str) -> dict:
 
     return result
 
+
+def _extract_video_metadata(content: bytes, filename: str) -> dict:
+    """Extract PII-bearing metadata from a video file.
+
+    Returns the same structure as _extract_exif so callers can treat both
+    identically:
+        gps        — {lat, lon, lat_ref, lon_ref, maps_url} or None
+        pii_fields — {label: value} for title/artist/comment/description
+        author     — str or None
+        datetime   — str or None
+        device     — str or None
+        has_pii    — bool
+
+    MP4/MOV/M4V: reads QuickTime/MPEG-4 tags via mutagen (no system deps).
+    GPS is extracted from the ©xyz QuickTime atom (ISO 6709 string written by
+    iPhones and Android devices: "+55.6763+012.5681+005.000/").
+    AVI: parses the RIFF INFO list chunk without any external library.
+    All other extensions: returns empty result immediately.
+    """
+    result: dict = {"gps": None, "pii_fields": {}, "author": None,
+                    "datetime": None, "device": None, "has_pii": False}
+    ext = Path(filename).suffix.lower()
+
+    if ext in {".mp4", ".mov", ".m4v"}:
+        _extract_mp4_tags(content, result)
+    elif ext == ".avi":
+        _extract_avi_info(content, result)
+
+    return result
+
+
+def _extract_mp4_tags(content: bytes, result: dict) -> None:
+    """Populate result dict from MPEG-4/QuickTime container tags via mutagen."""
+    try:
+        import mutagen.mp4
+        tags = mutagen.mp4.MP4(io.BytesIO(content)).tags
+        if not tags:
+            return
+
+        # Text fields that may contain personal data
+        _tag_label = {
+            "©nam": "Title",
+            "©cmt": "Comment",
+            "©des": "Description",
+            "desc": "Description",
+            "©lyr": "Lyrics",
+        }
+        for tag, label in _tag_label.items():
+            val = tags.get(tag)
+            if val:
+                text = str(val[0]).strip() if isinstance(val, list) else str(val).strip()
+                if len(text) >= _EXIF_PII_MIN_LEN:
+                    result["pii_fields"][label] = text
+                    result["has_pii"] = True
+
+        # Author — prefer ©ART (artist), fall back to album artist
+        for tag in ("©ART", "aART"):
+            val = tags.get(tag)
+            if val:
+                author = str(val[0]).strip() if isinstance(val, list) else str(val).strip()
+                if len(author) >= _EXIF_PII_MIN_LEN:
+                    result["author"] = author
+                    result["pii_fields"]["Artist"] = author
+                    result["has_pii"] = True
+                break
+
+        # Recording date
+        val = tags.get("©day")
+        if val:
+            result["datetime"] = str(val[0]).strip() if isinstance(val, list) else str(val).strip()
+
+        # Device (QuickTime-specific tags written by iPhones)
+        make  = tags.get("©mak")
+        model = tags.get("©mod")
+        if make or model:
+            result["device"] = " ".join(
+                str(v[0] if isinstance(v, list) else v).strip()
+                for v in (make, model) if v
+            )
+
+        # GPS — QuickTime ©xyz atom: "+55.6763+012.5681+005.000/" (ISO 6709)
+        import re as _re
+        for gps_tag in ("©xyz", "com.apple.quicktime.location.ISO6709"):
+            val = tags.get(gps_tag)
+            if val:
+                gps_str = str(val[0] if isinstance(val, list) else val).strip()
+                m = _re.match(r'([+-]\d+\.?\d*)([+-]\d+\.?\d*)', gps_str)
+                if m:
+                    lat = round(float(m.group(1)), 7)
+                    lon = round(float(m.group(2)), 7)
+                    result["gps"] = {
+                        "lat":      lat,
+                        "lon":      lon,
+                        "lat_ref":  "N" if lat >= 0 else "S",
+                        "lon_ref":  "E" if lon >= 0 else "W",
+                        "maps_url": f"https://www.google.com/maps?q={lat},{lon}",
+                    }
+                    result["has_pii"] = True
+                break
+    except Exception:
+        pass
+
+
+def _extract_avi_info(content: bytes, result: dict) -> None:
+    """Populate result dict from RIFF INFO list chunk in an AVI file."""
+    try:
+        import struct
+        if len(content) < 12 or content[:4] != b"RIFF":
+            return
+        # Walk top-level RIFF chunks looking for the INFO LIST
+        i = 12
+        while i + 8 <= len(content):
+            chunk_id   = content[i:i+4]
+            chunk_size = struct.unpack_from("<I", content, i + 4)[0]
+            if chunk_id == b"LIST" and content[i+8:i+12] == b"INFO":
+                _parse_riff_info(content, i + 12, i + 8 + chunk_size, result)
+                break
+            i += 8 + chunk_size + (chunk_size & 1)  # RIFF chunks are word-aligned
+    except Exception:
+        pass
+
+
+def _parse_riff_info(content: bytes, start: int, end: int, result: dict) -> None:
+    import struct
+    _info_labels = {
+        b"INAM": "Title",
+        b"IART": "Artist",
+        b"ICMT": "Comment",
+        b"ISBJ": "Subject",
+        b"ICRD": "Date",
+    }
+    i = start
+    while i + 8 <= end and i + 8 <= len(content):
+        sub_id   = content[i:i+4]
+        sub_size = struct.unpack_from("<I", content, i + 4)[0]
+        label    = _info_labels.get(sub_id)
+        if label:
+            raw = content[i+8 : i+8+sub_size]
+            val = raw.decode("utf-8", errors="replace").strip("\x00 ")
+            if val and len(val) >= _EXIF_PII_MIN_LEN:
+                result["pii_fields"][label] = val
+                result["has_pii"] = True
+                if label == "Artist" and not result["author"]:
+                    result["author"] = val
+                if label == "Date" and not result["datetime"]:
+                    result["datetime"] = val
+        i += 8 + sub_size + (sub_size & 1)
+
+
+def _extract_audio_metadata(content: bytes, filename: str) -> dict:
+    """Extract PII-bearing tags from an audio file.
+
+    Returns the same structure as _extract_exif / _extract_video_metadata.
+    No GPS extraction — GPS is not embedded in audio containers in practice.
+
+    Uses mutagen.File(easy=True) which normalises tags to lowercase keys for
+    MP3 (ID3), M4A/AAC (MPEG-4), FLAC, OGG Vorbis, and AIFF.  WMA/ASF tags
+    use mixed-case keys (e.g. "Title", "Author") — these are lowercased during
+    normalisation so the same extraction logic covers all formats.
+    """
+    result: dict = {"gps": None, "pii_fields": {}, "author": None,
+                    "datetime": None, "device": None, "has_pii": False}
+    try:
+        import mutagen
+        f = mutagen.File(fileobj=io.BytesIO(content), filename=filename, easy=True)
+        if not f or not f.tags:
+            return result
+
+        # Normalise all tags to {lowercase_key: str_value} regardless of format
+        def _strval(v):
+            return str(v[0] if isinstance(v, list) and v else v).strip()
+
+        tags: dict[str, str] = {
+            k.lower(): _strval(v) for k, v in f.tags.items()
+        }
+
+        # Fields that may contain personal names or descriptions
+        _pii_keys = {
+            "title":           "Title",
+            "artist":          "Artist",
+            "albumartist":     "Album Artist",
+            "composer":        "Composer",
+            "lyricist":        "Lyricist",
+            "conductor":       "Conductor",
+            "author":          "Author",
+            "copyright":       "Copyright",
+            "comment":         "Comment",
+            "description":     "Description",
+            # WMA/ASF mixed-case keys survive as lowercase after normalisation
+            "wm/albumartist":  "Album Artist",
+            "wm/composer":     "Composer",
+            "wm/conductor":    "Conductor",
+            "wm/lyrics":       "Lyrics",
+        }
+        seen: set[str] = set()  # avoid duplicate label entries
+        for key, label in _pii_keys.items():
+            val = tags.get(key, "")
+            if val and len(val) >= _EXIF_PII_MIN_LEN and label not in seen:
+                result["pii_fields"][label] = val
+                result["has_pii"] = True
+                seen.add(label)
+
+        # Author — most specific personal name field wins
+        for key in ("artist", "author", "albumartist", "wm/albumartist", "composer"):
+            val = tags.get(key, "")
+            if val and len(val) >= _EXIF_PII_MIN_LEN:
+                result["author"] = val
+                break
+
+        # Recording / release date
+        for key in ("date", "year", "wm/year"):
+            val = tags.get(key, "")
+            if val:
+                result["datetime"] = val
+                break
+
+    except Exception:
+        pass
+
+    return result
 
 
     """Detect faces in an image file using OpenCV Haar cascades.

@@ -9,6 +9,14 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [1.6.23] — 2026-04-21
 
+### Added
+
+- **Video file metadata scanning** — `.mp4`, `.mov`, `.m4v`, `.avi`, `.mkv`, `.wmv`, `.flv`, `.webm` files are now included in all scan sources (M365 OneDrive/SharePoint/Teams, Google Drive, local/SMB). No frame or audio analysis is performed; only container metadata is extracted: GPS coordinates (iPhone/Android QuickTime `©xyz` atom, ISO 6709 format), author/artist, title, comment/description, and recording date. A smartphone recording with an embedded GPS location is flagged with the `gps_location` special category, exactly like a geotagged photo. AVI metadata (RIFF INFO `INAM`/`IART`/`ICMT`) is parsed without any external library. Requires `mutagen>=1.47` (added to `requirements.txt`).
+
+- **Audio file metadata scanning** — `.mp3`, `.flac`, `.ogg`, `.m4a`, `.aac`, `.wma`, `.wav`, `.opus`, `.aiff` files are now scanned for PII-bearing tags across all sources. Extracted fields: title, artist, album artist, composer, lyricist, conductor, author, copyright, comment, description. No audio content is transcribed. Uses `mutagen.File(easy=True)` which normalises tag formats across ID3 (MP3), MPEG-4 (M4A/AAC), Vorbis (FLAC/OGG), and ASF (WMA) into a unified lowercase-key interface. A voice recording saved with a student's name in the artist tag will be flagged with `exif_pii`. Fixed a silent bug in `_extract_audio_metadata` where `mutagen.File(io.BytesIO(content), filename)` was passing the BytesIO as the `filename` positional argument; corrected to `mutagen.File(fileobj=..., filename=...)`.
+
+- **Audio and video test fixtures** — `tests/fixtures/local_files/generate_fixtures.py` now generates 6 new fixtures: `14_audio_artist_pii.mp3`, `15_audio_artist_pii.flac` (artist name → flag), `16_audio_no_pii.mp3`, `17_audio_no_pii.flac` (no tags → no flag), `18_video_gps.mp4` (GPS + artist → flag), `19_video_no_pii.mp4` (no tags → no flag). Total fixtures: 19 (14 flagged, 5 negative).
+
 ### Fixed
 
 - **Profile copy rename not reflected in left column until modal reopen** — saving a renamed profile via the full editor (`_pmgmtSaveFullEdit`) called `loadProfiles()` to refresh `S._profiles` but never called `_renderProfileMgmt()`, so the left-column list was not repainted. The new name only appeared after closing and reopening the modal. Fixed by calling `_renderProfileMgmt()` immediately after `loadProfiles()` and re-applying the `.active` highlight to the correct row. 10 new route integration tests added for all profile API endpoints; total test count: 182.

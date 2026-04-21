@@ -617,7 +617,7 @@ The test suite should be run before every release and after any change to `docum
 
 #### Local-file scan fixtures
 
-`tests/fixtures/local_files/` provides 13 hand-crafted documents for end-to-end testing of the file scanner via the UI or `file_scanner.py`. Drop the folder as a local source and run a scan — all 10 PII-bearing files should be flagged and all 3 negative-case files should produce zero hits.
+`tests/fixtures/local_files/` provides 19 files for end-to-end testing of the file scanner via the UI or `file_scanner.py`. Drop the folder as a local source and run a scan — all 14 PII-bearing files should be flagged and all 5 negative-case files should produce zero hits.
 
 | File | Format | Expected | Scenario |
 |---|---|---|---|
@@ -634,8 +634,14 @@ The test suite should be run before every release and after any change to `docum
 | `11_false_positive_invoice.txt` | TXT | **No flag** | Invoice: CPR-shaped numbers suppressed by `faktura`/`varenr` context |
 | `12_post2007_no_context.txt` | TXT | **No flag** | Equipment serial that looks like a post-2007 CPR but has no context keyword |
 | `13_cpr_in_xlsx.xlsx` | XLSX | Flag | Excel workbook with two sheets: students + employees |
+| `14_audio_artist_pii.mp3` | MP3 | Flag | ID3 artist/title tags with a personal name → `exif_pii` |
+| `15_audio_artist_pii.flac` | FLAC | Flag | Vorbis comment artist/title tags with a personal name → `exif_pii` |
+| `16_audio_no_pii.mp3` | MP3 | **No flag** | Empty ID3 header — no metadata tags |
+| `17_audio_no_pii.flac` | FLAC | **No flag** | FLAC with no Vorbis comment block |
+| `18_video_gps.mp4` | MP4 | Flag | QuickTime GPS coordinates (Copenhagen) + artist tag → `gps_location` + `exif_pii` |
+| `19_video_no_pii.mp4` | MP4 | **No flag** | Minimal MP4 container with no metadata |
 
-All CPR numbers are mathematically valid (verified against `is_valid_cpr`). Run `generate_fixtures.py` inside the venv to regenerate the `.docx` and `.xlsx` binary files after any changes.
+All CPR numbers are mathematically valid (verified against `is_valid_cpr`). Run `generate_fixtures.py` inside the venv to regenerate all binary files after any changes. Requires `python-docx`, `openpyxl`, and `mutagen` (all included in `requirements.txt`).
 
 ### Roadmap
 

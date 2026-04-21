@@ -99,6 +99,8 @@ except ImportError:
 # Stubs for standalone import — overwritten by gdpr_scanner.py injections
 LANG: dict = {}
 PHOTO_EXTS: set = set()
+VIDEO_EXTS: set = set()
+AUDIO_EXTS: set = set()
 SUPPORTED_EXTS: set = set()
 
 # cpr_detector helpers — injected by gdpr_scanner.py
@@ -106,6 +108,8 @@ def _scan_bytes(content, filename, poppler_path=None): return {"cprs": [], "date
 def _scan_bytes_timeout(content, filename, timeout=60): return {"cprs": [], "dates": []}  # type: ignore[misc]
 def _detect_photo_faces(content, filename): return 0  # type: ignore[misc]
 def _extract_exif(content, filename): return {}  # type: ignore[misc]
+def _extract_video_metadata(content, filename): return {}  # type: ignore[misc]
+def _extract_audio_metadata(content, filename): return {}  # type: ignore[misc]
 def _make_thumb(content, filename): return ""  # type: ignore[misc]
 def _placeholder_svg(ext, name): return ""  # type: ignore[misc]
 def _check_special_category(text, cprs): return []  # type: ignore[misc]
@@ -227,9 +231,9 @@ def run_file_scan(source: dict):
 
             ext = Path(rel_path).suffix.lower()
 
-            # CPR scan — skip for images (no text layer; EXIF/face detection handles them)
+            # CPR scan — skip for images, video and audio (no text layer)
             result: dict = {"cprs": [], "dates": []}
-            if ext not in PHOTO_EXTS:
+            if ext not in PHOTO_EXTS and ext not in VIDEO_EXTS and ext not in AUDIO_EXTS:
                 try:
                     result = _scan_bytes_timeout(content, rel_path)
                 except Exception as e:
@@ -238,13 +242,17 @@ def run_file_scan(source: dict):
 
             cprs = result.get("cprs", [])
 
-            # Photo / biometric scan + EXIF extraction
+            # Photo / biometric scan + EXIF/video/audio metadata extraction
             _face_count = 0
             _exif       = {}
             if ext in PHOTO_EXTS:
                 if scan_photos:
                     _face_count = _detect_photo_faces(content, rel_path)
                 _exif = _extract_exif(content, rel_path)
+            elif ext in VIDEO_EXTS:
+                _exif = _extract_video_metadata(content, rel_path)
+            elif ext in AUDIO_EXTS:
+                _exif = _extract_audio_metadata(content, rel_path)
 
             # Apply filters: distinct CPR threshold and GPS suppression
             _distinct_cprs = list(dict.fromkeys(c["formatted"] for c in cprs))
@@ -1084,16 +1092,23 @@ def run_scan(options: dict):
                     content = conn.download_drive_item_for(uid, item_id)
                 else:
                     content = conn.download_item(meta)
-                result  = _scan_bytes(content, name)
-                cprs    = result.get("cprs", [])
 
-                # ── Biometric photo scan (#9) + EXIF (#18) ───────────────
+                # CPR scan — skip for video and audio (metadata-only; no text layer)
+                _media_only = ext in VIDEO_EXTS or ext in AUDIO_EXTS
+                result = {"cprs": [], "dates": []} if _media_only else _scan_bytes(content, name)
+                cprs   = result.get("cprs", [])
+
+                # ── Biometric photo scan (#9) + EXIF/video/audio metadata (#18) ─
                 _face_count = 0
                 _exif       = {}
                 if ext in PHOTO_EXTS:
                     if scan_photos:
                         _face_count = _detect_photo_faces(content, name)
                     _exif = _extract_exif(content, name)
+                elif ext in VIDEO_EXTS:
+                    _exif = _extract_video_metadata(content, name)
+                elif ext in AUDIO_EXTS:
+                    _exif = _extract_audio_metadata(content, name)
 
                 # Apply filters: distinct CPR threshold and GPS suppression
                 _distinct_cprs   = list(dict.fromkeys(c["formatted"] for c in cprs))

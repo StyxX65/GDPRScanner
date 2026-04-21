@@ -260,8 +260,8 @@ import sse as _sse_mod  # for _current_scan_id access at call time
 from cpr_detector import (
     _scan_bytes, _scan_bytes_timeout, _scan_text_direct, _html_esc, _get_pii_counts,
     _make_thumb, _placeholder_svg,
-    _extract_exif, _detect_photo_faces,
-    SUPPORTED_EXTS, PHOTO_EXTS,
+    _extract_exif, _extract_video_metadata, _extract_audio_metadata, _detect_photo_faces,
+    SUPPORTED_EXTS, PHOTO_EXTS, VIDEO_EXTS, AUDIO_EXTS,
     _EXIF_PII_TAGS,
 )
 # Inject runtime deps into cpr_detector
@@ -285,12 +285,16 @@ _se.FILE_SCANNER_OK  = FILE_SCANNER_OK
 _se.CONNECTOR_OK     = CONNECTOR_OK
 _se.DB_OK            = DB_OK
 _se.PHOTO_EXTS       = PHOTO_EXTS
+_se.VIDEO_EXTS       = VIDEO_EXTS
+_se.AUDIO_EXTS       = AUDIO_EXTS
 _se.SUPPORTED_EXTS   = SUPPORTED_EXTS
 # cpr helpers
 _se._scan_bytes              = _scan_bytes
 _se._scan_bytes_timeout      = _scan_bytes_timeout
 _se._detect_photo_faces      = _detect_photo_faces
 _se._extract_exif            = _extract_exif
+_se._extract_video_metadata  = _extract_video_metadata
+_se._extract_audio_metadata  = _extract_audio_metadata
 _se._make_thumb              = _make_thumb
 _se._placeholder_svg         = _placeholder_svg
 _se._check_special_category  = _check_special_category
