@@ -601,7 +601,7 @@ pip install pytest
 pytest tests/
 ```
 
-**172 tests across 5 modules — all expected to pass.**
+**182 tests across 5 modules — all expected to pass.**
 
 | Module | Tests | Covers |
 |---|---|---|
@@ -609,7 +609,7 @@ pytest tests/
 | `tests/test_app_config.py` | 34 | i18n loading, Article 9 keyword detection, config round-trip, admin PIN, profiles CRUD, Fernet encryption |
 | `tests/test_checkpoint.py` | 18 | Checkpoint key stability, save/load/clear, wrong-key isolation, delta token round-trip |
 | `tests/test_db.py` | 24 | Scan lifecycle, CPR hash-only storage, data subject lookup, dispositions, export/import cycle |
-| `tests/test_route_integration.py` | 44 | Viewer token CRUD, role/user scope enforcement, bulk disposition isolation, viewer PIN, interface PIN gate, scan lock release on failure, session history ordering |
+| `tests/test_route_integration.py` | 54 | Viewer token CRUD, role/user scope enforcement, bulk disposition isolation, viewer PIN, interface PIN gate, scan lock release on failure, session history ordering, profile routes CRUD and rename |
 
 Each unit-test module (`cpr_detector.py`, `app_config.py`, `checkpoint.py`, `gdpr_db.py`) is importable in isolation without Flask or MSAL — tests run without any cloud credentials or a running server.
 

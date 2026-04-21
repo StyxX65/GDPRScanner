@@ -9,6 +9,7 @@ Covers:
   - Interface PIN set / gate / clear
   - Scan lock always released (even when run_scan raises)
   - GET /api/db/sessions basic shape
+  - Profile routes CRUD and rename
 """
 from __future__ import annotations
 import time
@@ -522,3 +523,98 @@ class TestDbSessions:
         assert len(sessions) == 2
         # Newest session (highest ref_scan_id) must be first
         assert sessions[0]["ref_scan_id"] > sessions[1]["ref_scan_id"]
+
+
+# ---------------------------------------------------------------------------
+# Profile routes
+# ---------------------------------------------------------------------------
+
+class TestProfileRoutes:
+    """
+    Tests for GET /api/profiles, POST /api/profiles/save,
+    GET /api/profiles/get, and POST /api/profiles/delete.
+
+    Each test monkeypatches the profile storage path to a tmp directory so
+    tests are fully isolated from the real ~/.gdprscanner/settings.json.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _isolate(self, tmp_path, monkeypatch):
+        import app_config
+        monkeypatch.setattr(app_config, "_SETTINGS_PATH", tmp_path / "settings.json")
+
+    def test_list_returns_empty_list_initially(self, client):
+        r = client.get("/api/profiles")
+        assert r.status_code == 200
+        assert r.get_json()["profiles"] == []
+
+    def test_save_missing_name_returns_400(self, client):
+        r = client.post("/api/profiles/save", json={"sources": ["email"]})
+        assert r.status_code == 400
+        assert "error" in r.get_json()
+
+    def test_save_creates_profile_and_returns_it(self, client):
+        r = client.post("/api/profiles/save", json={
+            "id": "", "name": "Alpha", "sources": ["email"], "options": {}
+        })
+        assert r.status_code == 200
+        data = r.get_json()
+        assert data["status"] == "saved"
+        assert data["profile"]["name"] == "Alpha"
+        assert data["profile"]["id"]  # server assigned a non-empty id
+
+    def test_saved_profile_appears_in_list(self, client):
+        client.post("/api/profiles/save", json={"name": "Beta", "sources": [], "options": {}})
+        profiles = client.get("/api/profiles").get_json()["profiles"]
+        assert any(p["name"] == "Beta" for p in profiles)
+
+    def test_rename_updates_name_in_list(self, client):
+        """Regression: _pmgmtSaveFullEdit renames the copy — the API must
+        persist the new name so loadProfiles() returns fresh data for the
+        left-column re-render."""
+        r = client.post("/api/profiles/save", json={
+            "id": "", "name": "LOCAL-TEST (copy)", "sources": [], "options": {}
+        })
+        profile_id = r.get_json()["profile"]["id"]
+
+        # Simulate the user renaming the copy in the editor and clicking Save
+        r2 = client.post("/api/profiles/save", json={
+            "id": profile_id, "name": "LOCAL-TEST-2", "sources": [], "options": {}
+        })
+        assert r2.status_code == 200
+        assert r2.get_json()["profile"]["name"] == "LOCAL-TEST-2"
+
+        profiles = client.get("/api/profiles").get_json()["profiles"]
+        names = [p["name"] for p in profiles]
+        assert "LOCAL-TEST-2" in names
+        assert "LOCAL-TEST (copy)" not in names
+
+    def test_get_by_id(self, client):
+        r = client.post("/api/profiles/save", json={
+            "id": "fixed-id-1", "name": "Gamma", "sources": [], "options": {}
+        })
+        profile_id = r.get_json()["profile"]["id"]
+        r2 = client.get(f"/api/profiles/get?id={profile_id}")
+        assert r2.status_code == 200
+        assert r2.get_json()["profile"]["name"] == "Gamma"
+
+    def test_get_nonexistent_returns_404(self, client):
+        r = client.get("/api/profiles/get?id=does-not-exist")
+        assert r.status_code == 404
+
+    def test_delete_removes_profile(self, client):
+        client.post("/api/profiles/save", json={"name": "ToDelete", "sources": [], "options": {}})
+        r = client.post("/api/profiles/delete", json={"name": "ToDelete"})
+        assert r.status_code == 200
+        assert r.get_json()["status"] == "deleted"
+        profiles = client.get("/api/profiles").get_json()["profiles"]
+        assert not any(p["name"] == "ToDelete" for p in profiles)
+
+    def test_delete_nonexistent_returns_not_found(self, client):
+        r = client.post("/api/profiles/delete", json={"name": "Ghost"})
+        assert r.status_code == 200
+        assert r.get_json()["status"] == "not_found"
+
+    def test_delete_missing_key_returns_400(self, client):
+        r = client.post("/api/profiles/delete", json={})
+        assert r.status_code == 400

@@ -42,9 +42,9 @@ python -m pytest tests/ -q
 
 ## Tests
 
-172 tests in `tests/`. No integration tests for live M365/Google connections.
+182 tests in `tests/`. No integration tests for live M365/Google connections.
 
-**`tests/test_route_integration.py`** — 44 Flask test-client tests covering security-sensitive paths: viewer token CRUD and scope validation, `GET /api/db/flagged` role/user scope enforcement, bulk disposition isolation, viewer PIN (set/verify/rate-limit/change/clear), interface PIN gate (multi-step flows require `session["interface_ok"] = True` after PIN set — the `before_request` hook blocks the same endpoint once a PIN exists), scan lock release on `run_scan()` exception, `GET /api/db/sessions` shape and ordering. Uses a tmp-path `ScanDB` monkeypatched into `routes.database._get_db` — tests never touch the real database. Interface PIN tests manipulate the real `config.json` via `setup_method`/`teardown_method` calling `clear_interface_pin()`.
+**`tests/test_route_integration.py`** — 54 Flask test-client tests covering security-sensitive paths: viewer token CRUD and scope validation, `GET /api/db/flagged` role/user scope enforcement, bulk disposition isolation, viewer PIN (set/verify/rate-limit/change/clear), interface PIN gate (multi-step flows require `session["interface_ok"] = True` after PIN set — the `before_request` hook blocks the same endpoint once a PIN exists), scan lock release on `run_scan()` exception, `GET /api/db/sessions` shape and ordering, profile routes CRUD and rename (including the rename-after-copy regression). Uses a tmp-path `ScanDB` monkeypatched into `routes.database._get_db` — tests never touch the real database. Interface PIN tests manipulate the real `config.json` via `setup_method`/`teardown_method` calling `clear_interface_pin()`.
 
 **Local-file scan fixtures** — `tests/fixtures/local_files/` holds 13 documents for manual/UI-level testing of the file scanner. 10 should be flagged; 3 are true negatives. All CPR numbers verified against `is_valid_cpr`. `generate_fixtures.py` (requires `python-docx` + `openpyxl`, already in venv) regenerates the binary `.docx`/`.xlsx` files.
 
