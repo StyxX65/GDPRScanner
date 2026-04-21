@@ -6,6 +6,11 @@ Article 30 record-keeping obligations.
 
 ---
 
+> **Work in progress — not ready for production use.**
+> This project is under active development and has not been formally tested or audited for production deployment. It is shared publicly for transparency and collaboration. Use at your own risk.
+
+---
+
 **Developed by Henrik Højmark**
 
 This project was built with substantial assistance from AI (Claude by Anthropic),
