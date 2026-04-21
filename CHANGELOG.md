@@ -7,6 +7,28 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [1.6.22] — 2026-04-21
+
+### Added
+
+- **Auto-email after manual scan** — a new **Email report after manual scan** toggle in **Settings → Email report** sends the Excel report to the configured recipients automatically when a manual scan completes. Disabled by default. Stored as `auto_email_manual` in `smtp.json`. Uses the same Graph-first → SMTP-fallback path as scheduled scan auto-email. Only fires when there are flagged items and at least one recipient is saved; errors are logged but never surface to the UI (the scan result is unaffected).
+
+- **Route integration test suite** — 44 new tests in `tests/test_route_integration.py` covering security-sensitive and data-correctness paths: viewer token CRUD, role and user scope enforcement on `GET /api/db/flagged`, bulk disposition isolation, viewer PIN set/verify/rate-limit/clear, interface PIN gate and multi-step flows, scan lock release on `run_scan()` exception, and `GET /api/db/sessions` shape and ordering. Total test count: 172.
+
+### Fixed
+
+- **Role scope filter silently returned nothing** — `GET /api/db/flagged` filtered rows by `row.get("role")` but the column returned from the DB is `user_role`. Role-scoped viewer tokens (`{"role": "student"}` or `{"role": "staff"}`) therefore excluded every item and returned an empty list. Fixed in `routes/database.py`.
+
+- **Historical session query included newer scans** — `gdpr_db.get_session_items(ref_scan_id=N)` used a lower-bounded window (`started_at >= ref.started_at - 300`) with no upper bound, so any scan that started after the historical reference was also returned. Viewing a past session in the history browser would show items from all subsequent scans as well. Fixed by adding an upper bound (`started_at BETWEEN ref.started_at - 300 AND ref.started_at + 300`).
+
+- **Scan button stuck disabled after file scan** — `run_file_scan` broadcast a `scan_start` SSE event, which the `scan_start` handler in `_attachSchedulerListeners` intercepted and set `S._m365ScanRunning = true`. When `file_scan_done` fired it checked `!S._m365ScanRunning` before re-enabling the button — finding it still `true`, the button stayed disabled permanently. No `scan_done` (M365) ever arrives to clear the flag. Fixed by removing the `scan_start` broadcast from `run_file_scan`; the `scan_phase "Files — …"` event immediately following already sets `_fileScanRunning` correctly via the phase-source detection in `_attachScanListeners`.
+
+- **`TypeError: unhashable type: 'dict'` during file and M365 scans** — `_distinct_cprs = list(dict.fromkeys(cprs))` in both scan paths treated `cprs` as a list of strings, but `extract_matches` returns a list of dicts (`{"formatted": "…", "page": …, …}`). The deduplication crashed on the first file that contained CPR numbers, aborting the scan loop. Fixed in both `run_file_scan` (line 251) and `run_scan` (line 1100) by keying on `c["formatted"]`: `list(dict.fromkeys(c["formatted"] for c in cprs))`.
+
+- **Profile applied early lost user selection and source checkboxes** — two startup race conditions: (1) Profiles with `user_ids = "all"` applied before the M365 user list had loaded ran `.forEach()` on an empty array (no-op); when `loadUsers()` completed it defaulted all users to `selected = false` with nothing to override, leaving the accounts panel completely unchecked. Fixed by adding a `_pendingProfileAllUsers` deferred flag mirroring the existing `_pendingProfileUserIds` mechanism — `loadUsers()` applies it after populating `S._allUsers`. (2) If the profile was selected in the narrow window before `_loadFileSources()` returned and rendered the sources panel, `_applyProfile()` iterated zero checkboxes and the source selection was silently discarded; a subsequent `renderSourcesPanel()` call then re-rendered all sources as checked (their default). Fixed by calling `renderSourcesPanel()` in `_applyProfile()` when no source checkboxes are present in the DOM yet — same guard already used in `loadUsers()`.
+
+---
+
 ## [1.6.21] — 2026-04-20
 
 ### Added

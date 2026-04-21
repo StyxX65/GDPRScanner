@@ -193,7 +193,6 @@ def run_file_scan(source: dict):
     total_scanned = 0
     total_flagged = 0
 
-    broadcast("scan_start", {"sources": [label]})
     broadcast("scan_phase", {"phase": f"Files \u2014 {label}"})
 
     try:
@@ -248,7 +247,7 @@ def run_file_scan(source: dict):
                 _exif = _extract_exif(content, rel_path)
 
             # Apply filters: distinct CPR threshold and GPS suppression
-            _distinct_cprs = list(dict.fromkeys(cprs))  # preserve order, deduplicate
+            _distinct_cprs = list(dict.fromkeys(c["formatted"] for c in cprs))
             _cpr_qualifies = len(_distinct_cprs) >= min_cpr_count
             _exif_has_pii  = _exif.get("has_pii") and (
                 not skip_gps_images or bool(_exif.get("pii_fields") or _exif.get("author"))
@@ -1097,7 +1096,7 @@ def run_scan(options: dict):
                     _exif = _extract_exif(content, name)
 
                 # Apply filters: distinct CPR threshold and GPS suppression
-                _distinct_cprs   = list(dict.fromkeys(cprs))  # preserve order, deduplicate
+                _distinct_cprs   = list(dict.fromkeys(c["formatted"] for c in cprs))
                 _cpr_qualifies   = len(_distinct_cprs) >= min_cpr_count
                 _exif_has_pii    = _exif.get("has_pii") and (
                     not skip_gps_images or bool(_exif.get("pii_fields") or _exif.get("author"))

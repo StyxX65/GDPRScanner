@@ -3,11 +3,13 @@ Scan stream, start/stop, checkpoint, settings, delta
 """
 from __future__ import annotations
 import threading
+import logging
 from flask import Blueprint, jsonify, request
 from routes import state
 from app_config import (
     _save_settings, _load_settings,
     _load_src_toggles, _save_src_toggles,
+    _load_smtp_config,
 )
 from checkpoint import (
     _checkpoint_key, _load_checkpoint, _clear_checkpoint,
@@ -15,6 +17,51 @@ from checkpoint import (
 )
 
 bp = Blueprint("scan", __name__)
+_log = logging.getLogger(__name__)
+
+
+def _maybe_send_auto_email():
+    """Send the scan report email after a manual scan if auto_email_manual is enabled."""
+    try:
+        smtp_cfg = _load_smtp_config()
+        if not smtp_cfg.get("auto_email_manual"):
+            return
+        if not state.flagged_items:
+            return
+        recipients = smtp_cfg.get("recipients", [])
+        if isinstance(recipients, str):
+            recipients = [r.strip() for r in recipients.replace(";", ",").split(",") if r.strip()]
+        if not recipients:
+            return
+
+        from routes.export import _build_excel_bytes
+        from routes.email import _send_report_email, _send_email_graph
+        import datetime as _dt
+
+        xl_bytes, fname = _build_excel_bytes()
+        subject = f"GDPR Scanner — scan report {_dt.datetime.now().strftime('%Y-%m-%d')}"
+        body_html = (
+            "<html><body style='font-family:Arial,sans-serif;color:#333;padding:24px'>"
+            "<h2 style='color:#1F3864'>☁️ GDPR Scanner — scan report</h2>"
+            f"<p>Please find the latest scan report attached ({fname}).</p>"
+            f"<p style='color:#888;font-size:12px'>Generated: {_dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}<br>"
+            f"Items flagged: {len(state.flagged_items)}</p>"
+            "</body></html>"
+        )
+
+        if state.connector and state.connector.is_authenticated():
+            try:
+                _send_email_graph(subject, body_html, recipients,
+                                  attachment_bytes=xl_bytes, attachment_name=fname)
+                _log.info("[auto-email] report sent via Graph to %s", recipients)
+                return
+            except Exception as e:
+                _log.warning("[auto-email] Graph failed, trying SMTP: %s", e)
+
+        _send_report_email(xl_bytes, fname, smtp_cfg, recipients)
+        _log.info("[auto-email] report sent via SMTP to %s", recipients)
+    except Exception as e:
+        _log.error("[auto-email] failed: %s", e)
 
 
 @bp.route("/api/scan/status")
@@ -57,6 +104,7 @@ def scan_start():
         from scan_engine import run_scan
         try:
             run_scan(options)
+            _maybe_send_auto_email()
         finally:
             state._scan_lock.release()
     threading.Thread(target=_run, daemon=True).start()

@@ -364,6 +364,7 @@
   "m365_smtp_recipients": "Modtagere",
   "m365_smtp_recipients_hint": "Adskil med komma eller semikolon",
   "m365_smtp_save": "Gem",
+  "m365_smtp_auto_email_manual": "Send rapport efter manuel scanning",
   "m365_smtp_send": "Send nu",
   "m365_smtp_saved": "Indstillinger gemt.",
   "m365_smtp_sending": "Sender…",

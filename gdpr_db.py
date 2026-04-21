@@ -507,9 +507,9 @@ class ScanDB:
                FROM flagged_items fi
                JOIN scans s ON fi.scan_id = s.id
                LEFT JOIN dispositions d ON d.item_id = fi.id
-               WHERE s.started_at >= ? AND s.finished_at IS NOT NULL
+               WHERE s.started_at BETWEEN ? AND ? AND s.finished_at IS NOT NULL
                ORDER BY fi.cpr_count DESC""",
-            (latest_start - window_seconds,),
+            (latest_start - window_seconds, latest_start + window_seconds),
         ).fetchall()
         result = []
         for r in rows:

@@ -22,6 +22,13 @@ Never revert to `!!window._googleConnected` / `_fileSources.length > 0` — thos
 
 `_PHASE_SOURCE_MAP` ordering matters — `Google Workspace` must appear before `Gmail` in the map. The email regex uses `/iu` flags — do not drop the `i`.
 
+## Profile startup race conditions — profiles.js + users.js
+
+`loadProfiles()` (fast, local file) resolves before `loadUsers()` (slow, Graph API). The user can select a profile before `S._allUsers` or the sources panel is populated.
+
+- **`user_ids = "all"` must be deferred** — if `S._allUsers` is empty when `_applyProfile()` runs, set `window._pendingProfileAllUsers = true` instead of calling `.forEach()` on an empty array. `loadUsers()` checks this flag after populating `S._allUsers` and selects everyone. Do not remove this — reverting will silently leave all accounts unchecked whenever a profile is chosen on a fast machine before the user list loads.
+- **Source checkboxes may not exist yet** — `_applyProfile()` calls `renderSourcesPanel()` first if `#sourcesPanel` contains no `input[data-source-id]` nodes. Same guard used in `loadUsers()`. Without it, `querySelectorAll` returns nothing and the profile's source selection is discarded; the next `renderSourcesPanel()` call re-renders all sources as checked (their default).
+
 ## Gotchas
 
 - **Profile editor accounts** — default to unchecked. Only explicitly saved `user_ids` are checked.

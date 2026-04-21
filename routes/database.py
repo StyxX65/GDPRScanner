@@ -193,7 +193,7 @@ def db_flagged_items():
     import json as _json
     out = []
     for row in items:
-        if role_filt and row.get("role", "") != role_filt:
+        if role_filt and row.get("user_role", "") != role_filt:
             continue
         if user_filt and (row.get("account_id", "") or "").lower() not in user_filt:
             continue

@@ -777,6 +777,10 @@ document.addEventListener('DOMContentLoaded', applyI18n);
             <label data-i18n="m365_smtp_recipients">Recipients</label>
             <input id="st-smtpTo" type="text" placeholder="a@school.dk, b@school.dk">
           </div>
+          <div class="settings-row">
+            <label data-i18n="m365_smtp_auto_email_manual">Email report after manual scan</label>
+            <label class="toggle" style="flex:unset"><input type="checkbox" id="st-smtpAutoEmail"><span class="toggle-slider"></span></label>
+          </div>
           <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px">
             <div id="st-smtpStatus" style="flex:1;font-size:11px;color:var(--muted);align-self:center"></div>
             <button onclick="stSmtpSave()" style="background:none;border:1px solid var(--border);color:var(--muted);height:26px;padding:0 12px;border-radius:6px;font-size:12px;cursor:pointer;box-sizing:border-box" data-i18n="btn_save">Save</button>

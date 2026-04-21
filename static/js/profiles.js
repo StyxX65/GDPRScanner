@@ -69,6 +69,11 @@ function _applyProfile(profile) {
   // File sources may not be rendered yet (they load async), so store their IDs
   // in S._pendingProfileSources for renderSourcesPanel() to apply after re-render.
   const profileSources = profile.sources || [];
+  // Ensure at least M365 source checkboxes are present before reading the DOM.
+  // renderSourcesPanel() is idempotent and fast — safe to call here.
+  if (!document.querySelector('#sourcesPanel input[data-source-id]') && typeof renderSourcesPanel === 'function') {
+    renderSourcesPanel();
+  }
   document.querySelectorAll('#sourcesPanel input[data-source-id]').forEach(function(cb) {
     cb.checked = profileSources.includes(cb.dataset.sourceId);
   });
@@ -181,8 +186,13 @@ function _applyProfile(profile) {
 
   // ── User selection ────────────────────────────────────────────────────────
   if (profile.user_ids === 'all') {
-    S._allUsers.forEach(u => { u.selected = true; });
-    if (S._allUsers.length) renderAccountList();
+    if (S._allUsers.length) {
+      S._allUsers.forEach(u => { u.selected = true; });
+      renderAccountList();
+    } else {
+      // Users not loaded yet — defer until loadUsers() resolves
+      window._pendingProfileAllUsers = true;
+    }
   } else if (Array.isArray(profile.user_ids) && profile.user_ids.length) {
     window._pendingProfileUserIds = profile.user_ids.map(u => u.id || u);
     _applyPendingProfileUsers();

@@ -364,6 +364,7 @@
   "m365_smtp_recipients": "Recipients",
   "m365_smtp_recipients_hint": "Comma or semicolon separated",
   "m365_smtp_save": "Save",
+  "m365_smtp_auto_email_manual": "Email report after manual scan",
   "m365_smtp_send": "Send now",
   "m365_smtp_saved": "Settings saved.",
   "m365_smtp_sending": "Sending…",

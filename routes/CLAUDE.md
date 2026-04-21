@@ -5,6 +5,8 @@ SSE routes must live in `gdpr_scanner.py`, not blueprints — blueprints can't s
 
 M365 scan emits `scan_done`; Google emits `google_scan_done`; file scan emits `file_scan_done`. Never mix them up.
 
+**`scan_start` is M365-only** — `run_scan()` broadcasts `scan_start`; `run_file_scan()` and `routes/google_scan.py` must NOT. The `scan_start` handler in `_attachSchedulerListeners` (scan.js) unconditionally sets `S._m365ScanRunning = true`. If a file scan emits `scan_start`, the flag is set with no matching `scan_done` to clear it — `file_scan_done` checks `!S._m365ScanRunning` before re-enabling the scan button, so the button stays disabled permanently after the scan completes.
+
 ## scan_progress source field
 All three scan engines must include `"source": "m365"` / `"google"` / `"file"` in every `scan_progress` SSE event. Never remove this field — the frontend uses it to route progress to the correct segment.
 

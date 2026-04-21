@@ -28,6 +28,11 @@ async function loadUsers() {
       u.selected = prevSelected.has(u.id) ? prevSelected.get(u.id) : false;
     });
     S._allUsers = [...fetched, ...toAdd];
+    // Apply deferred "select all" from a profile chosen before users loaded
+    if (window._pendingProfileAllUsers) {
+      S._allUsers.forEach(u => { u.selected = true; });
+      window._pendingProfileAllUsers = false;
+    }
     renderAccountList(fetched.length <= 1);
     // Merge Google users separately so they're not blocked by M365 auth timing
     _mergeGoogleUsers();
