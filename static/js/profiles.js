@@ -137,6 +137,16 @@ function _applyProfile(profile) {
     if (el) el.value = opts.min_cpr_count;
   }
 
+  if (opts.scan_emails !== undefined) {
+    const el = document.getElementById('optScanEmails');
+    if (el) el.checked = opts.scan_emails;
+  }
+
+  if (opts.scan_phones !== undefined) {
+    const el = document.getElementById('optScanPhones');
+    if (el) el.checked = opts.scan_phones;
+  }
+
   // ── Date filter ───────────────────────────────────────────────────────────
   const days = opts.older_than_days;
   if (days !== undefined) {
@@ -417,6 +427,8 @@ function _openEditorForProfile(profile) {
           <div class="pmgmt-opt-row"><span>${t('m365_opt_scan_photos','Søg efter ansigter i billeder')}</span><label class="toggle"><input type="checkbox" id="peOptPhotos" ${opts.scan_photos ? 'checked' : ''}><span class="toggle-slider"></span></label></div>
           <div class="pmgmt-opt-row"><span>${t('m365_opt_skip_gps','Ignorer GPS i billeder')}</span><label class="toggle"><input type="checkbox" id="peOptSkipGps" ${opts.skip_gps_images ? 'checked' : ''}><span class="toggle-slider"></span></label></div>
           <div class="pmgmt-opt-row"><span style="color:var(--muted)">${t('m365_opt_min_cpr','Min. CPR-antal pr. fil')}</span><input type="number" id="peOptMinCpr" value="${opts.min_cpr_count || 1}" min="1" max="50" style="width:46px;padding:3px 6px;font-size:11px;text-align:right"></div>
+          <div class="pmgmt-opt-row"><span>${t('m365_opt_scan_emails','Søg efter e-mailadresser')}</span><label class="toggle"><input type="checkbox" id="peOptEmails" ${opts.scan_emails ? 'checked' : ''}><span class="toggle-slider"></span></label></div>
+          <div class="pmgmt-opt-row"><span>${t('m365_opt_scan_phones','Søg efter telefonnumre')}</span><label class="toggle"><input type="checkbox" id="peOptPhones" ${opts.scan_phones ? 'checked' : ''}><span class="toggle-slider"></span></label></div>
           <hr style="border:none;border-top:1px solid var(--pmgmt-divider);margin:2px 0">
           <div class="pmgmt-opt-row"><span>${t('m365_opt_retention','Opbevaringspolitik')}</span><label class="toggle"><input type="checkbox" id="peOptRetention" ${profile.retention_years ? 'checked' : ''}><span class="toggle-slider"></span></label></div>
           <div style="padding:7px 8px;background:var(--bg);border-radius:6px">
@@ -633,6 +645,8 @@ async function _pmgmtSaveFullEdit() {
       scan_photos:     document.getElementById('peOptPhotos')?.checked ?? false,
       skip_gps_images: document.getElementById('peOptSkipGps')?.checked ?? false,
       min_cpr_count:   parseInt(document.getElementById('peOptMinCpr')?.value) || 1,
+      scan_emails:     document.getElementById('peOptEmails')?.checked ?? false,
+      scan_phones:     document.getElementById('peOptPhones')?.checked ?? false,
     },
     retention_years:  document.getElementById('peOptRetention')?.checked ? (parseInt(document.getElementById('peOptRetYears')?.value) || 5) : null,
     fiscal_year_end:  document.getElementById('peOptRetention')?.checked ? (document.getElementById('peOptFiscalYearEnd')?.value || '') : '',

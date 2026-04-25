@@ -350,3 +350,14 @@ Write redacted copies of flagged files with CPR numbers replaced by `XXX XXXX-XX
 ### Email notification on scan completion (non-scheduled) ✅
 
 Auto-email now fires on manual scans when **Email report after manual scan** is enabled in Settings → Email report. Toggle stored as `auto_email_manual` in `smtp.json`. Implemented in `routes/scan.py` — `_maybe_send_auto_email()` is called from the `_run()` thread after `run_scan()` returns. Same Graph-first → SMTP-fallback pattern as scheduled scans. Only fires when there are flagged items and at least one recipient is configured.
+
+### Phase 2 PII: name-based roster lookup
+
+Flag documents containing the full names of students or staff — even when no CPR is present. Implementation outline:
+
+1. **Roster source** — pull names from the M365 directory (`/users?$select=displayName`), the GWS directory (`admin.list_users`), or a user-uploaded CSV. Store as a flat list of `(first, last)` pairs, minimum length threshold (~5 chars per part) to suppress common first-name noise.
+2. **Multi-pattern search** — build an Aho-Corasick automaton from the roster at scan start (`pyahocorasick`, ~50 KB, optional dep). Run each extracted text through the automaton; a hit qualifies only when the match falls on a word boundary and both first + last name appear within a configurable window (e.g. 100 characters apart).
+3. **Integration** — same `_find_emails_phones`-style helper in `cpr_detector.py`; roster loaded once per scan run and passed as a parameter. New `name_count` column in `flagged_items` (DB migration). New `name-badge` in the UI. Opt-in profile toggle like `scan_emails`.
+4. **NER fallback** — optionally run `spaCy` `da_core_news_sm` (~200 MB) when no roster is available to detect PERSON entities. Much higher false-positive rate; only useful as a discovery tool.
+
+**Why deferred:** requires a roster-management UI (upload CSV, choose directory source, refresh cadence), and false-positive rate depends heavily on roster quality. Name-only matches also carry lower legal weight than CPR hits. Implement after a school explicitly requests it.

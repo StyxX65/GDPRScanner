@@ -137,6 +137,22 @@ document.addEventListener('DOMContentLoaded', applyI18n);
                  style="width:46px;padding:3px 6px;font-size:11px;text-align:right">
         </div>
 
+        <!-- Scan for email addresses -->
+        <div class="toggle-row">
+          <span class="toggle-label" style="flex:1">
+            <span data-i18n="m365_opt_scan_emails">Scan for email addresses</span><span class="hint-wrap"><span class="hint-icon" onclick="toggleHint(this)">?</span><span class="hint-bubble" data-i18n="m365_opt_scan_emails_hint">Flags files that contain email addresses. Off by default — email addresses are very common and may produce many results.</span></span>
+          </span>
+          <label class="toggle"><input type="checkbox" id="optScanEmails"><span class="toggle-slider"></span></label>
+        </div>
+
+        <!-- Scan for phone numbers -->
+        <div class="toggle-row">
+          <span class="toggle-label" style="flex:1">
+            <span data-i18n="m365_opt_scan_phones">Scan for phone numbers</span><span class="hint-wrap"><span class="hint-icon" onclick="toggleHint(this)">?</span><span class="hint-bubble" data-i18n="m365_opt_scan_phones_hint">Flags files containing Danish phone numbers (8 digits). Useful for finding contact lists and parent correspondence.</span></span>
+          </span>
+          <label class="toggle"><input type="checkbox" id="optScanPhones"><span class="toggle-slider"></span></label>
+        </div>
+
         <!-- Retention policy (suggestion #1) -->
         <div class="toggle-row">
           <span class="toggle-label" style="flex:1">

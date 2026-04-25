@@ -127,6 +127,8 @@ function buildScanPayload() {
     scan_photos:      document.getElementById('optScanPhotos') ? document.getElementById('optScanPhotos').checked : false,
     skip_gps_images:  document.getElementById('optSkipGps') ? document.getElementById('optSkipGps').checked : false,
     min_cpr_count:    document.getElementById('optMinCpr') ? (parseInt(document.getElementById('optMinCpr').value) || 1) : 1,
+    scan_emails:      document.getElementById('optScanEmails') ? document.getElementById('optScanEmails').checked : false,
+    scan_phones:      document.getElementById('optScanPhones') ? document.getElementById('optScanPhones').checked : false,
     retention_enabled: document.getElementById('optRetention') ? document.getElementById('optRetention').checked : false,
     retention_years:  parseInt(document.getElementById('optRetentionYears')?.value) || 5,
     fiscal_year_end:  document.getElementById('optFiscalYearEnd')?.value || '',
@@ -588,6 +590,8 @@ function startScan(resume) {
           scan_photos:      options.scan_photos     || false,
           skip_gps_images:  options.skip_gps_images || false,
           min_cpr_count:    options.min_cpr_count   || 1,
+          scan_emails:      options.scan_emails      || false,
+          scan_phones:      options.scan_phones      || false,
         }))
       }).catch(e => { log('File scan error: ' + e, 'err'); });
     });

@@ -22,6 +22,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import io
+import re
 import tempfile
 import threading
 from pathlib import Path
@@ -505,55 +506,139 @@ def _detect_photo_faces(content: bytes, filename: str) -> int:
         return 0
 
 
+_EMAIL_RE = re.compile(
+    r'\b[a-zA-Z0-9][a-zA-Z0-9._%+\-]*@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}\b'
+)
+_PHONE_RE = re.compile(
+    r'(?:'
+    r'(?:\+45|0045)[\s\-]?[2-9]\d{3}[\s\-]?\d{4}'      # +45/0045 DDDD DDDD
+    r'|(?:\+45|0045)[\s\-]?[2-9]\d(?:[\s\-]\d{2}){3}'  # +45/0045 DD DD DD DD
+    r'|\b[2-9]\d{7}\b'                                    # 8 consecutive digits
+    r'|\b[2-9]\d{3}[\s\-]\d{4}\b'                        # DDDD DDDD
+    r'|\b[2-9]\d(?:[\s\-]\d{2}){3}\b'                    # DD DD DD DD
+    r')'
+)
+
+
+def _extract_text_from_bytes(content: bytes, filename: str) -> str:
+    """Extract plain text from file bytes for email/phone pattern matching.
+
+    Returns empty string for binary media files (photos, video, audio) and
+    on any parse error — callers must never raise from this function.
+    """
+    ext = Path(filename).suffix.lower()
+    try:
+        if ext in {".txt", ".csv", ".eml", ".msg"}:
+            return content.decode("utf-8", errors="replace")
+        if ext in {".docx", ".doc"}:
+            from docx import Document as _Doc
+            doc = _Doc(io.BytesIO(content))
+            parts = [p.text for p in doc.paragraphs]
+            for tbl in doc.tables:
+                for row in tbl.rows:
+                    for cell in row.cells:
+                        parts.append(cell.text)
+            return "\n".join(parts)
+        if ext in {".xlsx", ".xlsm"}:
+            import openpyxl as _xl
+            wb = _xl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+            parts = [
+                str(cell.value)
+                for ws in wb.worksheets
+                for row in ws.iter_rows()
+                for cell in row
+                if cell.value is not None
+            ]
+            wb.close()
+            return " ".join(parts)
+        if ext == ".pdf":
+            import pdfplumber as _pp
+            with _pp.open(io.BytesIO(content)) as pdf:
+                parts = [p.extract_text() or "" for p in pdf.pages]
+            return "\n".join(parts)
+    except Exception:
+        pass
+    if ext not in PHOTO_EXTS | VIDEO_EXTS | AUDIO_EXTS:
+        try:
+            return content.decode("utf-8", errors="replace")
+        except Exception:
+            pass
+    return ""
+
+
+def _find_emails_phones(text: str) -> dict:
+    """Extract unique email addresses and Danish phone numbers from text.
+
+    Returns {"emails": [{"formatted": str}, ...], "phones": [{"formatted": str}, ...]}.
+    Phones are normalised to digit-only strings (preserving a leading '+').
+    """
+    if not text:
+        return {"emails": [], "phones": []}
+    emails = list(dict.fromkeys(m.group(0).lower() for m in _EMAIL_RE.finditer(text)))
+    phones = list(dict.fromkeys(
+        ('+' + re.sub(r'[\s\-]', '', m.group(0)[1:]) if m.group(0).lstrip().startswith('+')
+         else re.sub(r'[\s\-]', '', m.group(0)))
+        for m in _PHONE_RE.finditer(text)
+    ))
+    return {
+        "emails": [{"formatted": e} for e in emails],
+        "phones": [{"formatted": p} for p in phones],
+    }
+
+
 def _scan_bytes(content: bytes, filename: str, poppler_path=None) -> dict:
-    """Scan raw bytes for CPRs. Returns scanner result dict."""
+    """Scan raw bytes for CPRs, emails, and phone numbers. Returns result dict."""
     if not SCANNER_OK:
-        return {"cprs": [], "dates": [], "error": "scanner not available"}
+        return {"cprs": [], "dates": [], "emails": [], "phones": [], "error": "scanner not available"}
     ext = Path(filename).suffix.lower()
     with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
         tmp.write(content)
         tmp_path = Path(tmp.name)
+    result: dict = {"cprs": [], "dates": []}
     try:
         if ext == ".pdf":
             # Check if the PDF has a text layer before running full scan_pdf.
             # Image-only PDFs (scanned documents) have no text and would trigger
             # Tesseract OCR subprocesses that hang indefinitely on some files.
             try:
-                import pdfplumber as _pp, io as _io
-                with _pp.open(_io.BytesIO(content)) as _pdf:
+                import pdfplumber as _pp
+                with _pp.open(io.BytesIO(content)) as _pdf:
                     has_text = any(ds.is_text_page(p) for p in _pdf.pages)
                 if not has_text:
-                    return {"cprs": [], "dates": []}  # image-only PDF — no CPRs possible
+                    return {"cprs": [], "dates": [], "emails": [], "phones": []}
             except Exception:
                 pass  # if pdfplumber fails, fall through to full scan_pdf
-            return ds.scan_pdf(tmp_path, poppler_path=poppler_path)
+            result = ds.scan_pdf(tmp_path, poppler_path=poppler_path)
         elif ext in {".docx", ".doc"}:
-            return ds.scan_docx(tmp_path)
+            result = ds.scan_docx(tmp_path)
         elif ext in {".xlsx", ".xlsm"}:
-            return ds.scan_xlsx(tmp_path)
+            result = ds.scan_xlsx(tmp_path)
         elif ext == ".csv":
-            return ds.scan_csv(tmp_path)
+            result = ds.scan_csv(tmp_path)
         elif ext == ".txt":
             text = content.decode("utf-8", errors="replace")
             cprs, dates = ds.extract_matches(text, 1, "text")
-            return {"cprs": cprs, "dates": dates}
+            result = {"cprs": cprs, "dates": dates}
         elif ext in {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp"}:
-            return ds.scan_image(tmp_path)
+            result = ds.scan_image(tmp_path)
         else:
-            # Try plain text
             try:
                 text = content.decode("utf-8", errors="replace")
                 cprs, dates = ds.extract_matches(text, 1, "text")
-                return {"cprs": cprs, "dates": dates}
+                result = {"cprs": cprs, "dates": dates}
             except Exception:
-                return {"cprs": [], "dates": []}
+                pass
     except Exception as e:
-        return {"cprs": [], "dates": [], "error": str(e)}
+        result = {"cprs": [], "dates": [], "error": str(e)}
     finally:
         try:
             tmp_path.unlink()
         except Exception:
             pass
+    ep = _find_emails_phones(_extract_text_from_bytes(content, filename))
+    result["emails"] = ep["emails"]
+    result["phones"] = ep["phones"]
+    return result
 
 def _worker_scan_pdf(pdf_path_str: str, result_q) -> None:
     """Worker executed in a spawned subprocess — must be a module-level function."""
@@ -607,19 +692,22 @@ def _scan_bytes_timeout(content: bytes, filename: str, timeout: int = 60) -> dic
 
 
 def _scan_text_direct(text: str) -> dict:
-    """Scan a plain text string for CPRs using extract_matches.
-    
+    """Scan a plain text string for CPRs, emails, and phone numbers.
+
     Uses ds.extract_matches() directly rather than ds.scan_text() because
     scan_text() calls extract_cpr_and_dates() which is not defined in
     document_scanner.py (pre-existing bug).
     """
-    if not SCANNER_OK or not text:
-        return {"cprs": [], "dates": []}
+    if not text:
+        return {"cprs": [], "dates": [], "emails": [], "phones": []}
+    ep = _find_emails_phones(text)
+    if not SCANNER_OK:
+        return {"cprs": [], "dates": [], **ep}
     try:
         cprs, dates = ds.extract_matches(text, 1, "text")
-        return {"cprs": cprs, "dates": dates}
+        return {"cprs": cprs, "dates": dates, **ep}
     except Exception:
-        return {"cprs": [], "dates": []}
+        return {"cprs": [], "dates": [], **ep}
 
 def _html_esc(s: str) -> str:
     """HTML-escape a string for safe inline embedding."""

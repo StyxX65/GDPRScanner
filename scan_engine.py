@@ -182,6 +182,8 @@ def run_file_scan(source: dict):
     scan_photos     = bool(source.get("scan_photos", False))
     skip_gps_images = bool(source.get("skip_gps_images", False))
     min_cpr_count   = max(1, int(source.get("min_cpr_count", 1)))
+    scan_emails     = bool(source.get("scan_emails",  False))
+    scan_phones     = bool(source.get("scan_phones",  False))
     max_mb          = int(source.get("max_file_mb", 50))
 
     if source_kind == "sftp":
@@ -268,7 +270,9 @@ def run_file_scan(source: dict):
                     broadcast("scan_error", {"file": rel_path, "error": str(e)})
                     continue
 
-            cprs = result.get("cprs", [])
+            cprs   = result.get("cprs", [])
+            emails = result.get("emails", []) if scan_emails else []
+            phones = result.get("phones", []) if scan_phones else []
 
             # Photo / biometric scan + EXIF/video/audio metadata extraction
             _face_count = 0
@@ -283,13 +287,15 @@ def run_file_scan(source: dict):
                 _exif = _extract_audio_metadata(content, rel_path)
 
             # Apply filters: distinct CPR threshold and GPS suppression
-            _distinct_cprs = list(dict.fromkeys(c["formatted"] for c in cprs))
-            _cpr_qualifies = len(_distinct_cprs) >= min_cpr_count
-            _exif_has_pii  = _exif.get("has_pii") and (
+            _distinct_cprs   = list(dict.fromkeys(c["formatted"] for c in cprs))
+            _cpr_qualifies   = len(_distinct_cprs) >= min_cpr_count
+            _distinct_emails = list(dict.fromkeys(e["formatted"] for e in emails))
+            _distinct_phones = list(dict.fromkeys(p["formatted"] for p in phones))
+            _exif_has_pii    = _exif.get("has_pii") and (
                 not skip_gps_images or bool(_exif.get("pii_fields") or _exif.get("author"))
             )
 
-            if not (_cpr_qualifies and cprs) and _face_count == 0 and not _exif_has_pii:
+            if not (_cpr_qualifies and cprs) and not _distinct_emails and not _distinct_phones and _face_count == 0 and not _exif_has_pii:
                 continue
 
             # Build card metadata
@@ -325,6 +331,8 @@ def run_file_scan(source: dict):
                 "source":       label,
                 "source_type":  source_type,
                 "cpr_count":    len(cprs),
+                "email_count":  len(_distinct_emails),
+                "phone_count":  len(_distinct_phones),
                 "url":          "",
                 "size_kb":      meta["size_kb"],
                 "modified":     meta["modified"],
@@ -437,6 +445,8 @@ def run_scan(options: dict):
     scan_photos    = bool(scan_opts.get("scan_photos", False))  # biometric photo scan (#9)
     skip_gps_images= bool(scan_opts.get("skip_gps_images", False))
     min_cpr_count  = max(1, int(scan_opts.get("min_cpr_count", 1)))
+    scan_emails    = bool(scan_opts.get("scan_emails",  False))
+    scan_phones    = bool(scan_opts.get("scan_phones",  False))
 
     # Delta token state — loaded once, updated per-source, saved on completion
     delta_tokens:     dict = _load_delta_tokens() if delta_enabled else {}
@@ -490,6 +500,8 @@ def run_scan(options: dict):
             "source":       item_meta.get("_source", ""),
             "source_type":  item_meta.get("_source_type", ""),
             "cpr_count":    len(cprs),
+            "email_count":  item_meta.get("_email_count", 0),
+            "phone_count":  item_meta.get("_phone_count", 0),
             "url":          item_meta.get("webUrl", "") or item_meta.get("_url", ""),
             "size_kb":      round(item_meta.get("size", 0) / 1024, 1),
             "modified":     (item_meta.get("lastModifiedDateTime") or item_meta.get("receivedDateTime") or "")[:10],
@@ -1056,12 +1068,18 @@ def run_scan(options: dict):
 
                 # Scan body — use pre-extracted text (body HTML was stripped at
                 # collection time to keep work_items memory footprint small)
-                all_cprs = []
-                body_text = ""
+                all_cprs   = []
+                all_emails = []
+                all_phones = []
+                body_text  = ""
                 if scan_email_body:
-                    body_text = meta.pop("_precomputed_body", "")
+                    body_text   = meta.pop("_precomputed_body", "")
                     body_result = _scan_text_direct(body_text)
-                    all_cprs = list(body_result.get("cprs", []))
+                    all_cprs    = list(body_result.get("cprs", []))
+                    if scan_emails:
+                        all_emails = list(body_result.get("emails", []))
+                    if scan_phones:
+                        all_phones = list(body_result.get("phones", []))
 
                 # <span data-i18n="m365_opt_attachments" data-i18n="m365_opt_attachments">Scan attachments</span>
                 uid = meta.get("_account_id", "me")
@@ -1084,14 +1102,22 @@ def run_scan(options: dict):
                             att_result = _scan_bytes(att_bytes, att_name)
                             att_cprs   = att_result.get("cprs", [])
                             all_cprs.extend(att_cprs)
+                            if scan_emails:
+                                all_emails.extend(att_result.get("emails", []))
+                            if scan_phones:
+                                all_phones.extend(att_result.get("phones", []))
                             att_results.append({"name": att_name, "cpr_count": len(att_cprs)})
                         except Exception as att_err:
                             broadcast("scan_error", {"file": att_name, "error": str(att_err)})
 
-                if all_cprs:
+                _distinct_emails = list(dict.fromkeys(e["formatted"] for e in all_emails))
+                _distinct_phones = list(dict.fromkeys(p["formatted"] for p in all_phones))
+                if all_cprs or _distinct_emails or _distinct_phones:
                     meta["_thumb"]         = _placeholder_svg(".eml", subject)
                     meta["_thumb_is_jpeg"] = False
                     meta["_attachments"]   = att_results
+                    meta["_email_count"]   = len(_distinct_emails)
+                    meta["_phone_count"]   = len(_distinct_phones)
                     _email_pii = _get_pii_counts(body_text) if scan_email_body else {}
                     meta["_transfer_risk"]    = _check_transfer_risk(meta)
                     meta["_special_category"] = _check_special_category(
@@ -1121,10 +1147,12 @@ def run_scan(options: dict):
                 else:
                     content = conn.download_item(meta)
 
-                # CPR scan — skip for video and audio (metadata-only; no text layer)
+                # CPR/email/phone scan — skip for video and audio (metadata-only; no text layer)
                 _media_only = ext in VIDEO_EXTS or ext in AUDIO_EXTS
-                result = {"cprs": [], "dates": []} if _media_only else _scan_bytes(content, name)
+                result = {"cprs": [], "dates": [], "emails": [], "phones": []} if _media_only else _scan_bytes(content, name)
                 cprs   = result.get("cprs", [])
+                emails = result.get("emails", []) if scan_emails else []
+                phones = result.get("phones", []) if scan_phones else []
 
                 # ── Biometric photo scan (#9) + EXIF/video/audio metadata (#18) ─
                 _face_count = 0
@@ -1141,12 +1169,14 @@ def run_scan(options: dict):
                 # Apply filters: distinct CPR threshold and GPS suppression
                 _distinct_cprs   = list(dict.fromkeys(c["formatted"] for c in cprs))
                 _cpr_qualifies   = len(_distinct_cprs) >= min_cpr_count
+                _distinct_emails = list(dict.fromkeys(e["formatted"] for e in emails))
+                _distinct_phones = list(dict.fromkeys(p["formatted"] for p in phones))
                 _exif_has_pii    = _exif.get("has_pii") and (
                     not skip_gps_images or bool(_exif.get("pii_fields") or _exif.get("author"))
                 )
 
-                # Flag item if CPRs found (above threshold), faces detected, or EXIF PII found
-                if (_cpr_qualifies and cprs) or _face_count > 0 or _exif_has_pii:
+                # Flag item if CPRs/emails/phones found, faces detected, or EXIF PII found
+                if (_cpr_qualifies and cprs) or _distinct_emails or _distinct_phones or _face_count > 0 or _exif_has_pii:
                     # Make thumbnail
                     if ext in {".jpg", ".jpeg", ".png"} and PIL_OK:
                         thumb = _make_thumb(content, name)
@@ -1182,6 +1212,8 @@ def run_scan(options: dict):
                     meta["_special_category"] = _sc
                     meta["_face_count"]        = _face_count
                     meta["_exif"]              = _exif
+                    meta["_email_count"]       = len(_distinct_emails)
+                    meta["_phone_count"]       = len(_distinct_phones)
                     _broadcast_card(meta, cprs, pii_counts=_file_pii)
                 else:
                     del content  # no hits — free raw bytes immediately

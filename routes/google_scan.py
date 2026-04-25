@@ -141,6 +141,8 @@ def _run_google_scan(options: dict):
     scan_body     = bool(scan_opts.get("scan_body",        True))
     scan_att      = bool(scan_opts.get("scan_attachments", True))
     delta_enabled = bool(scan_opts.get("delta", False))
+    scan_emails   = bool(scan_opts.get("scan_emails",  False))
+    scan_phones   = bool(scan_opts.get("scan_phones",  False))
 
     from checkpoint import _load_delta_tokens, _save_delta_tokens
     _drive_delta_tokens: dict = _load_delta_tokens() if delta_enabled else {}
@@ -212,6 +214,8 @@ def _run_google_scan(options: dict):
             "source":       item_meta.get("_source", ""),
             "source_type":  item_meta.get("_source_type", ""),
             "cpr_count":    len(cprs),
+            "email_count":  item_meta.get("_email_count", 0),
+            "phone_count":  item_meta.get("_phone_count", 0),
             "url":          item_meta.get("_url", ""),
             "size_kb":      round(item_meta.get("size", 0) / 1024, 1),
             "modified":     (item_meta.get("lastModifiedDateTime") or item_meta.get("receivedDateTime") or "")[:10],
@@ -276,9 +280,13 @@ def _run_google_scan(options: dict):
                     except Exception as e:
                         broadcast("scan_error", {"file": meta.get("name", ""), "error": str(e)})
                         continue
-                    cprs      = result.get("cprs", [])
+                    cprs       = result.get("cprs", [])
                     pii_counts = result.get("pii_counts")
-                    if cprs or (pii_counts and any(pii_counts.values())):
+                    _em = list(dict.fromkeys(e["formatted"] for e in result.get("emails", []))) if scan_emails else []
+                    _ph = list(dict.fromkeys(p["formatted"] for p in result.get("phones", []))) if scan_phones else []
+                    if cprs or (pii_counts and any(pii_counts.values())) or _em or _ph:
+                        meta["_email_count"] = len(_em)
+                        meta["_phone_count"] = len(_ph)
                         _broadcast_card(meta, cprs, pii_counts)
             except GoogleError as e:
                 broadcast("scan_error", {"file": f"Gmail/{user_email}", "error": str(e)})
@@ -336,7 +344,11 @@ def _run_google_scan(options: dict):
                         continue
                     cprs       = result.get("cprs", [])
                     pii_counts = result.get("pii_counts")
-                    if cprs or (pii_counts and any(pii_counts.values())):
+                    _em = list(dict.fromkeys(e["formatted"] for e in result.get("emails", []))) if scan_emails else []
+                    _ph = list(dict.fromkeys(p["formatted"] for p in result.get("phones", []))) if scan_phones else []
+                    if cprs or (pii_counts and any(pii_counts.values())) or _em or _ph:
+                        meta["_email_count"] = len(_em)
+                        meta["_phone_count"] = len(_ph)
                         _broadcast_card(meta, cprs, pii_counts)
             except GoogleError as e:
                 broadcast("scan_error", {"file": f"Drive/{user_email}", "error": str(e)})

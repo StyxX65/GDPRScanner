@@ -491,6 +491,12 @@
   .overdue-badge { font-size: 9px; padding: 1px 5px; border-radius: 10px;
     background: #7c3200; color: #ffb347; font-weight: 600; white-space: nowrap; }
   [data-theme="light"] .overdue-badge { background: #fff3e0; color: #c55a00; }
+  .email-badge { font-size: 9px; padding: 1px 5px; border-radius: 10px;
+    background: #1a3a5c; color: #7ec8f0; font-weight: 500; white-space: nowrap; }
+  [data-theme="light"] .email-badge { background: #d0eaff; color: #004a80; }
+  .phone-badge { font-size: 9px; padding: 1px 5px; border-radius: 10px;
+    background: #1a4030; color: #7eeac0; font-weight: 500; white-space: nowrap; }
+  [data-theme="light"] .phone-badge { background: #d0f5ea; color: #005a3a; }
   .badge-email { background: rgba(139,68,173,.2); color: #b87fd8; }
   .badge-onedrive { background: rgba(0,120,212,.2); color: #5ba4e8; }
   .badge-sharepoint { background: rgba(0,160,100,.2); color: #2ecc71; }

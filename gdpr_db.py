@@ -200,6 +200,8 @@ _MIGRATIONS: list[tuple[int, str]] = [
     (4, "ALTER TABLE flagged_items ADD COLUMN face_count INTEGER NOT NULL DEFAULT 0"),
     (5, "ALTER TABLE flagged_items ADD COLUMN exif_json TEXT NOT NULL DEFAULT '{}'"),
     (6, "ALTER TABLE flagged_items ADD COLUMN full_path TEXT NOT NULL DEFAULT ''"),
+    (8, "ALTER TABLE flagged_items ADD COLUMN email_count INTEGER NOT NULL DEFAULT 0"),
+    (9, "ALTER TABLE flagged_items ADD COLUMN phone_count INTEGER NOT NULL DEFAULT 0"),
     (7, """CREATE TABLE IF NOT EXISTS schedule_runs (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
         started_at  REAL    NOT NULL,
@@ -311,8 +313,9 @@ class ScanDB:
                (id, scan_id, name, source, source_type, account_id, folder,
                 url, drive_id, size_kb, modified, cpr_count, risk,
                 thumb_b64, thumb_mime, attachments, user_role, transfer_risk,
-                special_category, face_count, exif_json, full_path, scanned_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                special_category, face_count, exif_json, full_path,
+                email_count, phone_count, scanned_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 card.get("id", ""),
                 scan_id,
@@ -336,6 +339,8 @@ class ScanDB:
                 card.get("face_count", 0),
                 json.dumps(card.get("exif", {})),
                 card.get("full_path", ""),
+                card.get("email_count", 0),
+                card.get("phone_count", 0),
                 now,
             ),
         )

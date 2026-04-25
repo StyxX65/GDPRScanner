@@ -46,6 +46,8 @@ function appendCard(f) {
         <div class="card-source"><span class="source-badge ${badgeCls}">${label}</span> ${f.source || ''}${f.account_name ? ' · <span class="account-pill" title="' + f.account_name + '">' + (f.user_role === 'student' ? '<span class="role-badge">' + t('role_student','Elev') + '</span>' : f.user_role === 'staff' ? '<span class="role-badge">' + t('role_staff','Ansat') + '</span>' : '') + f.account_name + '</span>' : ''}${f.transfer_risk === 'external-recipient' ? ' <span class="role-pill" style="background:#7B2D00;color:#FFD0B0">⚠ Ext.</span>' : f.transfer_risk ? ' <span class="role-pill" style="background:#003D7B;color:#B0D4FF">🔗</span>' : ''}</div>
       </div>
       <span class="cpr-badge">${f.cpr_count} CPR</span>
+      ${f.email_count > 0 ? '<span class="email-badge">' + f.email_count + ' ' + t('m365_badge_emails', 'e-mail') + '</span> ' : ''}
+      ${f.phone_count > 0 ? '<span class="phone-badge">' + f.phone_count + ' ' + t('m365_badge_phones', 'tlf.') + '</span> ' : ''}
       ${f.face_count > 0 ? '<span class="photo-face-badge">' + f.face_count + ' ' + t('m365_badge_faces', f.face_count === 1 ? 'face' : 'faces') + '</span> ' : ''}
       ${f.exif && f.exif.gps ? '<span class="photo-face-badge" style="background:#0a3a5a;color:#7ec8d0">🌍 GPS</span> ' : ''}
       ${f.special_category && f.special_category.length ? '<span class="special-cat-badge">⚠ Art.9 — ' + f.special_category.filter(function(s){return s !== 'gps_location' && s !== 'exif_pii';}).join(', ') + '</span> ' : ''}${f.overdue ? '<span class="overdue-badge">🗓 Overdue</span>' : ''}
@@ -58,7 +60,7 @@ function appendCard(f) {
         <div class="card-meta">${f.size_kb} KB · ${f.modified || ''}</div>
         ${f.folder ? `<div class="card-meta" style="font-size:10px" title="${f.folder}">📂 ${f.folder}</div>` : ''}
         <div class="card-source"><span class="source-badge ${badgeCls}">${label}</span>${f.account_name ? ' <span class="account-pill" title="' + f.account_name + '">' + (f.user_role === "student" ? '<span class="role-badge">' + t("role_student","Elev") + "</span>" : f.user_role === "staff" ? '<span class="role-badge">' + t("role_staff","Ansat") + "</span>" : "") + f.account_name + '</span>' : ''}${f.transfer_risk === "external-recipient" ? ' <span class="role-pill" style="background:#7B2D00;color:#FFD0B0">⚠ Ext.</span>' : f.transfer_risk ? ' <span class="role-pill" style="background:#003D7B;color:#B0D4FF">🔗</span>' : ''}</div>
-        <span class="cpr-badge">${f.cpr_count} CPR</span>${f.face_count > 0 ? ' <span class="photo-face-badge">' + f.face_count + ' ' + t('m365_badge_faces', f.face_count === 1 ? 'face' : 'faces') + '</span>' : ''}${f.exif && f.exif.gps ? ' <span class="photo-face-badge" style="background:#0a3a5a;color:#7ec8d0">🌍 GPS</span>' : ''}${f.overdue ? ' <span class="overdue-badge">🗓 Overdue</span>' : ''}
+        <span class="cpr-badge">${f.cpr_count} CPR</span>${f.email_count > 0 ? ' <span class="email-badge">' + f.email_count + ' ' + t('m365_badge_emails', 'e-mail') + '</span>' : ''}${f.phone_count > 0 ? ' <span class="phone-badge">' + f.phone_count + ' ' + t('m365_badge_phones', 'tlf.') + '</span>' : ''}${f.face_count > 0 ? ' <span class="photo-face-badge">' + f.face_count + ' ' + t('m365_badge_faces', f.face_count === 1 ? 'face' : 'faces') + '</span>' : ''}${f.exif && f.exif.gps ? ' <span class="photo-face-badge" style="background:#0a3a5a;color:#7ec8d0">🌍 GPS</span>' : ''}${f.overdue ? ' <span class="overdue-badge">🗓 Overdue</span>' : ''}
       </div>
       ${delBtn}`;
   }
@@ -101,7 +103,9 @@ async function openPreview(f) {
     f.source   ? `<span>${f.source}</span>` : '',
     f.size_kb  ? `<span>${f.size_kb} KB</span>` : '',
     f.modified ? `<span>${f.modified}</span>` : '',
-    f.cpr_count ? `<span style="color:var(--danger)">${f.cpr_count} CPR</span>` : '',
+    f.cpr_count   ? `<span style="color:var(--danger)">${f.cpr_count} CPR</span>` : '',
+    f.email_count ? `<span style="color:#7ec8f0">${f.email_count} ${t('m365_badge_emails','e-mail')}</span>` : '',
+    f.phone_count ? `<span style="color:#7eeac0">${f.phone_count} ${t('m365_badge_phones','tlf.')}</span>` : '',
     f.url ? `<button class="preview-open-btn" onclick="window.open('${f.url}','_blank')">${t("m365_preview_open","Open in M365 ↗")}</button>` : '',
   ].filter(Boolean).join('');
 
