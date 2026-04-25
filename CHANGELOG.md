@@ -17,6 +17,14 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 - **SFTP entry in export SOURCE_MAP** — Excel and Article 30 exports render SFTP sources as "🔒 SFTP" with a purple tint (`EDE9F7`), consistent with the existing per-source tab and summary table logic.
 
+### Fixed
+
+- **File source form placeholders untranslated** — all nine placeholder texts in the Add source and Edit source forms (source name, path, SMB host/user, SFTP host/user/path, passphrase) were hardcoded English strings. Nine new `data-i18n-placeholder` keys added to `en.json`, `da.json`, and `de.json`; all 12 affected `<input>` elements now carry `data-i18n-placeholder` attributes.
+
+- **"Name" and "Auth" labels untranslated in SFTP form** — the source-name label and the Auth toggle label in the add-source panel had no `data-i18n` attributes. Added keys `m365_fsrc_name` (DA: "Navn") and `m365_fsrc_sftp_auth` (same across languages). The name label used an inner `<span data-i18n>` to preserve the required-field `*` indicator, which would have been clobbered by a `data-i18n` on the outer `<label>` element. The same clobber bug was fixed for the `m365_fsrc_label` usage in the edit form.
+
+- **Password field placeholder showed "Stored in OS keychain" in English** — added translation key `m365_fsrc_pw_keychain_placeholder` (DA: "Gemt i OS-nøglering") and applied `data-i18n-placeholder` to the three password inputs across both forms (SMB add, SFTP add, SMB edit).
+
 ---
 
 ## [1.6.24] — 2026-04-25

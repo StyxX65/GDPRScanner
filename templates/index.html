@@ -1230,27 +1230,27 @@ document.addEventListener('DOMContentLoaded', applyI18n);
             </div>
             <input type="hidden" id="srcFileSourceType" value="local">
             <div class="fsrc-form-row">
-              <label>Name <span style="color:var(--accent)">*</span></label>
-              <input id="srcFileLabel" type="text" placeholder="e.g. Teacher files, NAS archive" maxlength="80" autocomplete="off">
+              <label><span data-i18n="m365_fsrc_name">Name</span> <span style="color:var(--accent)">*</span></label>
+              <input id="srcFileLabel" type="text" data-i18n-placeholder="m365_fsrc_name_placeholder" placeholder="e.g. Teacher files, NAS archive" maxlength="80" autocomplete="off">
             </div>
             <!-- Local / SMB path field -->
             <div id="srcFilePathRow" class="fsrc-form-row">
               <label data-i18n="m365_fsrc_path">Path</label>
-              <input id="srcFilePath" type="text" placeholder="~/Documents  or  //nas/shares" oninput="srcFileDetectSmb(); srcFileAutoName()">
+              <input id="srcFilePath" type="text" data-i18n-placeholder="m365_fsrc_path_placeholder" placeholder="~/Documents  or  //nas/shares" oninput="srcFileDetectSmb(); srcFileAutoName()">
             </div>
             <div id="srcFileSmbFields" style="display:none;flex-direction:column;gap:6px">
               <div style="font-size:10px;color:var(--accent)" data-i18n="m365_fsrc_smb_detected">SMB/CIFS network share detected</div>
               <div class="fsrc-form-row">
                 <label data-i18n="m365_fsrc_smb_host">SMB host</label>
-                <input id="srcFileSmbHost" type="text" placeholder="nas.school.dk">
+                <input id="srcFileSmbHost" type="text" data-i18n-placeholder="m365_fsrc_smb_host_placeholder" placeholder="nas.school.dk">
               </div>
               <div class="fsrc-form-row">
                 <label data-i18n="m365_fsrc_smb_user">Username</label>
-                <input id="srcFileSmbUser" type="text" placeholder="DOMAIN\\username">
+                <input id="srcFileSmbUser" type="text" data-i18n-placeholder="m365_fsrc_smb_user_placeholder" placeholder="DOMAIN\\username">
               </div>
               <div class="fsrc-form-row">
                 <label data-i18n="m365_fsrc_smb_pw">Password</label>
-                <input id="srcFileSmbPw" type="password" placeholder="Stored in OS keychain">
+                <input id="srcFileSmbPw" type="password" data-i18n-placeholder="m365_fsrc_pw_keychain_placeholder" placeholder="Stored in OS keychain">
               </div>
               <div style="font-size:10px;color:var(--muted)" data-i18n="m365_fsrc_smb_pw_hint">Saved to OS keychain — never stored in a file.</div>
             </div>
@@ -1258,7 +1258,7 @@ document.addEventListener('DOMContentLoaded', applyI18n);
             <div id="srcFileSftpFields" style="display:none;flex-direction:column;gap:6px">
               <div class="fsrc-form-row">
                 <label data-i18n="m365_fsrc_sftp_host">SFTP host</label>
-                <input id="srcFileSftpHost" type="text" placeholder="sftp.school.dk" oninput="srcFileAutoNameSftp()">
+                <input id="srcFileSftpHost" type="text" data-i18n-placeholder="m365_fsrc_sftp_host_placeholder" placeholder="sftp.school.dk" oninput="srcFileAutoNameSftp()">
               </div>
               <div class="fsrc-form-row">
                 <label data-i18n="m365_fsrc_sftp_port">Port</label>
@@ -1266,15 +1266,15 @@ document.addEventListener('DOMContentLoaded', applyI18n);
               </div>
               <div class="fsrc-form-row">
                 <label data-i18n="m365_fsrc_sftp_user">Username</label>
-                <input id="srcFileSftpUser" type="text" placeholder="backup_user">
+                <input id="srcFileSftpUser" type="text" data-i18n-placeholder="m365_fsrc_sftp_user_placeholder" placeholder="backup_user">
               </div>
               <div class="fsrc-form-row">
                 <label data-i18n="m365_fsrc_sftp_remote_path">Remote path</label>
-                <input id="srcFileSftpPath" type="text" placeholder="/var/data" value="/">
+                <input id="srcFileSftpPath" type="text" data-i18n-placeholder="m365_fsrc_sftp_path_placeholder" placeholder="/var/data" value="/">
               </div>
               <!-- Auth type toggle -->
               <div class="fsrc-form-row">
-                <label>Auth</label>
+                <label data-i18n="m365_fsrc_sftp_auth">Auth</label>
                 <div style="display:flex;background:var(--bg);border:1px solid var(--border);border-radius:6px;overflow:hidden">
                   <button type="button" id="srcSftpAuthPw"  onclick="srcFileSftpAuthSelect('password')" style="flex:1;border:none;padding:3px 8px;font-size:11px;cursor:pointer;background:var(--accent);color:#fff" data-i18n="m365_fsrc_sftp_auth_password">Password</button>
                   <button type="button" id="srcSftpAuthKey" onclick="srcFileSftpAuthSelect('key')"      style="flex:1;border:none;border-left:1px solid var(--border);padding:3px 8px;font-size:11px;cursor:pointer;background:none;color:var(--muted)" data-i18n="m365_fsrc_sftp_auth_key">SSH key</button>
@@ -1285,7 +1285,7 @@ document.addEventListener('DOMContentLoaded', applyI18n);
               <div id="srcSftpPwFields">
                 <div class="fsrc-form-row">
                   <label data-i18n="m365_fsrc_sftp_pw">Password</label>
-                  <input id="srcFileSftpPw" type="password" placeholder="Stored in OS keychain">
+                  <input id="srcFileSftpPw" type="password" data-i18n-placeholder="m365_fsrc_pw_keychain_placeholder" placeholder="Stored in OS keychain">
                 </div>
                 <div style="font-size:10px;color:var(--muted)" data-i18n="m365_fsrc_sftp_pw_hint">Password is saved to the OS keychain — never stored in a file.</div>
               </div>
@@ -1301,7 +1301,7 @@ document.addEventListener('DOMContentLoaded', applyI18n);
                 <input type="hidden" id="srcFileSftpKeyPath" value="">
                 <div class="fsrc-form-row">
                   <label data-i18n="m365_fsrc_sftp_passphrase">Passphrase</label>
-                  <input id="srcFileSftpPassphrase" type="password" placeholder="Leave blank if key has no passphrase">
+                  <input id="srcFileSftpPassphrase" type="password" data-i18n-placeholder="m365_fsrc_sftp_passphrase_placeholder" placeholder="Leave blank if key has no passphrase">
                 </div>
                 <div style="font-size:10px;color:var(--muted)" data-i18n="m365_fsrc_sftp_passphrase_hint">Passphrase is saved to the OS keychain — never stored in a file.</div>
               </div>
@@ -1336,26 +1336,26 @@ document.addEventListener('DOMContentLoaded', applyI18n);
     <div class="fsrc-form" id="fsrcForm">
       <div style="font-size:11px;font-weight:600;color:var(--text)" data-i18n="m365_file_sources_add">Add source</div>
       <div class="fsrc-form-row">
-        <label data-i18n="m365_fsrc_label">Name <span style="color:var(--accent)">*</span></label>
-        <input id="fsrcLabel" type="text" placeholder="e.g. Teacher files, NAS archive" maxlength="80" autocomplete="off">
+        <label><span data-i18n="m365_fsrc_name">Name</span> <span style="color:var(--accent)">*</span></label>
+        <input id="fsrcLabel" type="text" data-i18n-placeholder="m365_fsrc_name_placeholder" placeholder="e.g. Teacher files, NAS archive" maxlength="80" autocomplete="off">
       </div>
       <div class="fsrc-form-row">
         <label data-i18n="m365_fsrc_path">Path</label>
-        <input id="fsrcPath" type="text" placeholder="~/Documents  or  //nas/shares" oninput="fsrcDetectSmb(); fsrcAutoName()">
+        <input id="fsrcPath" type="text" data-i18n-placeholder="m365_fsrc_path_placeholder" placeholder="~/Documents  or  //nas/shares" oninput="fsrcDetectSmb(); fsrcAutoName()">
       </div>
       <div id="fsrcSmbFields" class="fsrc-smb-fields" style="display:none;flex-direction:column;gap:6px">
         <div style="font-size:10px;color:var(--accent);margin:-2px 0 2px" data-i18n="m365_fsrc_smb_detected">SMB/CIFS network share detected</div>
         <div class="fsrc-form-row">
           <label data-i18n="m365_fsrc_smb_host">SMB host</label>
-          <input id="fsrcSmbHost" type="text" placeholder="nas.school.dk">
+          <input id="fsrcSmbHost" type="text" data-i18n-placeholder="m365_fsrc_smb_host_placeholder" placeholder="nas.school.dk">
         </div>
         <div class="fsrc-form-row">
           <label data-i18n="m365_fsrc_smb_user">Username</label>
-          <input id="fsrcSmbUser" type="text" placeholder="DOMAIN\\username or username">
+          <input id="fsrcSmbUser" type="text" data-i18n-placeholder="m365_fsrc_smb_user_edit_placeholder" placeholder="DOMAIN\\username or username">
         </div>
         <div class="fsrc-form-row">
           <label data-i18n="m365_fsrc_smb_pw">Password</label>
-          <input id="fsrcSmbPw" type="password" placeholder="Stored in OS keychain">
+          <input id="fsrcSmbPw" type="password" data-i18n-placeholder="m365_fsrc_pw_keychain_placeholder" placeholder="Stored in OS keychain">
         </div>
         <div style="font-size:10px;color:var(--muted)" data-i18n="m365_fsrc_smb_pw_hint">Password is saved to the OS keychain — never stored in a file.</div>
       </div>
