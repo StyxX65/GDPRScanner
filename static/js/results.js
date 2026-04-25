@@ -110,7 +110,8 @@ async function openPreview(f) {
   ].filter(Boolean).join('');
 
   _previewItemId = f.id;
-  loadDisposition(f.id);  // load disposition for this item (#6)
+  loadDisposition(f.id);
+  _loadRelated(f);
 
   try {
     const r = await fetch('/api/preview/' + encodeURIComponent(f.id)
@@ -175,6 +176,44 @@ async function openPreview(f) {
     loading.textContent = 'Preview failed: ' + e.message;
   }
 }
+
+// ── Related documents (CPR cross-reference) ───────────────────────────────────
+
+async function _loadRelated(f) {
+  const el = document.getElementById('previewRelated');
+  if (!el) return;
+  if (!f.cpr_count) { el.style.display = 'none'; return; }
+
+  const ref = S._historyRefScanId ? `&ref=${S._historyRefScanId}` : '';
+  try {
+    const r = await fetch(`/api/db/related/${encodeURIComponent(f.id)}?${ref}`);
+    const items = await r.json();
+    if (f.id !== _previewItemId) return; // stale
+    if (!items.length) { el.style.display = 'none'; return; }
+
+    const rows = items.map(item => {
+      const shared = item.shared_cprs ?? '';
+      const badge  = shared ? `<span style="font-size:9px;padding:1px 5px;border-radius:10px;background:var(--danger);color:#fff;font-weight:500;flex-shrink:0">${shared} CPR</span>` : '';
+      const src    = item.source ? `<span style="color:var(--muted);font-size:10px;flex-shrink:0">${item.source}</span>` : '';
+      return `<div onclick="window._openRelated('${item.id.replace(/'/g,"\\'")}',${JSON.stringify(item)})"
+                   style="display:flex;align-items:center;gap:6px;padding:4px 0;cursor:pointer;border-radius:4px"
+                   onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''">
+        <span style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${item.name}">${item.name}</span>
+        ${src}${badge}
+      </div>`;
+    }).join('');
+
+    el.innerHTML = `<div style="font-size:10px;font-weight:600;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">${t('m365_related_docs','Related documents')} <span style="font-weight:400">(${items.length})</span></div>${rows}`;
+    el.style.display = 'block';
+  } catch(e) {
+    el.style.display = 'none';
+  }
+}
+
+window._openRelated = function(id, itemData) {
+  const cached = (S.flaggedData || []).find(x => x.id === id);
+  openPreview(cached || itemData);
+};
 
 // ── Retention policy (#1) ────────────────────────────────────────────────────
 

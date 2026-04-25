@@ -351,6 +351,23 @@ Write redacted copies of flagged files with CPR numbers replaced by `XXX XXXX-XX
 
 Auto-email now fires on manual scans when **Email report after manual scan** is enabled in Settings → Email report. Toggle stored as `auto_email_manual` in `smtp.json`. Implemented in `routes/scan.py` — `_maybe_send_auto_email()` is called from the `_run()` thread after `run_scan()` returns. Same Graph-first → SMTP-fallback pattern as scheduled scans. Only fires when there are flagged items and at least one recipient is configured.
 
+### Keyword / name search across flagged document content
+
+Allow a DPO to type a name (or any keyword) into a search box and find every flagged document whose extracted text contains that string. Complements CPR cross-referencing (#see above) for cases where the person's CPR is not present but their name is.
+
+**Implementation outline:**
+
+1. **Store text snippets at scan time** — `_scan_bytes` already extracts plain text for CPR matching; store a 2–4 KB prefix of that text per item in a new `text_snippet TEXT` column on `flagged_items`, or in a separate `content_index` table. Truncation avoids bloating the DB; the snippet covers most short documents in full.
+2. **SQLite FTS5 virtual table** — `CREATE VIRTUAL TABLE content_fts USING fts5(item_id UNINDEXED, snippet)`. Populated at scan time alongside `cpr_index`. FTS5 is bundled with SQLite ≥ 3.9 (macOS ships ≥ 3.37) — no external dependency.
+3. **`GET /api/db/search?q=<term>&ref=N`** — queries `content_fts` with `MATCH ?`, joins back to `flagged_items` within the session window, returns matching items. SQLite FTS5 supports phrase queries, prefix wildcards (`name*`), and Boolean operators automatically.
+4. **Search bar in the filter strip** — a plain `<input type="search">` next to the existing role/source filters. Debounced 300 ms. Results replace the grid (with a "Clear search" pill to return to full view). No new UI paradigm needed.
+
+**Why deferred:** requires a DB migration + storing text at scan time (increases DB size). The CPR cross-reference (already implemented) covers the most common "find all data about this person" use case without storing any raw text. Implement if a school requests free-text search.
+
+**Size:** Medium · **Priority:** Low
+
+---
+
 ### Phase 2 PII: name-based roster lookup
 
 Flag documents containing the full names of students or staff — even when no CPR is present. Implementation outline:

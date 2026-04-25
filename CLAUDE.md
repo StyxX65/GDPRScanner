@@ -140,6 +140,15 @@ Allows reviewing results from any past scan session without running a new scan. 
 - **Auto-load on page load** — `results.js` calls `window.loadHistorySession?.(null)` once when the SSE watchdog confirms `!status.running`. `null` resolves to the latest completed session via `_fetchSessions()[0].ref_scan_id`. The `_initialStatusChecked` guard ensures this fires at most once per page load.
 - **Mode transitions** — `startScan()` calls `window.exitHistoryMode?.()` before clearing the grid, so any history banner is dismissed and `S._historyRefScanId` is reset before SSE events start arriving.
 
+## CPR cross-referencing — gdpr_db.py + routes/database.py + static/js/results.js
+
+- **`GDPRDb.get_related_items(item_id, ref_scan_id, window_seconds=300)`** — self-joins `cpr_index` to find other items in the same session window that share ≥1 CPR hash with `item_id`. Returns rows ordered by `shared_cprs DESC, cpr_count DESC`. Uses the same 300 s symmetric window as `get_session_items` — do not change the window size independently.
+- **`GET /api/db/related/<item_id>?ref=N`** (`routes/database.py`) — passes `item_id` and optional `ref_scan_id` to `get_related_items`; normalises JSON columns (same logic as `db_flagged_items`). Returns `[]` when `DB_OK` is false.
+- **`#previewRelated`** — `<div>` inserted between `#previewMeta` and the disposition row in `index.html`. Hidden (`display:none`) when not in use; shown by `_loadRelated`.
+- **`_loadRelated(f)`** (`results.js`) — async; hides `#previewRelated` if `f.cpr_count` is 0, otherwise fetches `/api/db/related/<id>?ref=N` and renders a clickable list with per-item shared-CPR badge. Called from `openPreview` after `loadDisposition`.
+- **`window._openRelated(id, itemData)`** (`results.js`) — resolves the target item: looks up `id` in `S.flaggedData` first (live/history grid already loaded), falls back to `itemData` from the API response (history items not yet in the grid). Calls `openPreview`.
+- **No new data collection** — `cpr_index` already stores `(cpr_hash, item_id, scan_id)` for every CPR hit at write time. Cross-referencing is entirely a query-time operation.
+
 ## SSE teardown — static/js/scan.js
 
 - **Do not close `S.es` in `scan_done` if other scans are still running** — M365 (`scan_done`), Google (`google_scan_done`), and File (`file_scan_done`) each emit their own done event. If M365 finishes first and the SSE is closed, the remaining done events are never received and the UI hangs at 100% indefinitely.

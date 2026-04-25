@@ -523,6 +523,37 @@ class ScanDB:
             result.append(d)
         return result
 
+    def get_related_items(self, item_id: str, ref_scan_id: int | None = None,
+                          window_seconds: int = 300) -> list[dict]:
+        """Return flagged items from the same session that share at least one CPR
+        hash with *item_id*, ordered by number of shared CPRs descending."""
+        if ref_scan_id:
+            row = self._connect().execute(
+                "SELECT started_at FROM scans WHERE id=?", (ref_scan_id,)
+            ).fetchone()
+        else:
+            row = self._connect().execute(
+                "SELECT started_at FROM scans WHERE finished_at IS NOT NULL ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+        if not row:
+            return []
+        latest_start = row[0]
+        rows = self._connect().execute(
+            """SELECT fi.*, COUNT(DISTINCT ci2.cpr_hash) AS shared_cprs
+               FROM cpr_index ci1
+               JOIN cpr_index ci2 ON ci2.cpr_hash = ci1.cpr_hash
+               JOIN flagged_items fi ON fi.id = ci2.item_id
+               JOIN scans s ON fi.scan_id = s.id
+               WHERE ci1.item_id = ?
+                 AND fi.id != ?
+                 AND s.started_at BETWEEN ? AND ?
+                 AND s.finished_at IS NOT NULL
+               GROUP BY fi.id
+               ORDER BY shared_cprs DESC, fi.cpr_count DESC""",
+            (item_id, item_id, latest_start - window_seconds, latest_start + window_seconds),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def get_session_sources(self, window_seconds: int = 300) -> set:
         """Return the union of all source keys scanned in the current session.
 

@@ -204,6 +204,22 @@ def db_flagged_items():
     return jsonify(out)
 
 
+@bp.route("/api/db/related/<item_id>")
+def db_related_items(item_id):
+    """Return flagged items from the same session sharing at least one CPR hash."""
+    if not DB_OK:
+        return jsonify([])
+    ref = request.args.get("ref", type=int)
+    import json as _json
+    out = []
+    for row in _get_db().get_related_items(item_id, ref_scan_id=ref):
+        row["special_category"] = _json.loads(row.get("special_category") or "[]") if isinstance(row.get("special_category"), str) else row.get("special_category", [])
+        row["exif"] = _json.loads(row.get("exif_json") or "{}") if isinstance(row.get("exif_json"), str) else row.get("exif", {})
+        row.pop("exif_json", None)
+        out.append(row)
+    return jsonify(out)
+
+
 @bp.route("/api/db/deletion_log")
 def db_deletion_log():
     """Return the deletion audit log.
