@@ -7,6 +7,26 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [1.6.25] — 2026-04-25
+
+### Added
+
+- **SFTP as a 4th file connector** — SFTP servers can now be added as file sources alongside local folders, SMB shares, and cloud sources. A new `SFTPScanner` class in `sftp_connector.py` implements the same `iter_files()` interface as `FileScanner`, so `run_file_scan()`, SSE broadcasting, DB persistence, card building, scheduled scans, and exports work without changes. Supports password auth and SSH private key auth (RSA, Ed25519, ECDSA, DSS); passphrases stored in the OS keychain. Key files uploaded via `POST /api/file_sources/upload_key` and stored in `~/.gdprscanner/sftp_keys/` with `chmod 600`. SFTP sources appear with a 🔒 icon in the sources panel. Requires `paramiko>=3.4` (optional — scanner falls back gracefully if not installed). New source-type selector (Local / Network (SMB) / SFTP) replaces the SMB path-prefix auto-detection in the add-source form.
+
+- **`POST /api/file_sources/upload_key`** — new endpoint that validates and stores an SSH private key file, returning a `key_path` for use in the source definition.
+
+- **SFTP entry in export SOURCE_MAP** — Excel and Article 30 exports render SFTP sources as "🔒 SFTP" with a purple tint (`EDE9F7`), consistent with the existing per-source tab and summary table logic.
+
+---
+
+## [1.6.24] — 2026-04-25
+
+### Fixed
+
+- **Scheduler UI showed untranslated English strings** — frequency labels ("Daily", "Weekly", "Monthly"), "Next:", "Running...", "Disabled", and both empty-state messages ("No scheduled scans yet." / "No scheduled runs yet") were hardcoded English strings in `scheduler.js` instead of using `t()`. All six call sites in `schedLoad()`, `schedRenderJobs()`, and `schedLoadHistory()` now call `t()` with the appropriate key. Three new translation keys added to `en.json`, `da.json`, and `de.json`: `m365_sched_no_jobs`, `m365_sched_running`, `m365_sched_disabled`.
+
+---
+
 ## [1.6.23] — 2026-04-21
 
 ### Added

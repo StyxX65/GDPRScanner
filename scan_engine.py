@@ -76,6 +76,12 @@ except ImportError:
     FILE_SCANNER_OK = False
 
 try:
+    from sftp_connector import SFTPScanner, SFTP_OK as _SFTP_OK
+except ImportError:
+    SFTPScanner = None          # type: ignore[assignment,misc]
+    _SFTP_OK = False
+
+try:
     import document_scanner as ds
     SCANNER_OK = True
 except ImportError:
@@ -151,18 +157,21 @@ def _with_disposition(card: dict, db) -> dict:
 
 
 def run_file_scan(source: dict):
-    """Scan a single local or SMB file source for CPR numbers and PII.
+    """Scan a single local, SMB, or SFTP file source for CPR numbers and PII.
 
     Reuses _scan_bytes, _broadcast_card, _check_special_category,
     _detect_photo_faces and all other existing scan helpers.
 
     Args:
         source: file source dict with keys:
-            path, label, smb_host, smb_user, smb_domain, keychain_key,
+            source_type ("local"|"smb"|"sftp"), path, label,
+            smb_host, smb_user, smb_domain, keychain_key,
+            sftp_host, sftp_port, sftp_user, sftp_auth, sftp_key_path,
             scan_photos (bool), max_file_mb (int)
     """
     # state vars accessed via _state module
 
+    source_kind = source.get("source_type", "")
     path        = source.get("path", "")
     label       = source.get("label") or path
     smb_host    = source.get("smb_host") or None
@@ -175,7 +184,11 @@ def run_file_scan(source: dict):
     min_cpr_count   = max(1, int(source.get("min_cpr_count", 1)))
     max_mb          = int(source.get("max_file_mb", 50))
 
-    if not FILE_SCANNER_OK:
+    if source_kind == "sftp":
+        if not _SFTP_OK:
+            broadcast("scan_error", {"file": label, "error": "paramiko not installed — run: pip install paramiko"})
+            return
+    elif not FILE_SCANNER_OK:
         broadcast("scan_error", {"file": label, "error": "file_scanner.py not found"})
         return
 
@@ -200,15 +213,30 @@ def run_file_scan(source: dict):
     broadcast("scan_phase", {"phase": f"Files \u2014 {label}"})
 
     try:
-        fs = FileScanner(
-            path=path,
-            smb_host=smb_host,
-            smb_user=smb_user,
-            smb_password=smb_password,
-            smb_domain=smb_domain,
-            keychain_key=keychain_key,
-            max_file_bytes=max_mb * 1_048_576,
-        )
+        if source_kind == "sftp":
+            fs = SFTPScanner(
+                host=source.get("sftp_host", ""),
+                root_path=path,
+                username=source.get("sftp_user", ""),
+                port=int(source.get("sftp_port", 22)),
+                auth_type=source.get("sftp_auth", "password"),
+                password=source.get("sftp_password") or None,
+                key_path=source.get("sftp_key_path") or None,
+                passphrase=source.get("sftp_passphrase") or None,
+                keychain_key=keychain_key,
+                max_file_bytes=max_mb * 1_048_576,
+                label=label,
+            )
+        else:
+            fs = FileScanner(
+                path=path,
+                smb_host=smb_host,
+                smb_user=smb_user,
+                smb_password=smb_password,
+                smb_domain=smb_domain,
+                keychain_key=keychain_key,
+                max_file_bytes=max_mb * 1_048_576,
+            )
 
         def _progress(rel_path: str):
             broadcast("scan_file", {"file": rel_path})

@@ -378,6 +378,19 @@ function getGoogleScanOptions() {
 
 // ── File sources pane ─────────────────────────────────────────────────────────
 
+function _srcIcon(s) {
+  if (s.source_type === 'sftp') return '\uD83D\uDD12';
+  const isSmb = s.path && (s.path.startsWith('//') || s.path.startsWith('\\\\'));
+  return isSmb ? '\uD83C\uDF10' : '\uD83D\uDCC1';
+}
+
+function _srcSubtitle(s) {
+  if (s.source_type === 'sftp') {
+    return _esc((s.sftp_user||'')+'@'+(s.sftp_host||'')+(s.path||'/'));
+  }
+  return _esc(s.path||'')+(s.smb_user?'  \u00b7  \uD83D\uDC64 '+_esc(s.smb_user):'');
+}
+
 function srcFileRenderList() {
   const list = document.getElementById('srcFileList');
   if (!list) return;
@@ -386,9 +399,8 @@ function srcFileRenderList() {
     return;
   }
   list.innerHTML = S._fileSources.map(function(s) {
-    const isSmb = s.path && (s.path.startsWith('//') || s.path.startsWith('\\\\'));
-    const icon  = isSmb ? '\uD83C\uDF10' : '\uD83D\uDCC1';
-    const sid   = _esc(s.id||'');
+    const icon   = _srcIcon(s);
+    const sid    = _esc(s.id||'');
     const slabel = _esc(s.label||s.path||'');
     return '<div class="fsrc-row">'
       +'<div class="fsrc-row-head">'
@@ -398,9 +410,45 @@ function srcFileRenderList() {
       +'<button class="btn-edit" onclick="srcFileEdit(\''+sid+'\')" style="background:none;border:1px solid var(--border);color:var(--muted);padding:2px 7px;border-radius:4px;font-size:10px;cursor:pointer">'+t('m365_fsrc_edit_btn','Edit')+'</button>'
       +'<button class="btn-del" onclick="srcFileDelete(\''+sid+'\',\''+slabel+'\')">'+t('m365_profile_delete','Delete')+'</button>'
       +'</div></div>'
-      +'<div class="fsrc-row-path">'+_esc(s.path||'')+(s.smb_user?'  \u00b7  \uD83D\uDC64 '+_esc(s.smb_user):'')+'</div>'
+      +'<div class="fsrc-row-path">'+_srcSubtitle(s)+'</div>'
       +'</div>';
   }).join('');
+}
+
+function srcFileTypeSelect(type) {
+  document.getElementById('srcFileSourceType').value = type;
+  var pathRow   = document.getElementById('srcFilePathRow');
+  var smbFields = document.getElementById('srcFileSmbFields');
+  var sftpFields= document.getElementById('srcFileSftpFields');
+  if (pathRow)   pathRow.style.display   = type === 'sftp' ? 'none' : '';
+  if (smbFields) smbFields.style.display = type === 'smb'  ? 'flex' : 'none';
+  if (sftpFields)sftpFields.style.display= type === 'sftp' ? 'flex' : 'none';
+  ['srcTypeLocal','srcTypeSmb','srcTypeSftp'].forEach(function(id) {
+    var btn = document.getElementById(id);
+    if (!btn) return;
+    var active = (id === 'srcType' + type.charAt(0).toUpperCase() + type.slice(1));
+    btn.style.background = active ? 'var(--accent)' : 'none';
+    btn.style.color      = active ? '#fff' : 'var(--muted)';
+  });
+}
+
+function srcFileAutoNameSftp() {
+  var labelEl = document.getElementById('srcFileLabel');
+  if (labelEl && labelEl._userEdited) return;
+  var host = (document.getElementById('srcFileSftpHost')||{}).value || '';
+  if (labelEl && host) labelEl.value = host;
+}
+
+function srcFileSftpAuthSelect(authType) {
+  document.getElementById('srcFileSftpAuth').value = authType;
+  var pwFields  = document.getElementById('srcSftpPwFields');
+  var keyFields = document.getElementById('srcSftpKeyFields');
+  var btnPw  = document.getElementById('srcSftpAuthPw');
+  var btnKey = document.getElementById('srcSftpAuthKey');
+  if (pwFields)  pwFields.style.display  = authType === 'password' ? '' : 'none';
+  if (keyFields) keyFields.style.display = authType === 'key'      ? 'flex' : 'none';
+  if (btnPw)  { btnPw.style.background  = authType==='password'?'var(--accent)':'none'; btnPw.style.color  = authType==='password'?'#fff':'var(--muted)'; }
+  if (btnKey) { btnKey.style.background = authType==='key'?'var(--accent)':'none';      btnKey.style.color = authType==='key'?'#fff':'var(--muted)'; }
 }
 
 function srcFileDetectSmb() {
@@ -427,30 +475,80 @@ function srcFileAutoName() {
 }
 
 async function srcFileAdd() {
-  const label   = document.getElementById('srcFileLabel').value.trim();
-  const path    = document.getElementById('srcFilePath').value.trim();
-  const smbHost = document.getElementById('srcFileSmbHost').value.trim();
-  const smbUser = document.getElementById('srcFileSmbUser').value.trim();
-  const smbPw   = document.getElementById('srcFileSmbPw').value;
-  const stat    = document.getElementById('srcFileStatus');
+  const label      = document.getElementById('srcFileLabel').value.trim();
+  const sourceType = (document.getElementById('srcFileSourceType')||{}).value || 'local';
+  const stat       = document.getElementById('srcFileStatus');
+  const editIdEl   = document.getElementById('srcFileEditId');
+  const existingId = editIdEl ? editIdEl.value : '';
+
   if (!label) { stat.style.color='var(--danger)'; stat.textContent=t('m365_fsrc_name_required','Name is required.'); document.getElementById('srcFileLabel').focus(); return; }
-  if (!path)  { stat.style.color='var(--danger)'; stat.textContent=t('m365_fsrc_path_required','Path is required.'); return; }
   stat.style.color='var(--muted)'; stat.textContent=t('m365_fsrc_saving','Saving...');
-  if (smbPw && smbUser) {
-    try { await fetch('/api/file_sources/store_creds',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({smb_host:smbHost,smb_user:smbUser,password:smbPw})}); } catch(e){}
+
+  var body = {label, source_type: sourceType};
+  if (existingId) body.id = existingId;
+
+  if (sourceType === 'sftp') {
+    const sftpHost = document.getElementById('srcFileSftpHost').value.trim();
+    const sftpUser = document.getElementById('srcFileSftpUser').value.trim();
+    const sftpPath = document.getElementById('srcFileSftpPath').value.trim() || '/';
+    const sftpPort = parseInt(document.getElementById('srcFileSftpPort').value) || 22;
+    const sftpAuth = document.getElementById('srcFileSftpAuth').value || 'password';
+    if (!sftpHost) { stat.style.color='var(--danger)'; stat.textContent=t('m365_fsrc_sftp_host_required','SFTP host is required.'); return; }
+    if (!sftpUser) { stat.style.color='var(--danger)'; stat.textContent=t('m365_fsrc_sftp_user_required','SFTP username is required.'); return; }
+
+    Object.assign(body, {sftp_host:sftpHost, sftp_port:sftpPort, sftp_user:sftpUser, sftp_auth:sftpAuth, path:sftpPath});
+
+    if (sftpAuth === 'password') {
+      const sftpPw = document.getElementById('srcFileSftpPw').value;
+      if (sftpPw) {
+        try { await fetch('/api/file_sources/store_creds',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source_type:'sftp',sftp_host:sftpHost,sftp_user:sftpUser,password:sftpPw})}); } catch(e){}
+      }
+    } else {
+      // Upload key file if one is selected
+      const keyFileEl = document.getElementById('srcFileSftpKeyFile');
+      const keyStatusEl = document.getElementById('srcFileSftpKeyStatus');
+      const keyPathEl = document.getElementById('srcFileSftpKeyPath');
+      if (keyFileEl && keyFileEl.files.length && !keyPathEl.value) {
+        try {
+          const fd = new FormData(); fd.append('key_file', keyFileEl.files[0]);
+          const kr = await fetch('/api/file_sources/upload_key',{method:'POST',body:fd});
+          const kd = await kr.json();
+          if (kd.error) { stat.style.color='var(--danger)'; stat.textContent=kd.error; return; }
+          keyPathEl.value = kd.key_path;
+          if (keyStatusEl) keyStatusEl.textContent = t('m365_fsrc_sftp_key_uploaded','Key uploaded');
+        } catch(e){ stat.style.color='var(--danger)'; stat.textContent=e.message; return; }
+      }
+      body.sftp_key_path = keyPathEl ? keyPathEl.value : '';
+      const passphrase = (document.getElementById('srcFileSftpPassphrase')||{}).value || '';
+      if (passphrase) {
+        const passphraseKey = sftpHost+':'+sftpUser+':passphrase';
+        try { await fetch('/api/file_sources/store_creds',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source_type:'sftp',sftp_host:sftpHost,sftp_user:sftpUser,password:passphrase,keychain_key:passphraseKey})}); } catch(e){}
+        body.keychain_key = passphraseKey;
+      }
+    }
+  } else {
+    const path    = document.getElementById('srcFilePath').value.trim();
+    const smbHost = document.getElementById('srcFileSmbHost').value.trim();
+    const smbUser = document.getElementById('srcFileSmbUser').value.trim();
+    const smbPw   = document.getElementById('srcFileSmbPw').value;
+    if (!path) { stat.style.color='var(--danger)'; stat.textContent=t('m365_fsrc_path_required','Path is required.'); return; }
+    Object.assign(body, {path, smb_host:smbHost, smb_user:smbUser});
+    if (smbPw && smbUser) {
+      try { await fetch('/api/file_sources/store_creds',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source_type:'smb',smb_host:smbHost,smb_user:smbUser,password:smbPw})}); } catch(e){}
+    }
   }
+
   try {
-    const editId = document.getElementById('srcFileEditId');
-    const existingId = editId ? editId.value : '';
-    const body = {label, path, smb_host:smbHost, smb_user:smbUser};
-    if (existingId) body.id = existingId;
     const r = await fetch('/api/file_sources/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d = await r.json();
     if (d.error) { stat.style.color='var(--danger)'; stat.textContent=d.error; return; }
-    ['srcFileLabel','srcFilePath','srcFileSmbHost','srcFileSmbUser','srcFileSmbPw'].forEach(function(id){const el=document.getElementById(id);if(el){el.value='';el._userEdited=false;}});
-    if (editId) editId.value='';
+    // Reset form
+    ['srcFileLabel','srcFilePath','srcFileSmbHost','srcFileSmbUser','srcFileSmbPw',
+     'srcFileSftpHost','srcFileSftpUser','srcFileSftpPw','srcFileSftpPassphrase','srcFileSftpKeyPath'].forEach(function(id){const el=document.getElementById(id);if(el){el.value='';if(el._userEdited!==undefined)el._userEdited=false;}});
+    var portEl = document.getElementById('srcFileSftpPort'); if(portEl) portEl.value='22';
+    if (editIdEl) editIdEl.value='';
     const addBtn=document.getElementById('srcFileAddBtn'); if(addBtn) addBtn.textContent=t('m365_fsrc_add_btn','Add');
-    document.getElementById('srcFileSmbFields').style.display='none';
+    srcFileTypeSelect('local');
     stat.style.color='var(--accent)'; stat.textContent='\u2714 '+t('m365_fsrc_saved','Source saved');
     await _loadFileSources();
     srcFileRenderList();
@@ -462,20 +560,28 @@ function srcFileEdit(id) {
   const s = S._fileSources.find(function(x){return x.id===id;});
   if (!s) return;
   const labelEl = document.getElementById('srcFileLabel');
-  const pathEl  = document.getElementById('srcFilePath');
-  const hostEl  = document.getElementById('srcFileSmbHost');
-  const userEl  = document.getElementById('srcFileSmbUser');
-  const pwEl    = document.getElementById('srcFileSmbPw');
   const editId  = document.getElementById('srcFileEditId');
   if (labelEl) { labelEl.value = s.label||''; labelEl._userEdited = true; }
-  if (pathEl)  pathEl.value  = s.path||'';
-  if (hostEl)  hostEl.value  = s.smb_host||'';
-  if (userEl)  userEl.value  = s.smb_user||'';
-  if (pwEl)    pwEl.value    = s.smb_user ? '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' : '';
   if (editId)  editId.value  = id;
-  const isSmb = (s.path||'').startsWith('//') || (s.path||'').startsWith('\\\\');
-  const smbFields = document.getElementById('srcFileSmbFields');
-  if (smbFields) smbFields.style.display = isSmb ? 'flex' : 'none';
+
+  var sourceType = s.source_type || (((s.path||'').startsWith('//')||(s.path||'').startsWith('\\\\')) ? 'smb' : 'local');
+  srcFileTypeSelect(sourceType);
+
+  if (sourceType === 'sftp') {
+    var hostEl = document.getElementById('srcFileSftpHost'); if(hostEl) hostEl.value = s.sftp_host||'';
+    var portEl = document.getElementById('srcFileSftpPort'); if(portEl) portEl.value = s.sftp_port||22;
+    var userEl = document.getElementById('srcFileSftpUser'); if(userEl) userEl.value = s.sftp_user||'';
+    var pathEl = document.getElementById('srcFileSftpPath'); if(pathEl) pathEl.value = s.path||'/';
+    var authEl = document.getElementById('srcFileSftpAuth'); if(authEl) authEl.value = s.sftp_auth||'password';
+    srcFileSftpAuthSelect(s.sftp_auth||'password');
+    if (s.sftp_key_path) { var kp = document.getElementById('srcFileSftpKeyPath'); if(kp) kp.value=s.sftp_key_path; }
+  } else {
+    var pathEl2 = document.getElementById('srcFilePath'); if(pathEl2) pathEl2.value = s.path||'';
+    var smbHostEl = document.getElementById('srcFileSmbHost'); if(smbHostEl) smbHostEl.value = s.smb_host||'';
+    var smbUserEl = document.getElementById('srcFileSmbUser'); if(smbUserEl) smbUserEl.value = s.smb_user||'';
+    var smbPwEl   = document.getElementById('srcFileSmbPw');   if(smbPwEl)   smbPwEl.value   = s.smb_user ? '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' : '';
+  }
+
   const btn = document.getElementById('srcFileAddBtn');
   if (btn) btn.textContent = t('m365_fsrc_save_changes','Save changes');
   const stat = document.getElementById('srcFileStatus');
@@ -547,9 +653,7 @@ function _renderFileSources() {
     return;
   }
   list.innerHTML = S._fileSources.map(function(s) {
-    const isSmb = s.path && (s.path.startsWith('//') || s.path.startsWith('\\\\'));
-    const icon  = isSmb ? '\uD83C\uDF10' : '\uD83D\uDCC1';
-    const userPart = s.smb_user ? '  \u00b7  \uD83D\uDC64 ' + _esc(s.smb_user) : '';
+    const icon   = _srcIcon(s);
     const sid    = _esc(s.id || '');
     const slabel = _esc(s.label || s.path || '');
     return '<div class="fsrc-row">'
@@ -559,7 +663,7 @@ function _renderFileSources() {
       + '<button class="btn-scan" onclick="fsrcScan(\'' + sid + '\')">&#9654; ' + t('m365_fsrc_scan_btn','Scan') + '</button>'
       + '<button class="btn-del"  onclick="fsrcDelete(\'' + sid + '\',\'' + slabel + '\')">' + t('m365_profile_delete','Delete') + '</button>'
       + '</div></div>'
-      + '<div class="fsrc-row-path">' + _esc(s.path || '') + userPart + '</div>'
+      + '<div class="fsrc-row-path">' + _srcSubtitle(s) + '</div>'
       + '</div>';
   }).join('');
 }
@@ -667,6 +771,9 @@ window.getGoogleScanOptions = getGoogleScanOptions;
 window.srcFileRenderList = srcFileRenderList;
 window.srcFileDetectSmb = srcFileDetectSmb;
 window.srcFileAutoName = srcFileAutoName;
+window.srcFileAutoNameSftp = srcFileAutoNameSftp;
+window.srcFileTypeSelect = srcFileTypeSelect;
+window.srcFileSftpAuthSelect = srcFileSftpAuthSelect;
 window.srcFileAdd = srcFileAdd;
 window.srcFileEdit = srcFileEdit;
 window.srcFileDelete = srcFileDelete;

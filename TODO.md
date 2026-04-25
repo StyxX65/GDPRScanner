@@ -111,6 +111,14 @@ Optional session-level authentication gate for the main scanner interface. Set i
 
 ---
 
+### SFTP as a 4th file connector 🔄 In progress
+Scan SFTP servers (SSH File Transfer Protocol) alongside local, SMB, and cloud sources. A new `SFTPScanner` class in `sftp_connector.py` implements the same `iter_files()` interface as `FileScanner`, so `run_file_scan()` and everything downstream (SSE, DB, export, scheduling) is unchanged. Auth supports password and SSH private key (+ optional passphrase). Key files stored in `~/.gdprscanner/sftp_keys/`. SFTP sources appear in the file sources panel with a 🔒 icon, are profile-aware, and are included in scheduled scans automatically.
+
+**Files changed:** `sftp_connector.py` (new), `scan_engine.py`, `routes/sources.py`, `app_config.py`, `static/js/sources.js`, `templates/index.html`, `lang/en|da|de.json`, `routes/export.py`, `requirements.txt`  
+**Size:** Medium · **Priority:** Medium
+
+---
+
 ### #32 — Windowed mode for Profiles, Sources, and Settings ✗ Won't do
 The workflow is sequential (configure → scan → review), not parallel — there is no realistic scenario where a modal and the results grid need to be open simultaneously. The Sources panel is already visible in the sidebar. Option A (the least-work path) still loads the full 3800-line JS stack twice. Closed.
 

@@ -37,7 +37,8 @@ pystray>=0.19          # System tray icon
 
 # ── File system scanning (optional) ──────────────────────────────────────────
 smbprotocol>=1.13      # SMB2/3 network share scanning without mounting
-keyring>=25.0          # OS keychain credential storage for SMB passwords
+paramiko>=3.4          # SFTP scanning over SSH
+keyring>=25.0          # OS keychain credential storage for SMB/SFTP passwords
 python-dotenv>=1.0     # .env file fallback for headless SMB credentials
 
 # ── Scheduler (#19) ──────────────────────────────────────────────────────────

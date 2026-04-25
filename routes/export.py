@@ -44,6 +44,7 @@ def _build_excel_bytes(role: str = "") -> tuple[bytes, str]:
         "gdrive":     ("💾 Google Drive", "D5F5E3"),
         "local":      ("📁 Local",        "E6F7E6"),
         "smb":        ("🌐 Network",      "E0F0FA"),
+        "sftp":       ("🔒 SFTP",         "EDE9F7"),
     }
     COLS = [
         ("Name / Subject",    45),
@@ -403,6 +404,7 @@ def _build_article30_docx(role: str = "") -> tuple[bytes, str]:
         "gdrive":     "Google Drive",
         "local":      "Local files",
         "smb":        "Network / SMB",
+        "sftp":       "SFTP",
     }
 
     # ── Colour palette ────────────────────────────────────────────────────────
@@ -597,7 +599,7 @@ def _build_article30_docx(role: str = "") -> tuple[bytes, str]:
         r = p.add_run(txt); r.bold = True
         r.font.size = Pt(10); r.font.color.rgb = WHITE
 
-    for src_key in ("email", "onedrive", "sharepoint", "teams", "gmail", "gdrive", "local", "smb"):
+    for src_key in ("email", "onedrive", "sharepoint", "teams", "gmail", "gdrive", "local", "smb", "sftp"):
         if src_key not in scanned_sources:
             continue
         src_items = by_source.get(src_key, [])

@@ -544,6 +544,8 @@ def _save_role_overrides(overrides: dict) -> None:
 
 # ── File source settings (#8) ─────────────────────────────────────────────────
 _FILE_SOURCES_PATH = _DATA_DIR / "file_sources.json"
+_SFTP_KEYS_DIR     = _DATA_DIR / "sftp_keys"
+_SFTP_KEYS_DIR.mkdir(exist_ok=True)
 
 
 def _load_file_sources() -> list:
@@ -567,6 +569,32 @@ def _save_file_sources(sources: list) -> None:
         tmp.replace(_FILE_SOURCES_PATH)
     except Exception as e:
         logger.error("[file_sources] write failed: %s", e)
+
+
+def _resolve_sftp_credentials(source: dict) -> dict:
+    """Return a copy of source with password/passphrase resolved from keychain.
+
+    Callers (run_file_scan, upload_key endpoint) should use this rather than
+    reading keychain credentials themselves, so the lookup logic stays in one place.
+    """
+    try:
+        from sftp_connector import get_sftp_password
+    except ImportError:
+        return source
+
+    resolved = dict(source)
+    keychain_key = source.get("keychain_key") or None
+    host         = source.get("sftp_host", "")
+    user         = source.get("sftp_user", "")
+
+    if not resolved.get("sftp_password"):
+        resolved["sftp_password"] = get_sftp_password(host, user, keychain_key)
+    if not resolved.get("sftp_passphrase"):
+        # Passphrase stored under a distinct account name
+        passphrase_key = (keychain_key + ":passphrase") if keychain_key else None
+        resolved["sftp_passphrase"] = get_sftp_password(host, user, passphrase_key)
+    return resolved
+
 
 # ── Viewer tokens ────────────────────────────────────────────────────────────
 # Read-only viewer tokens allow sharing scan results with a DPO or compliance

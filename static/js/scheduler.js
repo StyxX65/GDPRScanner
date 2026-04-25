@@ -18,19 +18,19 @@ function schedLoad() {
       var descEl = document.getElementById('schedDesc_' + js.id);
       if (!descEl) return;
       var j2 = _schedJobs.find(function(x){ return x.id === js.id; });
-      var freqLabel = !j2 ? '' : (j2.frequency === 'weekly' ? 'Weekly' : j2.frequency === 'monthly' ? 'Monthly' : 'Daily');
+      var freqLabel = !j2 ? '' : (j2.frequency === 'weekly' ? t('m365_sched_freq_weekly','Weekly') : j2.frequency === 'monthly' ? t('m365_sched_freq_monthly','Monthly') : t('m365_sched_freq_daily','Daily'));
       var timeStr = !j2 ? '' : String(j2.hour||0).padStart(2,'0') + ':' + String(j2.minute||0).padStart(2,'0');
       var base = freqLabel + ' ' + timeStr;
       var runBtn = document.getElementById('schedRunBtn_' + js.id);
       if (js.is_running) {
-        descEl.textContent = base + ' \u00b7 Running...';
+        descEl.textContent = base + ' \u00b7 ' + t('m365_sched_running','Running...');
         if (runBtn) { runBtn.style.borderColor='#22c55e'; runBtn.style.color='#22c55e'; }
       } else if (js.next_run) {
         var dt = new Date(js.next_run);
-        descEl.textContent = base + ' \u00b7 Next: ' + dt.toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+        descEl.textContent = base + ' \u00b7 ' + t('m365_sched_next','Next') + ': ' + dt.toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
         if (runBtn) { runBtn.style.borderColor='var(--border)'; runBtn.style.color='var(--muted)'; }
       } else {
-        descEl.textContent = base + (js.enabled ? '' : ' \u00b7 Disabled');
+        descEl.textContent = base + (js.enabled ? '' : ' \u00b7 ' + t('m365_sched_disabled','Disabled'));
         if (runBtn) { runBtn.style.borderColor='var(--border)'; runBtn.style.color='var(--muted)'; }
       }
     });
@@ -41,13 +41,13 @@ function schedRenderJobs() {
   var list = document.getElementById('schedJobList');
   if (!list) return;
   if (!_schedJobs.length) {
-    list.innerHTML = '<div style="font-size:11px;color:var(--muted);padding:4px 0">No scheduled scans yet.</div>';
+    list.innerHTML = '<div style="font-size:11px;color:var(--muted);padding:4px 0">' + t('m365_sched_no_jobs','No scheduled scans yet.') + '</div>';
     return;
   }
   list.innerHTML = _schedJobs.map(function(j) {
     var sid  = _esc(j.id);
     var sname = _esc(j.name || 'Unnamed');
-    var freqLabel = j.frequency === 'weekly' ? 'Weekly' : j.frequency === 'monthly' ? 'Monthly' : 'Daily';
+    var freqLabel = j.frequency === 'weekly' ? t('m365_sched_freq_weekly','Weekly') : j.frequency === 'monthly' ? t('m365_sched_freq_monthly','Monthly') : t('m365_sched_freq_daily','Daily');
     var timeStr = String(j.hour||0).padStart(2,'0') + ':' + String(j.minute||0).padStart(2,'0');
     var desc = freqLabel + ' ' + timeStr;
     var chk = j.enabled ? ' checked' : '';
@@ -217,7 +217,7 @@ function schedLoadHistory() {
   if (!el) return;
   fetch('/api/scheduler/history?limit=10').then(function(r){ return r.json(); }).then(function(d) {
     var runs = d.runs || [];
-    if (!runs.length) { el.innerHTML = '<em>No scheduled runs yet</em>'; return; }
+    if (!runs.length) { el.innerHTML = '<em>' + t('m365_sched_no_runs','No scheduled runs yet') + '</em>'; return; }
     var html = '';
     runs.forEach(function(r) {
       var ts = r.started_at ? new Date(r.started_at * 1000).toLocaleString() : '-';

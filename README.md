@@ -1,8 +1,8 @@
 # GDPRScanner
 
-Scans Microsoft 365, Google Workspace, and local/network file systems for Danish
-CPR numbers and personal data (PII). Produces GDPR compliance reports and supports
-Article 30 record-keeping obligations.
+Scans Microsoft 365, Google Workspace, local/network file systems, and SFTP servers
+for Danish CPR numbers and personal data (PII). Produces GDPR compliance reports and
+supports Article 30 record-keeping obligations.
 
 ---
 
@@ -32,7 +32,7 @@ an IDE with intelligent completion. The result is the author's work.
 - **Folder path in results** — each email result shows its full folder path (e.g. `Inbox / Ansøgninger pædagog SFO`) in the card and in Excel export
 - **Delete items** — flagged results can be deleted directly from the UI, individually or in bulk
 - **CPR false-positive reduction** — strict CPR validation
-- **Excel export** — multi-tab `.xlsx` report with per-source breakdown, auto-filters, and URL hyperlinks. Columns include: Name, CPR Hits, Face count, GPS (✔ if GPS in EXIF), Special category, EXIF author, Folder, Account, Role, Disposition, Date Modified, Size (KB), URL. A dedicated **GPS locations** sheet lists all items with GPS coordinates including a Google Maps link. Separate tabs for Outlook (Exchange), OneDrive, SharePoint, Teams, Gmail, Google Drive, local folders, and SMB/network shares. Summary sheet shows counts by source and GPS item total. When M365, Google Workspace, and file scans run concurrently, all results are captured in the export — not just the last completed scan
+- **Excel export** — multi-tab `.xlsx` report with per-source breakdown, auto-filters, and URL hyperlinks. Columns include: Name, CPR Hits, Face count, GPS (✔ if GPS in EXIF), Special category, EXIF author, Folder, Account, Role, Disposition, Date Modified, Size (KB), URL. A dedicated **GPS locations** sheet lists all items with GPS coordinates including a Google Maps link. Separate tabs for Outlook (Exchange), OneDrive, SharePoint, Teams, Gmail, Google Drive, local folders, SMB/network shares, and SFTP. Summary sheet shows counts by source and GPS item total. When M365, Google Workspace, and file scans run concurrently, all results are captured in the export — not just the last completed scan
 - **Progressive streaming** — results stream card-by-card via Server-Sent Events as the scan runs
 - **Token auto-refresh** — expired tokens are detected and silently refreshed mid-scan without interrupting the UI
 - **Incremental / resumable scans** — interrupted scans save a checkpoint; the next run resumes from where it stopped rather than starting over
@@ -79,7 +79,7 @@ The sidebar sources panel lists all configured scan sources. Click **Sources** t
 
 **Google Workspace tab** — Two authentication modes: **Workspace** (service account with domain-wide delegation — scans all users) and **Personal account** (OAuth 2.0 device-code flow — scans the signed-in account only). Once connected, per-source toggles control whether Gmail and/or Google Drive appear in the sidebar panel and are included in scans. See [GOOGLE_SETUP.md](docs/setup/GOOGLE_SETUP.md) for setup instructions.
 
-**File sources tab** — Add local folder paths or SMB/CIFS network shares with a name, path, and optional SMB credentials. Each saved source appears as a checkbox in the sidebar panel (local, SMB/network). Use the **Edit** button on each row to update credentials or rename a source without deleting it.
+**File sources tab** — Add local folder paths, SMB/CIFS network shares, or SFTP servers. A pill selector (Local / Network / SFTP) switches the form fields. SFTP sources require host, port, username, remote path, and auth type (password or private key). SSH private keys are uploaded via the UI, validated with paramiko, and stored in `~/.gdprscanner/sftp_keys/` with `600` permissions; passwords and passphrases are stored in the OS keychain. Each saved source appears as a checkbox in the sidebar panel. Use the **Edit** button on each row to update credentials or rename a source without deleting it.
 
 **Skipped automatically:** `.recycle`, `.sync`, `.btsync`, `.trash`, `.git`, `node_modules`, `System Volume Information`, and other system/sync folders. Hidden directories (`.` prefix) are skipped too.
 
@@ -207,6 +207,11 @@ The **⬇ Excel** button exports all current results to a `.xlsx` file (`m365_sc
 | OneDrive | Flagged OneDrive files |
 | SharePoint | Flagged SharePoint files |
 | Teams | Flagged Teams files |
+| Gmail | Flagged Gmail messages |
+| Google Drive | Flagged Google Drive files |
+| Local | Flagged local-folder files |
+| Network | Flagged SMB/NAS files |
+| SFTP | Flagged SFTP server files |
 
 In macOS app builds, the export opens a native Save dialog instead of a browser download.
 
@@ -654,7 +659,7 @@ See [SUGGESTIONS.md](SUGGESTIONS.md) for the full feature roadmap with implement
 | File | Description |
 |---|---|
 | `gdpr_scanner.py` | Flask entry point — scan orchestration, SSE route (`/api/scan/stream`), root route |
-| `scan_engine.py` | M365 and local/SMB scan logic — `run_scan()`, `run_file_scan()` |
+| `scan_engine.py` | M365 and local/SMB/SFTP scan logic — `run_scan()`, `run_file_scan()` |
 | `app_config.py` | All persistence — profiles, settings, SMTP config, lang loading, Fernet encryption |
 | `sse.py` | SSE broadcast queue and `_current_scan_id` |
 | `checkpoint.py` | Mid-scan checkpoint save/load, `_checkpoint_key()` |
@@ -664,6 +669,7 @@ See [SUGGESTIONS.md](SUGGESTIONS.md) for the full feature roadmap with implement
 | `m365_connector.py` | Microsoft Graph API client — auth, token refresh, email/OneDrive/SharePoint/Teams fetchers, delete methods |
 | `google_connector.py` | Google Workspace API client — Gmail, Drive, Admin SDK |
 | `file_scanner.py` | Unified local + SMB/CIFS file iterator — `FileScanner.iter_files()` yields `(path, bytes, metadata)`. SMB reads use a 1-slot sliding-window `ThreadPoolExecutor` (`PREFETCH_WINDOW=1`) with a 60-second per-file timeout. `DEFAULT_EXTENSIONS` is imported from `cpr_detector.SUPPORTED_EXTS` (not a local hardcoded set) so the scannable extension list stays in sync automatically. |
+| `sftp_connector.py` | SFTP file iterator — `SFTPScanner.iter_files()` yields the same `(path, bytes, metadata)` tuple as `FileScanner`. Uses paramiko (`AutoAddPolicy`); supports password auth and private-key auth (RSA / Ed25519 / ECDSA / DSS). Passwords and key passphrases are stored in the OS keychain; key files live in `~/.gdprscanner/sftp_keys/`. Gracefully degrades when paramiko is not installed (`SFTP_OK` flag). |
 | `scan_scheduler.py` | In-process APScheduler wrapper — multi-job scheduled scan engine |
 | `templates/index.html` | Single-page HTML shell — Jinja2 template. Two variables: `app_version`, `lang_json`. |
 | `static/style.css` | All application CSS — custom properties, layout, components, light/dark themes |

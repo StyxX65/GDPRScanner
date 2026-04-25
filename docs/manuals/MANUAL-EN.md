@@ -1,6 +1,6 @@
 # GDPR Scanner — User Manual
 
-Version 1.6.20
+Version 1.6.25
 
 ---
 
@@ -33,7 +33,7 @@ When items are found, you can review them, decide what to do with each one (keep
 **What it scans:**
 - Microsoft 365: Exchange email, OneDrive, SharePoint, Teams
 - Google Workspace: Gmail, Google Drive
-- Local and network file shares (including SMB/NAS drives)
+- Local and network file shares (including SMB/NAS drives and SFTP servers)
 
 **What it finds:**
 - CPR numbers (Danish civil registration numbers)
@@ -104,17 +104,33 @@ The Google Workspace tab lets you connect a Google Workspace (formerly G Suite) 
 | Gmail | All emails in each user's inbox and labels |
 | Google Drive | All files owned by or shared with each user |
 
-### 3.3 Local and Network File Shares
+### 3.3 Local, Network, and SFTP File Sources
 
-The **Filkilder** (File Sources) tab lists any local folders or network drives you have configured.
+The **Filkilder** (File Sources) tab lists any local folders, network drives, or SFTP servers you have configured.
 
 **To add a new file source:**
+
 1. Enter a **Label** — a friendly name you will recognise (e.g. "Skolens Fællesmappe").
-2. Enter the **Path**:
-   - Local folder: `~/Documents` or `/Volumes/Share`
-   - Network share: `//nas-server/shared` or `\\server\share`
-3. If it is a network share, fill in the **SMB Host**, **Username**, and **Password** that appear automatically. The password is stored securely in your system keychain.
-4. Click **Tilføj** (Add).
+2. Select the **source type** using the pill selector at the top of the form:
+
+**Local**
+- Enter the **Path** to the folder: `~/Documents` or `/Volumes/Share`.
+- Click **Tilføj** (Add).
+
+**Network (SMB)**
+- Enter the **Path** in UNC format: `//nas-server/shared` or `\\server\share`.
+- Fill in the **SMB Host**, **Username**, and **Password** that appear. The password is stored securely in your system keychain.
+- Click **Tilføj** (Add).
+
+**SFTP**
+- Enter the **Host** (hostname or IP address of the SSH/SFTP server).
+- Enter the **Port** (default 22).
+- Enter the **Username**.
+- Enter the **Remote path** to scan (e.g. `/home/shared` or `/`).
+- Choose the **Authentication type**:
+  - **Password** — enter the password. It is stored securely in your system keychain.
+  - **Private key** — click **Upload key file** and select your SSH private key (OpenSSH or PEM format). If the key is passphrase-protected, enter the passphrase. The key file is stored in the scanner's data directory with `600` permissions.
+- Click **Tilføj** (Add).
 
 You can add as many file sources as you need. Each one will appear as a selectable source in the main sidebar when you are ready to scan.
 
@@ -192,7 +208,8 @@ Each flagged item appears as a card. Here is what the badges and labels mean:
 | Teams | Found in a Teams channel |
 | Gmail | Found in a Gmail mailbox |
 | Google Drive | Found in Google Drive |
-| Local / Network | Found on a file share |
+| Local / Network | Found on a local or SMB file share |
+| 🔒 SFTP | Found on an SFTP server |
 
 ### Risk level
 
@@ -352,7 +369,7 @@ Click **Profiles** to open the profile management panel. Here you can:
 
 Click **Excel** in the filter bar to download the current results as an Excel workbook. The workbook contains:
 - A summary tab with scan date, item counts, and source breakdown.
-- A separate tab for each source type (Outlook, OneDrive, SharePoint, Teams, Gmail, Google Drive, Local, Network).
+- A separate tab for each source type (Outlook, OneDrive, SharePoint, Teams, Gmail, Google Drive, Local, Network, SFTP).
 - Every flagged item, including source, account, CPR count, risk level, sharing status, and disposition.
 
 The **Excel** and **Art.30** buttons are always available — even after restarting the application — and will export the results from the most recent completed scan session without requiring a new scan.
@@ -556,7 +573,7 @@ No. CPR numbers found during a scan are stored only as a count (e.g. "3 CPR numb
 Emails are moved to the user's **Deleted Items** folder in Exchange — they are not permanently deleted and can be recovered by the user or an administrator. Files are moved to the **recycle bin** of the relevant service (OneDrive, SharePoint, file system). A permanent deletion requires a second action by the user or admin.
 
 **Can I scan without connecting to Microsoft 365?**  
-Yes. You can scan local and SMB file shares without any M365 or Google connection. Open **Sources**, go to the **Filkilder** tab, and add your file paths.
+Yes. You can scan local folders, SMB/NAS drives, and SFTP servers without any M365 or Google connection. Open **Sources**, go to the **Filkilder** tab, and add your file paths or SFTP server details.
 
 **What is delta scanning and when should I use it?**  
 Delta scanning uses Microsoft Graph change tokens (for M365) and the Google Drive Changes API (for Google Workspace) to fetch only items modified since the last scan. It is ideal for regular (e.g. weekly) compliance checks after you have done a full baseline scan. Enable it in the Options section of the sidebar.
@@ -584,4 +601,4 @@ Yes. Use the **🔗 Share** button to create a read-only viewer link or set a Vi
 
 ---
 
-*GDPR Scanner v1.6.20 — for technical setup and configuration see README.md*
+*GDPR Scanner v1.6.25 — for technical setup and configuration see README.md*

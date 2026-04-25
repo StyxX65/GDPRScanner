@@ -1219,11 +1219,22 @@ document.addEventListener('DOMContentLoaded', applyI18n);
         <div class="srcmgmt-group">
           <div class="srcmgmt-group-title" data-i18n="m365_file_sources_add">Add source</div>
           <div class="fsrc-form" style="border-color:var(--border)">
+            <!-- Source type selector -->
+            <div class="fsrc-form-row">
+              <label>Type</label>
+              <div style="display:flex;background:var(--bg);border:1px solid var(--border);border-radius:6px;overflow:hidden">
+                <button type="button" id="srcTypeLocal" onclick="srcFileTypeSelect('local')" style="flex:1;border:none;padding:3px 8px;font-size:11px;cursor:pointer;background:var(--accent);color:#fff" data-i18n="m365_fsrc_type_local">Local folder</button>
+                <button type="button" id="srcTypeSmb"   onclick="srcFileTypeSelect('smb')"   style="flex:1;border:none;border-left:1px solid var(--border);padding:3px 8px;font-size:11px;cursor:pointer;background:none;color:var(--muted)" data-i18n="m365_fsrc_type_smb">Network (SMB)</button>
+                <button type="button" id="srcTypeSftp"  onclick="srcFileTypeSelect('sftp')"  style="flex:1;border:none;border-left:1px solid var(--border);padding:3px 8px;font-size:11px;cursor:pointer;background:none;color:var(--muted)" data-i18n="m365_fsrc_type_sftp">SFTP</button>
+              </div>
+            </div>
+            <input type="hidden" id="srcFileSourceType" value="local">
             <div class="fsrc-form-row">
               <label>Name <span style="color:var(--accent)">*</span></label>
               <input id="srcFileLabel" type="text" placeholder="e.g. Teacher files, NAS archive" maxlength="80" autocomplete="off">
             </div>
-            <div class="fsrc-form-row">
+            <!-- Local / SMB path field -->
+            <div id="srcFilePathRow" class="fsrc-form-row">
               <label data-i18n="m365_fsrc_path">Path</label>
               <input id="srcFilePath" type="text" placeholder="~/Documents  or  //nas/shares" oninput="srcFileDetectSmb(); srcFileAutoName()">
             </div>
@@ -1242,6 +1253,58 @@ document.addEventListener('DOMContentLoaded', applyI18n);
                 <input id="srcFileSmbPw" type="password" placeholder="Stored in OS keychain">
               </div>
               <div style="font-size:10px;color:var(--muted)" data-i18n="m365_fsrc_smb_pw_hint">Saved to OS keychain — never stored in a file.</div>
+            </div>
+            <!-- SFTP fields -->
+            <div id="srcFileSftpFields" style="display:none;flex-direction:column;gap:6px">
+              <div class="fsrc-form-row">
+                <label data-i18n="m365_fsrc_sftp_host">SFTP host</label>
+                <input id="srcFileSftpHost" type="text" placeholder="sftp.school.dk" oninput="srcFileAutoNameSftp()">
+              </div>
+              <div class="fsrc-form-row">
+                <label data-i18n="m365_fsrc_sftp_port">Port</label>
+                <input id="srcFileSftpPort" type="number" value="22" min="1" max="65535" style="width:70px">
+              </div>
+              <div class="fsrc-form-row">
+                <label data-i18n="m365_fsrc_sftp_user">Username</label>
+                <input id="srcFileSftpUser" type="text" placeholder="backup_user">
+              </div>
+              <div class="fsrc-form-row">
+                <label data-i18n="m365_fsrc_sftp_remote_path">Remote path</label>
+                <input id="srcFileSftpPath" type="text" placeholder="/var/data" value="/">
+              </div>
+              <!-- Auth type toggle -->
+              <div class="fsrc-form-row">
+                <label>Auth</label>
+                <div style="display:flex;background:var(--bg);border:1px solid var(--border);border-radius:6px;overflow:hidden">
+                  <button type="button" id="srcSftpAuthPw"  onclick="srcFileSftpAuthSelect('password')" style="flex:1;border:none;padding:3px 8px;font-size:11px;cursor:pointer;background:var(--accent);color:#fff" data-i18n="m365_fsrc_sftp_auth_password">Password</button>
+                  <button type="button" id="srcSftpAuthKey" onclick="srcFileSftpAuthSelect('key')"      style="flex:1;border:none;border-left:1px solid var(--border);padding:3px 8px;font-size:11px;cursor:pointer;background:none;color:var(--muted)" data-i18n="m365_fsrc_sftp_auth_key">SSH key</button>
+                </div>
+              </div>
+              <input type="hidden" id="srcFileSftpAuth" value="password">
+              <!-- Password auth -->
+              <div id="srcSftpPwFields">
+                <div class="fsrc-form-row">
+                  <label data-i18n="m365_fsrc_sftp_pw">Password</label>
+                  <input id="srcFileSftpPw" type="password" placeholder="Stored in OS keychain">
+                </div>
+                <div style="font-size:10px;color:var(--muted)" data-i18n="m365_fsrc_sftp_pw_hint">Password is saved to the OS keychain — never stored in a file.</div>
+              </div>
+              <!-- Key auth -->
+              <div id="srcSftpKeyFields" style="display:none;flex-direction:column;gap:6px">
+                <div class="fsrc-form-row">
+                  <label data-i18n="m365_fsrc_sftp_key_upload">Private key</label>
+                  <div style="display:flex;gap:6px;align-items:center">
+                    <input id="srcFileSftpKeyFile" type="file" accept=".pem,.key,.pub,*" style="flex:1;font-size:11px">
+                    <span id="srcFileSftpKeyStatus" style="font-size:10px;color:var(--muted)"></span>
+                  </div>
+                </div>
+                <input type="hidden" id="srcFileSftpKeyPath" value="">
+                <div class="fsrc-form-row">
+                  <label data-i18n="m365_fsrc_sftp_passphrase">Passphrase</label>
+                  <input id="srcFileSftpPassphrase" type="password" placeholder="Leave blank if key has no passphrase">
+                </div>
+                <div style="font-size:10px;color:var(--muted)" data-i18n="m365_fsrc_sftp_passphrase_hint">Passphrase is saved to the OS keychain — never stored in a file.</div>
+              </div>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
               <input type="hidden" id="srcFileEditId" value="">

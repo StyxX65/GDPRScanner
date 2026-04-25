@@ -62,14 +62,15 @@ function renderSourcesPanel() {
     S._pendingGoogleSources = null;
   }
 
-  // File sources (local / SMB) — one entry per saved source
+  // File sources (local / SMB / SFTP) — one entry per saved source
   if (S._fileSources.length > 0) {
     html += '<div style="margin:6px 0 2px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">'
       + '<hr style="border:none;border-top:1px solid var(--border);margin:1px 0 2px">';
     S._fileSources.forEach(function(s) {
-      const isSmb = s.path && (s.path.startsWith('//') || s.path.startsWith('\\\\'));
-      const icon  = isSmb ? '\uD83C\uDF10' : '\uD83D\uDCC1';
-      const label = s.label || s.path || s.id;
+      const isSftp = s.source_type === 'sftp';
+      const isSmb  = !isSftp && s.path && (s.path.startsWith('//') || s.path.startsWith('\\\\'));
+      const icon   = isSftp ? '\uD83D\uDD12' : (isSmb ? '\uD83C\uDF10' : '\uD83D\uDCC1');
+      const label  = s.label || s.path || s.id;
       const isChecked = (s.id in checked) ? checked[s.id] : true;
       html += '<label class="source-check">'
         + '<input type="checkbox" data-source-id="' + _esc(s.id) + '" data-source-type="file"' + (isChecked ? ' checked' : '') + '>'

@@ -1,6 +1,6 @@
 # GDPR Scanner — Brugermanual
 
-Version 1.6.20
+Version 1.6.25
 
 ---
 
@@ -33,7 +33,7 @@ Når der er fundet elementer, kan du gennemgå dem, beslutte hvad der skal ske m
 **Hvad scanneren gennemgår:**
 - Microsoft 365: Exchange e-mail, OneDrive, SharePoint, Teams
 - Google Workspace: Gmail, Google Drev
-- Lokale og netværksbaserede filmapper (herunder SMB/NAS-drev)
+- Lokale og netværksbaserede filmapper (herunder SMB/NAS-drev og SFTP-servere)
 
 **Hvad den finder:**
 - CPR-numre
@@ -104,17 +104,33 @@ Fanen Google Workspace lader dig forbinde en Google Workspace-konto (tidligere G
 | Gmail | Alle e-mails i den enkelte brugers indbakke og labels |
 | Google Drev | Alle filer ejet af eller delt med den enkelte bruger |
 
-### 3.3 Lokale og netværksbaserede filer
+### 3.3 Lokale, netværksbaserede og SFTP-filkilder
 
-Fanen **Filkilder** viser de lokale mapper og netværksdrev, du har konfigureret.
+Fanen **Filkilder** viser de lokale mapper, netværksdrev og SFTP-servere, du har konfigureret.
 
 **Sådan tilføjer du en ny filkilde:**
+
 1. Indtast en **Betegnelse** — et navn du kan genkende (f.eks. "Skolens Fællesmappe").
-2. Indtast **Stien**:
-   - Lokal mappe: `~/Dokumenter` eller `/Volumes/Drev`
-   - Netværksdrev: `//nas-server/delt` eller `\\server\delt`
-3. Hvis det er et netværksdrev, udfyldes felterne **SMB-vært**, **Brugernavn** og **Adgangskode** automatisk. Adgangskoden gemmes sikkert i systemets nøglering.
-4. Klik på **Tilføj**.
+2. Vælg **kildetype** med pillerne øverst i formularen:
+
+**Lokal**
+- Indtast **Stien** til mappen: `~/Dokumenter` eller `/Volumes/Drev`.
+- Klik på **Tilføj**.
+
+**Netværk (SMB)**
+- Indtast **Stien** i UNC-format: `//nas-server/delt` eller `\\server\delt`.
+- Udfyld **SMB-vært**, **Brugernavn** og **Adgangskode**. Adgangskoden gemmes sikkert i systemets nøglering.
+- Klik på **Tilføj**.
+
+**SFTP**
+- Indtast **Vært** (værtsnavn eller IP-adresse på SSH/SFTP-serveren).
+- Indtast **Port** (standard 22).
+- Indtast **Brugernavn**.
+- Indtast **Fjernsti**, der skal scannes (f.eks. `/home/delt` eller `/`).
+- Vælg **Godkendelsestype**:
+  - **Adgangskode** — indtast adgangskoden. Den gemmes sikkert i systemets nøglering.
+  - **Privat nøgle** — klik på **Upload nøglefil** og vælg din SSH-privatnøgle (OpenSSH- eller PEM-format). Hvis nøglen er beskyttet med en adgangssætning, skal du indtaste den. Nøglefilen gemmes i scannerens datamappe med `600`-rettigheder.
+- Klik på **Tilføj**.
 
 Du kan tilføje så mange filkilder, du har brug for. De vil fremgå som valgbare kilder i venstre panel, når du er klar til at scanne.
 
@@ -192,7 +208,8 @@ Hvert fundet element vises som et kort. Her er forklaringen på mærker og label
 | Teams | Fundet i en Teams-kanal |
 | Gmail | Fundet i en Gmail-postkasse |
 | Google Drev | Fundet i Google Drev |
-| Lokal / Netværk | Fundet på et filshare |
+| Lokal / Netværk | Fundet på et lokalt eller SMB-filshare |
+| 🔒 SFTP | Fundet på en SFTP-server |
 
 ### Risikoniveau
 
@@ -352,7 +369,7 @@ Klik på **Profiler** for at åbne profil­administrations­panelet. Her kan du:
 
 Klik på **Excel** i filterbjælken for at downloade de aktuelle resultater som en Excel-projektmappe. Projektmappen indeholder:
 - Et oversigtsfaneblad med scanningsdato, antal elementer og kildefordeling.
-- Et separat faneblad for hver kildetype (Outlook, OneDrive, SharePoint, Teams, Gmail, Google Drive, Lokal, Netværk).
+- Et separat faneblad for hver kildetype (Outlook, OneDrive, SharePoint, Teams, Gmail, Google Drive, Lokal, Netværk, SFTP).
 - Alle fundne elementer, herunder kilde, konto, CPR-antal, risikoniveau, delingsstatus og disposition.
 
 Knapperne **Excel** og **Art.30** er altid tilgængelige — også efter genstart af programmet — og eksporterer resultaterne fra den seneste afsluttede scanningssession uden at kræve en ny scanning.
@@ -556,7 +573,7 @@ Nej. CPR-numre fundet under en scanning gemmes kun som et antal (f.eks. "3 CPR-n
 E-mails flyttes til brugerens **Slettet post**-mappe i Exchange — de slettes ikke permanent og kan gendannes af brugeren eller en administrator. Filer flyttes til **papirkurven** i den pågældende tjeneste (OneDrive, SharePoint, filsystem). Permanent sletning kræver en efterfølgende handling af brugeren eller administrator.
 
 **Kan jeg scanne uden at forbinde til Microsoft 365?**  
-Ja. Du kan scanne lokale og SMB-filshares uden nogen M365- eller Google-forbindelse. Åbn **Kilder**, gå til fanen **Filkilder**, og tilføj dine filstier.
+Ja. Du kan scanne lokale mapper, SMB/NAS-drev og SFTP-servere uden nogen M365- eller Google-forbindelse. Åbn **Kilder**, gå til fanen **Filkilder**, og tilføj dine filstier eller SFTP-serveroplysninger.
 
 **Hvad er delta-scanning, og hvornår skal jeg bruge det?**  
 Delta-scanning bruger Microsoft Graphs ændringstokens (for M365) og Google Drive Changes API (for Google Workspace) til kun at hente elementer ændret siden den seneste scanning. Det er ideelt til regelmæssige (f.eks. ugentlige) compliance-tjek efter, at du har gennemført en fuld basisscan. Aktiver det i afsnittet Indstillinger i venstre panel.
@@ -584,4 +601,4 @@ Ja. Brug **🔗 Del**-knappen til at oprette et skrivebeskyttet viewer-link elle
 
 ---
 
-*GDPR Scanner v1.6.20 — teknisk opsætning og konfiguration: se README.md*
+*GDPR Scanner v1.6.25 — teknisk opsætning og konfiguration: se README.md*
