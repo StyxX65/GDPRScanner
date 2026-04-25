@@ -22,8 +22,8 @@ import checkpoint
 @pytest.fixture(autouse=True)
 def _isolate(tmp_path, monkeypatch):
     """Redirect all disk writes to a temp dir for each test."""
-    monkeypatch.setattr(checkpoint, "_CHECKPOINT_PATH", tmp_path / "checkpoint.json")
-    monkeypatch.setattr(checkpoint, "_DELTA_PATH",      tmp_path / "delta.json")
+    monkeypatch.setattr(checkpoint, "_DATA_DIR",   tmp_path)
+    monkeypatch.setattr(checkpoint, "_DELTA_PATH", tmp_path / "delta.json")
 
 
 _OPTS = {

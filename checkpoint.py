@@ -15,7 +15,9 @@ logger = logging.getLogger(__name__)
 
 _DATA_DIR = Path.home() / ".gdprscanner"
 _DATA_DIR.mkdir(exist_ok=True)
-_CHECKPOINT_PATH = _DATA_DIR / "checkpoint.json"
+
+def _cp_path(prefix: str) -> Path:
+    return _DATA_DIR / f"checkpoint_{prefix}.json"
 
 def _checkpoint_key(options: dict) -> str:
     """Stable hash of the scan options — used to detect when a checkpoint
@@ -27,7 +29,7 @@ def _checkpoint_key(options: dict) -> str:
     }, sort_keys=True)
     return hashlib.sha256(sig.encode()).hexdigest()[:16]
 
-def _save_checkpoint(key: str, scanned_ids: set, flagged: list, meta: dict) -> None:
+def _save_checkpoint(key: str, scanned_ids: set, flagged: list, meta: dict, *, prefix: str = "m365") -> None:
     """Write checkpoint to disk. Called periodically during scanning."""
     try:
         payload = {
@@ -36,28 +38,31 @@ def _save_checkpoint(key: str, scanned_ids: set, flagged: list, meta: dict) -> N
             "flagged":     flagged,
             "meta":        {k: v for k, v in meta.items() if k != "options"},
         }
-        tmp = _CHECKPOINT_PATH.with_suffix(".tmp")
+        path = _cp_path(prefix)
+        tmp  = path.with_suffix(".tmp")
         tmp.write_text(json.dumps(payload, ensure_ascii=False, default=str), encoding="utf-8")
-        tmp.replace(_CHECKPOINT_PATH)
+        tmp.replace(path)
     except Exception as e:
         logger.error("[checkpoint] save failed: %s", e)
 
-def _load_checkpoint(key: str) -> dict | None:
+def _load_checkpoint(key: str, *, prefix: str = "m365") -> dict | None:
     """Load checkpoint if it matches the current scan key. Returns None on mismatch or error."""
     try:
-        if not _CHECKPOINT_PATH.exists():
+        path = _cp_path(prefix)
+        if not path.exists():
             return None
-        payload = json.loads(_CHECKPOINT_PATH.read_text(encoding="utf-8"))
+        payload = json.loads(path.read_text(encoding="utf-8"))
         if payload.get("key") != key:
             return None
         return payload
     except Exception:
         return None
 
-def _clear_checkpoint() -> None:
+def _clear_checkpoint(*, prefix: str = "m365") -> None:
     try:
-        if _CHECKPOINT_PATH.exists():
-            _CHECKPOINT_PATH.unlink()
+        path = _cp_path(prefix)
+        if path.exists():
+            path.unlink()
     except Exception:
         pass
 

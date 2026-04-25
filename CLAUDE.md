@@ -30,7 +30,9 @@ python -m pytest tests/ -q
 
 **Frontend:** `templates/index.html` (SPA), `static/style.css` (all styles), `static/js/*.js` (11 ES modules + `state.js`). `static/app.js` is an archived monolith — no longer loaded.
 
-**Data dir** `~/.gdprscanner/`: `scanner.db`, `config.json`, `settings.json`, `schedule.json`, `token.json`, `delta.json`, `checkpoint.json`, `smtp.json`, `machine_id` (**never delete** — Fernet key), `role_overrides.json`, `google_sa.json`, `google.json`, `src_toggles.json`, `app.lock`, `viewer_tokens.json`
+**Checkpoint / resume** — all three scan engines save progress to `~/.gdprscanner/checkpoint_{prefix}.json` every 25 items. Prefixes: `m365`, `google`, `file_{source_id}`. `checkpoint.py` functions accept a `prefix` keyword (default `"m365"`). Use `_cp_path(prefix)` to get the path — do not hard-code filenames. The Scan button calls `checkCheckpoint(() => startScan(false))` so a resume banner is offered before any grid clearing happens. `POST /api/scan/clear_checkpoint` globs and deletes all `checkpoint_*.json` files.
+
+**Data dir** `~/.gdprscanner/`: `scanner.db`, `config.json`, `settings.json`, `schedule.json`, `token.json`, `delta.json`, `checkpoint_m365.json`, `checkpoint_google.json`, `checkpoint_file_*.json`, `smtp.json`, `machine_id` (**never delete** — Fernet key), `role_overrides.json`, `google_sa.json`, `google.json`, `src_toggles.json`, `app.lock`, `viewer_tokens.json`
 
 ## Non-obvious files
 

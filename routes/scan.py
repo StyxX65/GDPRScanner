@@ -13,7 +13,7 @@ from app_config import (
 )
 from checkpoint import (
     _checkpoint_key, _load_checkpoint, _clear_checkpoint,
-    _load_delta_tokens, _DELTA_PATH,
+    _load_delta_tokens, _DELTA_PATH, _cp_path,
 )
 
 bp = Blueprint("scan", __name__)
@@ -121,28 +121,80 @@ def scan_stop():
 def scan_checkpoint_info():
     """Return info about any saved checkpoint for the given scan options.
     If check_only=true, just reports whether a scan is currently running."""
+    import hashlib, json as _json
     options = request.get_json() or {}
     if options.get("check_only"):
         acquired = state._scan_lock.acquire(blocking=False)
         if acquired:
             state._scan_lock.release()
         return jsonify({"running": not acquired})
-    key = _checkpoint_key(options)
-    cp  = _load_checkpoint(key)
-    if not cp:
+
+    engines = {}
+
+    # M365
+    if options.get("sources"):
+        key = _checkpoint_key(options)
+        cp  = _load_checkpoint(key, prefix="m365")
+        if cp:
+            engines["m365"] = {
+                "exists":        True,
+                "scanned_count": len(cp.get("scanned_ids", [])),
+                "flagged_count": len(cp.get("flagged", [])),
+                "started_at":    cp.get("meta", {}).get("started_at"),
+            }
+
+    # Google
+    google_emails  = options.get("googleUserEmails", [])
+    google_sources = options.get("googleSources", [])
+    if google_emails and google_sources:
+        gkey = hashlib.sha256(_json.dumps({
+            "emails":  sorted(google_emails),
+            "sources": sorted(google_sources),
+            "older_than_days": options.get("options", {}).get("older_than_days", 0),
+        }, sort_keys=True).encode()).hexdigest()[:16]
+        cp = _load_checkpoint(gkey, prefix="google")
+        if cp:
+            engines["google"] = {
+                "exists":        True,
+                "scanned_count": len(cp.get("scanned_ids", [])),
+                "flagged_count": len(cp.get("flagged", [])),
+                "started_at":    cp.get("meta", {}).get("started_at"),
+            }
+
+    # File sources (one checkpoint per source ID)
+    for src_id in options.get("fileSources", []):
+        fkey = _checkpoint_key({"sources": ["file"], "user_ids": [src_id], "options": {}})
+        cp   = _load_checkpoint(fkey, prefix=f"file_{src_id}")
+        if cp:
+            fe = engines.setdefault("file", {"exists": True, "scanned_count": 0, "flagged_count": 0, "started_at": None})
+            fe["scanned_count"] += len(cp.get("scanned_ids", []))
+            fe["flagged_count"]  += len(cp.get("flagged", []))
+            if not fe["started_at"]:
+                fe["started_at"] = cp.get("meta", {}).get("started_at")
+
+    if not engines:
         return jsonify({"exists": False})
+
+    started_ats = [v["started_at"] for v in engines.values() if v.get("started_at")]
     return jsonify({
         "exists":        True,
-        "scanned_count": len(cp.get("scanned_ids", [])),
-        "flagged_count": len(cp.get("flagged", [])),
-        "started_at":    cp.get("meta", {}).get("started_at"),
+        "scanned_count": sum(v.get("scanned_count", 0) for v in engines.values()),
+        "flagged_count": sum(v.get("flagged_count", 0) for v in engines.values()),
+        "started_at":    min(started_ats) if started_ats else None,
+        "engines":       engines,
     })
 
 
 @bp.route("/api/scan/clear_checkpoint", methods=["POST"])
 def scan_clear_checkpoint():
-    """Discard any saved checkpoint so the next scan starts fresh."""
-    _clear_checkpoint()
+    """Discard all saved checkpoints so the next scan starts fresh."""
+    from pathlib import Path
+    data_dir = Path.home() / ".gdprscanner"
+    for f in data_dir.glob("checkpoint_*.json"):
+        try:
+            f.unlink()
+        except Exception:
+            pass
     return jsonify({"status": "cleared"})
 
 

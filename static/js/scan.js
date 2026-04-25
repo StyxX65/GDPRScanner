@@ -136,26 +136,39 @@ function buildScanPayload() {
   return { sources, fileSources, allSources, googleSources, user_ids, options };
 }
 
-async function checkCheckpoint() {
+async function checkCheckpoint(onNoCheckpoint) {
   const payload = buildScanPayload();
-  if (!payload.sources.length && !payload.fileSources.length) return;
-  if (payload.sources.length && !payload.user_ids.length) return;
+  const banner  = document.getElementById('resumeBanner');
+  const hasSources = payload.sources.length > 0 || payload.fileSources.length > 0 || payload.googleSources.length > 0;
+  if (!hasSources) {
+    if (banner) banner.style.display = 'none';
+    onNoCheckpoint?.(); return;
+  }
+  // M365 sources without users — scan button will handle the alert
+  if (payload.sources.length && !payload.user_ids.length && !payload.googleSources.length) {
+    if (banner) banner.style.display = 'none';
+    onNoCheckpoint?.(); return;
+  }
+  // Collect Google user emails for server-side checkpoint key computation
+  const googleUserEmails = payload.googleSources.length > 0
+    ? (S._allUsers || []).filter(u => u.selected !== false && (u.platform === 'google' || u.platform === 'both')).map(u => u.email || u.id).filter(Boolean)
+    : [];
   try {
     const r = await fetch('/api/scan/checkpoint', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
+      body: JSON.stringify({...payload, googleUserEmails})
     });
     const d = await r.json();
-    const banner = document.getElementById('resumeBanner');
     if (d.exists) {
       const ts = d.started_at ? new Date(d.started_at * 1000).toLocaleString([], {dateStyle:'short', timeStyle:'short'}) : '';
       document.getElementById('resumeBannerText').textContent =
         t('m365_resume_banner', `Previous scan interrupted (${d.scanned_count} scanned, ${d.flagged_count} found${ts ? ' — ' + ts : ''})`);
-      banner.style.display = 'flex';
+      if (banner) banner.style.display = 'flex';
     } else {
-      banner.style.display = 'none';
+      if (banner) banner.style.display = 'none';
+      onNoCheckpoint?.();
     }
-  } catch(e) { /* ignore */ }
+  } catch(e) { onNoCheckpoint?.(); }
 }
 
 async function clearCheckpointAndScan() {

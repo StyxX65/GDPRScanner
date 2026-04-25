@@ -125,8 +125,8 @@ def _html_esc(s): return str(s)  # type: ignore[misc]
 # checkpoint helpers — injected by gdpr_scanner.py
 def _checkpoint_key(opts): return ""  # type: ignore[misc]
 def _save_checkpoint(*a, **kw): pass  # type: ignore[misc]
-def _load_checkpoint(key): return None  # type: ignore[misc]
-def _clear_checkpoint(): pass  # type: ignore[misc]
+def _load_checkpoint(key, **kw): return None  # type: ignore[misc]
+def _clear_checkpoint(**kw): pass  # type: ignore[misc]
 def _load_delta_tokens(): return {}  # type: ignore[misc]
 def _save_delta_tokens(t): pass  # type: ignore[misc]
 
@@ -209,6 +209,23 @@ def run_file_scan(source: dict):
         except Exception as e:
             logger.error("[db] start_scan failed: %s", e)
 
+    # \u2500\u2500 Checkpoint: resume from a previous interrupted file scan \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    _ck_prefix = f"file_{source.get('id', 'local')}"
+    _ck_key    = _checkpoint_key({"sources": [source.get("source_type", "local")], "user_ids": [source.get("id", path)], "options": {}})
+    _ck        = _load_checkpoint(_ck_key, prefix=_ck_prefix)
+    _file_scanned_ids: set  = set(_ck["scanned_ids"]) if _ck else set()
+    _file_flagged:     list = []  # items found by this file scan run (for checkpoint)
+    _ck_resumed = len(_file_scanned_ids)
+    if _ck:
+        _file_flagged = list(_ck.get("flagged", []))
+        for card in _file_flagged:
+            _state.flagged_items.append(card)
+        broadcast("scan_phase", {"phase": LANG.get("m365_resuming", f"Resuming \u2014 skipping {_ck_resumed} already-scanned items\u2026")})
+        for card in _file_flagged:
+            broadcast("scan_file_flagged", _with_disposition(card, _db))
+    _CHECKPOINT_SAVE_EVERY_FILE = 25
+    _file_items_since_save = 0
+
     total_scanned = 0
     total_flagged = 0
 
@@ -246,6 +263,10 @@ def run_file_scan(source: dict):
         for rel_path, content, meta in fs.iter_files(progress_cb=_progress):
             if _state._scan_abort.is_set():
                 break
+
+            if rel_path in _file_scanned_ids:
+                total_scanned += 1
+                continue
 
             total_scanned += 1
             broadcast("scan_progress", {"scanned": total_scanned, "flagged": total_flagged, "file": rel_path, "pct": min(90, 10 + total_scanned // 10), "source": "file"})
@@ -353,6 +374,7 @@ def run_file_scan(source: dict):
             }
 
             _state.flagged_items.append(card)
+            _file_flagged.append(card)
             total_flagged += 1
             broadcast("scan_file_flagged", _with_disposition(card, _db))
 
@@ -362,10 +384,19 @@ def run_file_scan(source: dict):
                 except Exception as e:
                     logger.error("[db] save_item failed: %s", e)
 
+            _file_scanned_ids.add(rel_path)
+            _file_items_since_save += 1
+            if _file_items_since_save >= _CHECKPOINT_SAVE_EVERY_FILE:
+                _save_checkpoint(_ck_key, _file_scanned_ids, _file_flagged, _state.scan_meta, prefix=_ck_prefix)
+                _file_items_since_save = 0
+
     except Exception as e:
         import traceback
         broadcast("scan_error", {"file": label, "error": str(e)})
         logger.error("[file_scan] error:\n%s", traceback.format_exc())
+    else:
+        if not _state._scan_abort.is_set():
+            _clear_checkpoint(prefix=_ck_prefix)
     finally:
         if _db and _db_scan_id:
             try:

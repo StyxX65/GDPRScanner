@@ -251,7 +251,7 @@ from app_config import (
 from checkpoint import (
     _checkpoint_key, _save_checkpoint, _load_checkpoint, _clear_checkpoint,
     _load_delta_tokens, _save_delta_tokens,
-    _CHECKPOINT_PATH, _DELTA_PATH,
+    _cp_path, _DELTA_PATH,
 )
 
 from sse import broadcast, _sse_queues, _sse_buffer
@@ -1842,7 +1842,7 @@ Example --settings file with SMTP:
             (_SETTINGS_PATH,                                        "Headless scan settings"),
             (_ROLE_OVERRIDES_PATH,                                  "Manual role overrides"),
             (_FILE_SOURCES_PATH,                                    "File source definitions"),
-            (_CHECKPOINT_PATH,                                      "Scan checkpoint (resume state)"),
+            (_cp_path("m365"),                                      "Scan checkpoint (resume state)"),
             (_DELTA_PATH,                                           "Delta scan tokens"),
             (_LANG_OVERRIDE_FILE,                                   "Language preference"),
             (Path.home() / ".gdprscanner" / "schedule.json",           "Scheduler configuration"),
@@ -1929,10 +1929,12 @@ Example --settings file with SMTP:
             print("  ✖ m365_db not available — cannot reset")
             _sys.exit(1)
 
-        # Also clear the JSON checkpoint so the UI starts with no cached results
-        _clear_checkpoint()
-        if not _CHECKPOINT_PATH.exists():
-            print(f"  ✔ Checkpoint cleared")
+        # Also clear all checkpoints so the UI starts with no cached results
+        from pathlib import Path as _Path
+        for _cpf in (_Path.home() / ".gdprscanner").glob("checkpoint_*.json"):
+            try: _cpf.unlink()
+            except Exception: pass
+        print(f"  ✔ Checkpoints cleared")
 
         # Clear delta tokens too — stale after a full DB reset
         if _DELTA_PATH.exists():

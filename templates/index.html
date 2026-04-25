@@ -302,7 +302,7 @@ document.addEventListener('DOMContentLoaded', applyI18n);
       <!-- Topbar -->
       <div class="topbar">
         <span id="viewerBrand" style="display:none;font-size:15px;font-weight:600;color:var(--text);white-space:nowrap;margin-right:6px">🔍 GDPRScanner</span>
-        <button class="scan-btn" id="scanBtn" onclick="startScan()" data-i18n="m365_btn_scan">Scan</button>
+        <button class="scan-btn" id="scanBtn" onclick="checkCheckpoint(() => startScan(false))" data-i18n="m365_btn_scan">Scan</button>
         <button class="stop-btn" id="stopBtn" style="display:none" onclick="stopScan()" data-i18n="m365_btn_stop">Stop</button>
 
         <!-- Profile selector (15c) -->

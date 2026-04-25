@@ -144,7 +144,8 @@ def _run_google_scan(options: dict):
     scan_emails   = bool(scan_opts.get("scan_emails",  False))
     scan_phones   = bool(scan_opts.get("scan_phones",  False))
 
-    from checkpoint import _load_delta_tokens, _save_delta_tokens
+    from checkpoint import (_load_delta_tokens, _save_delta_tokens,
+                            _save_checkpoint, _load_checkpoint, _clear_checkpoint)
     _drive_delta_tokens: dict = _load_delta_tokens() if delta_enabled else {}
     _new_drive_tokens:   dict = {}
 
@@ -195,6 +196,28 @@ def _run_google_scan(options: dict):
         except Exception as e:
             logger.error("[google_scan] begin_scan failed: %s", e)
 
+    # ── Checkpoint: resume from a previous interrupted Google scan ────────────
+    import hashlib as _hl, json as _js
+    _gck_prefix = "google"
+    _gck_key    = _hl.sha256(_js.dumps({
+        "emails":  sorted(user_emails),
+        "sources": sorted(sources),
+        "older_than_days": scan_opts.get("older_than_days", 0),
+    }, sort_keys=True).encode()).hexdigest()[:16]
+    _gck             = _load_checkpoint(_gck_key, prefix=_gck_prefix)
+    _g_scanned_ids:  set  = set(_gck["scanned_ids"]) if _gck else set()
+    _google_flagged: list = []  # items found by this Google scan (for checkpoint)
+    _gck_resumed = len(_g_scanned_ids)
+    if _gck:
+        from scan_engine import _with_disposition as _wd_ck
+        _google_flagged = list(_gck.get("flagged", []))
+        flagged_items.extend(_google_flagged)
+        broadcast("scan_phase", {"phase": f"Resuming — skipping {_gck_resumed} already-scanned items…"})
+        for _card in _google_flagged:
+            broadcast("scan_file_flagged", _wd_ck(_card, _db))
+    _GCHECKPOINT_SAVE_EVERY = 25
+    _g_items_since_save = 0
+
     total_flagged = 0
     total_scanned = 0
     t_start = _time.monotonic()
@@ -234,6 +257,7 @@ def _run_google_scan(options: dict):
             "exif":             {},
         }
         flagged_items.append(card)
+        _google_flagged.append(card)
         broadcast("scan_file_flagged", _with_disposition(card, _db))
         total_flagged += 1
         if _db and _db_scan_id:
@@ -265,6 +289,10 @@ def _run_google_scan(options: dict):
                 ):
                     if _check_abort():
                         return
+                    _item_id = meta.get("id", "")
+                    if _item_id in _g_scanned_ids:
+                        total_scanned += 1
+                        continue
                     total_scanned += 1
                     broadcast("scan_file", {"file": meta.get("name", "")})
                     broadcast("scan_progress", {
@@ -279,6 +307,7 @@ def _run_google_scan(options: dict):
                         result = _scan_bytes(data, meta.get("name", "msg.txt"))
                     except Exception as e:
                         broadcast("scan_error", {"file": meta.get("name", ""), "error": str(e)})
+                        _g_scanned_ids.add(_item_id)
                         continue
                     cprs       = result.get("cprs", [])
                     pii_counts = result.get("pii_counts")
@@ -288,6 +317,11 @@ def _run_google_scan(options: dict):
                         meta["_email_count"] = len(_em)
                         meta["_phone_count"] = len(_ph)
                         _broadcast_card(meta, cprs, pii_counts)
+                    _g_scanned_ids.add(_item_id)
+                    _g_items_since_save += 1
+                    if _g_items_since_save >= _GCHECKPOINT_SAVE_EVERY:
+                        _save_checkpoint(_gck_key, _g_scanned_ids, _google_flagged, {}, prefix=_gck_prefix)
+                        _g_items_since_save = 0
             except GoogleError as e:
                 broadcast("scan_error", {"file": f"Gmail/{user_email}", "error": str(e)})
             except Exception as e:
@@ -327,6 +361,10 @@ def _run_google_scan(options: dict):
                 for meta, data in drive_items:
                     if _check_abort():
                         return
+                    _item_id = meta.get("id", "")
+                    if _item_id in _g_scanned_ids:
+                        total_scanned += 1
+                        continue
                     total_scanned += 1
                     broadcast("scan_file", {"file": meta.get("name", "")})
                     broadcast("scan_progress", {
@@ -341,6 +379,7 @@ def _run_google_scan(options: dict):
                         result = _scan_bytes(data, meta.get("name", "file"))
                     except Exception as e:
                         broadcast("scan_error", {"file": meta.get("name", ""), "error": str(e)})
+                        _g_scanned_ids.add(_item_id)
                         continue
                     cprs       = result.get("cprs", [])
                     pii_counts = result.get("pii_counts")
@@ -350,6 +389,11 @@ def _run_google_scan(options: dict):
                         meta["_email_count"] = len(_em)
                         meta["_phone_count"] = len(_ph)
                         _broadcast_card(meta, cprs, pii_counts)
+                    _g_scanned_ids.add(_item_id)
+                    _g_items_since_save += 1
+                    if _g_items_since_save >= _GCHECKPOINT_SAVE_EVERY:
+                        _save_checkpoint(_gck_key, _g_scanned_ids, _google_flagged, {}, prefix=_gck_prefix)
+                        _g_items_since_save = 0
             except GoogleError as e:
                 broadcast("scan_error", {"file": f"Drive/{user_email}", "error": str(e)})
             except Exception as e:
@@ -361,6 +405,10 @@ def _run_google_scan(options: dict):
             _save_delta_tokens({**current_tokens, **_new_drive_tokens})
         except Exception as e:
             logger.warning("[gdrive delta] token save failed: %s", e)
+
+    from gdpr_scanner import _scan_abort as _gsa
+    if not _gsa.is_set():
+        _clear_checkpoint(prefix=_gck_prefix)
 
     elapsed = _time.monotonic() - t_start
     broadcast("google_scan_done", {

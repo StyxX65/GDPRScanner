@@ -119,6 +119,12 @@ Scan SFTP servers (SSH File Transfer Protocol) alongside local, SMB, and cloud s
 
 ---
 
+### Checkpoint / resume for Google and File scans ✅
+
+Extended the M365 checkpoint/resume mechanism to all three scan engines. Each engine writes its own file (`checkpoint_m365.json`, `checkpoint_google.json`, `checkpoint_file_{source_id}.json`) every 25 items. Previously found cards are re-emitted via SSE on resume so the grid repopulates before new items arrive. The Scan button now checks for a checkpoint before clearing the grid, so the resume banner appears even without a page reload. `POST /api/scan/checkpoint` returns a per-engine breakdown; `POST /api/scan/clear_checkpoint` wipes all `checkpoint_*.json` files. `checkpoint.py` functions gained a `prefix` keyword (default `"m365"`); M365 call sites are unchanged.
+
+---
+
 ### #32 — Windowed mode for Profiles, Sources, and Settings ✗ Won't do
 The workflow is sequential (configure → scan → review), not parallel — there is no realistic scenario where a modal and the results grid need to be open simultaneously. The Sources panel is already visible in the sidebar. Option A (the least-work path) still loads the full 3800-line JS stack twice. Closed.
 
