@@ -304,6 +304,7 @@ def _run_google_scan(options: dict):
                     })
                     try:
                         meta["_account"] = _display_name
+                        meta["_source_type"] = "gmail"
                         result = _scan_bytes(data, meta.get("name", "msg.txt"))
                     except Exception as e:
                         broadcast("scan_error", {"file": meta.get("name", ""), "error": str(e)})
@@ -376,6 +377,7 @@ def _run_google_scan(options: dict):
                     })
                     try:
                         meta["_account"] = _display_name
+                        meta["_source_type"] = "gdrive"
                         result = _scan_bytes(data, meta.get("name", "file"))
                     except Exception as e:
                         broadcast("scan_error", {"file": meta.get("name", ""), "error": str(e)})

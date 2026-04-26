@@ -536,14 +536,13 @@ def get_preview(item_id):
         except Exception as e:
             return jsonify({"error": str(e)})
 
-    if not state.connector:
-        return jsonify({"error": "not authenticated"}), 401
-
     item_meta = next((x for x in state.flagged_items if x.get("id") == item_id), {})
     drive_id  = item_meta.get("drive_id", "")
 
     try:
         if source_type == "email":
+            if not state.connector:
+                return jsonify({"error": "not authenticated"}), 401
             uid = account_id
             try:
                 msg = state.connector._get(
@@ -608,8 +607,41 @@ def get_preview(item_id):
 </body></html>"""
             return jsonify({"type": "html", "html": page})
 
+        elif source_type in ("gmail", "gdrive"):
+            item_url = item_meta.get("url", "")
+            name     = item_meta.get("name", "")
+            if source_type == "gdrive" and item_url:
+                # Extract Drive file ID and use the embeddable /preview URL
+                import re as _re
+                m = _re.search(r"/file/d/([^/]+)", item_url)
+                if m:
+                    fid = m.group(1)
+                    return jsonify({"type": "iframe", "url": f"https://drive.google.com/file/d/{fid}/preview"})
+                # Fallback: generic Drive embed
+                return jsonify({"type": "iframe", "url": item_url.replace("/view", "/preview")})
+            # Gmail — not embeddable; show link card
+            icon  = "✉️" if source_type == "gmail" else "☁️"
+            label = "Open in Gmail" if source_type == "gmail" else "Open in Google Drive"
+            link_html = (
+                f'<a href="{_html_esc(item_url)}" target="_blank" '
+                f'style="display:inline-block;margin-top:12px;padding:8px 16px;'
+                f'background:#3b7dd8;color:#fff;border-radius:6px;text-decoration:none;font-size:12px">'
+                f'{label}</a>'
+            ) if item_url else ""
+            html_out = (
+                f'<div style="padding:24px;text-align:center;font-family:sans-serif">'
+                f'<div style="font-size:40px">{icon}</div>'
+                f'<div style="font-size:13px;font-weight:600;margin:8px 0">{_html_esc(name)}</div>'
+                f'<div style="font-size:11px;color:var(--muted)">No inline preview available for this item</div>'
+                f'{link_html}'
+                f'</div>'
+            )
+            return jsonify({"type": "html", "html": html_out})
+
         else:
             # OneDrive / SharePoint / Teams — use Graph's embed preview API
+            if not state.connector:
+                return jsonify({"error": "not authenticated"}), 401
             preview_url = None
             errors = []
 
