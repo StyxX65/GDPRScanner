@@ -7,6 +7,14 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [1.6.26] — 2026-04-26
+
+### Fixed
+
+- **Gmail and Google Drive preview crashed with a 404 Graph API error** — `_source_type` was never set on Google items in `routes/google_scan.py`, so Gmail and Google Drive cards carried an empty `source_type`. The preview route in `routes/database.py` only checked for `"local"`, `"smb"`, and `"email"` before falling through to the M365 else-branch, which tried to call `https://graph.microsoft.com/.../drive/items/gmail:{id}/preview` — always a 404. Fixed by tagging Gmail items as `_source_type = "gmail"` and Google Drive items as `"gdrive"` at scan time. The preview route now handles both: Google Drive files get an embeddable `https://drive.google.com/file/d/{id}/preview` iframe; Gmail messages (not embeddable) show an info card with an "Open in Gmail" link. The `state.connector` (M365 auth) guard was also moved inside the `email` and M365 `else` branches so Google-only setups no longer receive a 401 when opening a Gmail or Drive preview.
+
+---
+
 ## [1.6.25] — 2026-04-25
 
 ### Added
