@@ -43,6 +43,8 @@ async function loadHistorySession(refScanId) {
   let resolvedRef = refScanId;
   if (resolvedRef === null) {
     const sessions = _sessions !== null ? _sessions : await _fetchSessions();
+    // Bail if a scan started while we were fetching sessions
+    if (S._m365ScanRunning || S._googleScanRunning || S._fileScanRunning) return;
     if (!sessions.length) {
       // No scans in DB — nothing to show
       window.loadLastScanSummary?.();
@@ -54,6 +56,8 @@ async function loadHistorySession(refScanId) {
   try {
     const r     = await fetch('/api/db/flagged?ref=' + resolvedRef);
     const items = await r.json();
+    // Bail if a scan started while we were fetching flagged items
+    if (S._m365ScanRunning || S._googleScanRunning || S._fileScanRunning) return;
     closeHistoryPicker();
 
     if (!Array.isArray(items) || items.length === 0) {

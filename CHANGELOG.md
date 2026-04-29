@@ -7,6 +7,16 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [1.6.26] — 2026-04-29
+
+### Fixed
+
+- **Previous scan results visible when a new scan starts** — two async functions (`loadHistorySession` and `loadLastScanSummary`) could resolve after `startScan` had already cleared the grid. `loadHistorySession` would re-populate the grid with old history items; `loadLastScanSummary` would re-show the last-scan summary card. Both functions now bail early after each `await` if any of the three scan-running flags (`S._m365ScanRunning`, `S._googleScanRunning`, `S._fileScanRunning`) is set — those flags are written synchronously by `startScan` before any awaits, so the check is race-free.
+
+- **Selected card scrolls out of view when preview panel opens** — clicking a card in grid view opens the 420 px preview panel, which shrinks the grid area and reflows the card columns. The selected card was no longer visible. `openPreview()` now schedules a `requestAnimationFrame` after removing `.hidden` from the panel so the card is scrolled back into view (`scrollIntoView block: nearest`) once the layout has settled.
+
+---
+
 ## [1.6.25] — 2026-04-25
 
 ### Added

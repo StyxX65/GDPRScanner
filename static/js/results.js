@@ -93,6 +93,7 @@ async function openPreview(f) {
   panel.classList.remove('hidden');
   const _savedW = sessionStorage.getItem('gdpr_preview_width');
   if (_savedW) panel.style.width = _savedW + 'px';
+  if (cardEl) requestAnimationFrame(() => cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
   title.textContent = f.name;
   frame.style.display = 'none';
   loading.style.display = 'flex';

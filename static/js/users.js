@@ -176,7 +176,7 @@ async function loadLastScanSummary() {
   try {
     const r = await fetch('/api/db/stats');
     const d = await r.json();
-    if (!d.scan_id || S.flaggedData.length > 0) return;
+    if (!d.scan_id || S.flaggedData.length > 0 || S._m365ScanRunning || S._googleScanRunning || S._fileScanRunning) return;
     const panel = document.getElementById('lastScanSummary');
     const empty = document.getElementById('emptyState');
     if (!panel || !empty) return;
