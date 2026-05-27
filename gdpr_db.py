@@ -202,6 +202,7 @@ _MIGRATIONS: list[tuple[int, str]] = [
     (6, "ALTER TABLE flagged_items ADD COLUMN full_path TEXT NOT NULL DEFAULT ''"),
     (8, "ALTER TABLE flagged_items ADD COLUMN email_count INTEGER NOT NULL DEFAULT 0"),
     (9, "ALTER TABLE flagged_items ADD COLUMN phone_count INTEGER NOT NULL DEFAULT 0"),
+    (10, "ALTER TABLE flagged_items ADD COLUMN body_excerpt TEXT NOT NULL DEFAULT ''"),
     (7, """CREATE TABLE IF NOT EXISTS schedule_runs (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
         started_at  REAL    NOT NULL,
@@ -314,8 +315,8 @@ class ScanDB:
                 url, drive_id, size_kb, modified, cpr_count, risk,
                 thumb_b64, thumb_mime, attachments, user_role, transfer_risk,
                 special_category, face_count, exif_json, full_path,
-                email_count, phone_count, scanned_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                email_count, phone_count, body_excerpt, scanned_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 card.get("id", ""),
                 scan_id,
@@ -341,6 +342,7 @@ class ScanDB:
                 card.get("full_path", ""),
                 card.get("email_count", 0),
                 card.get("phone_count", 0),
+                card.get("body_excerpt", ""),
                 now,
             ),
         )

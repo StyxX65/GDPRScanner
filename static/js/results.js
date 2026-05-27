@@ -24,7 +24,7 @@ function appendCard(f) {
     : '/api/thumb?name=' + encodeURIComponent(f.name) + '&type=' + encodeURIComponent(f.source_type);
 
   const card = document.createElement('div');
-  card.className = 'card' + (S.isListView ? ' list-view' : '') + (S._selectedIds.has(f.id) ? ' card-selected-bulk' : '');
+  card.className = 'card' + (S.isListView ? ' list-view' : '') + (S._selectedIds.has(f.id) ? ' card-selected-bulk' : '') + (f._resolved ? ' card-resolved' : '');
   card.dataset.id = f.id;
   card.onclick = (e) => { if (S._selectMode) { toggleCardSelect(f.id, e); } else { openPreview(f); } };
 
@@ -35,7 +35,11 @@ function appendCard(f) {
   cb.onclick = (e) => { e.stopPropagation(); toggleCardSelect(f.id, e); };
   card.appendChild(cb);
 
-  const delBtn = window.VIEWER_MODE ? '' : `<button class="card-delete-btn" title="${t('m365_delete_confirm','Delete')}" onclick="event.stopPropagation();deleteItem(${JSON.stringify(f).replace(/"/g,'&quot;')},this.closest('.card'))">🗑</button>`;
+  const delBtn = (window.VIEWER_MODE || f._resolved) ? '' : `<button class="card-delete-btn" title="${t('m365_delete_confirm','Delete')}" onclick="event.stopPropagation();deleteItem(${JSON.stringify(f).replace(/"/g,'&quot;')},this.closest('.card'))">🗑</button>`;
+  const _redactExts = new Set(['.docx', '.xlsx', '.txt', '.csv']);
+  const _redactable = !window.VIEWER_MODE && !f._resolved && f.source_type === 'local' && f.cpr_count > 0
+    && _redactExts.has((f.name || '').substring((f.name || '').lastIndexOf('.')).toLowerCase());
+  const redactBtn = _redactable ? `<button class="card-redact-btn" title="${t('redact_btn','Redact CPR')}" onclick="event.stopPropagation();redactItem(${JSON.stringify(f).replace(/"/g,'&quot;')},this.closest('.card'))">✏</button>` : '';
 
   if (S.isListView) {
     card.innerHTML = `
@@ -50,8 +54,8 @@ function appendCard(f) {
       ${f.phone_count > 0 ? '<span class="phone-badge">' + f.phone_count + ' ' + t('m365_badge_phones', 'tlf.') + '</span> ' : ''}
       ${f.face_count > 0 ? '<span class="photo-face-badge">' + f.face_count + ' ' + t('m365_badge_faces', f.face_count === 1 ? 'face' : 'faces') + '</span> ' : ''}
       ${f.exif && f.exif.gps ? '<span class="photo-face-badge" style="background:#0a3a5a;color:#7ec8d0">🌍 GPS</span> ' : ''}
-      ${f.special_category && f.special_category.length ? '<span class="special-cat-badge">⚠ Art.9 — ' + f.special_category.filter(function(s){return s !== 'gps_location' && s !== 'exif_pii';}).join(', ') + '</span> ' : ''}${f.overdue ? '<span class="overdue-badge">🗓 Overdue</span>' : ''}
-      ${delBtn}`;
+      ${f.special_category && f.special_category.length ? '<span class="special-cat-badge">⚠ Art.9 — ' + f.special_category.filter(function(s){return s !== 'gps_location' && s !== 'exif_pii';}).join(', ') + '</span> ' : ''}${f._resolved ? '<span class="resolved-badge">✓ ' + t('history_resolved_badge', 'Resolved') + '</span> ' : ''}${f.overdue ? '<span class="overdue-badge">🗓 Overdue</span>' : ''}
+      ${delBtn}${redactBtn}`;
   } else {
     card.innerHTML = `
       <div class="thumb-wrap"><img src="${src}" alt="${f.name}" loading="lazy"></div>
@@ -60,9 +64,9 @@ function appendCard(f) {
         <div class="card-meta">${f.size_kb} KB · ${f.modified || ''}</div>
         ${f.folder ? `<div class="card-meta" style="font-size:10px" title="${f.folder}">📂 ${f.folder}</div>` : ''}
         <div class="card-source"><span class="source-badge ${badgeCls}">${label}</span>${f.account_name ? ' <span class="account-pill" title="' + f.account_name + '">' + (f.user_role === "student" ? '<span class="role-badge">' + t("role_student","Elev") + "</span>" : f.user_role === "staff" ? '<span class="role-badge">' + t("role_staff","Ansat") + "</span>" : "") + f.account_name + '</span>' : ''}${f.transfer_risk === "external-recipient" ? ' <span class="role-pill" style="background:#7B2D00;color:#FFD0B0">⚠ Ext.</span>' : f.transfer_risk ? ' <span class="role-pill" style="background:#003D7B;color:#B0D4FF">🔗</span>' : ''}</div>
-        <span class="cpr-badge">${f.cpr_count} CPR</span>${f.email_count > 0 ? ' <span class="email-badge">' + f.email_count + ' ' + t('m365_badge_emails', 'e-mail') + '</span>' : ''}${f.phone_count > 0 ? ' <span class="phone-badge">' + f.phone_count + ' ' + t('m365_badge_phones', 'tlf.') + '</span>' : ''}${f.face_count > 0 ? ' <span class="photo-face-badge">' + f.face_count + ' ' + t('m365_badge_faces', f.face_count === 1 ? 'face' : 'faces') + '</span>' : ''}${f.exif && f.exif.gps ? ' <span class="photo-face-badge" style="background:#0a3a5a;color:#7ec8d0">🌍 GPS</span>' : ''}${f.overdue ? ' <span class="overdue-badge">🗓 Overdue</span>' : ''}
+        <span class="cpr-badge">${f.cpr_count} CPR</span>${f.email_count > 0 ? ' <span class="email-badge">' + f.email_count + ' ' + t('m365_badge_emails', 'e-mail') + '</span>' : ''}${f.phone_count > 0 ? ' <span class="phone-badge">' + f.phone_count + ' ' + t('m365_badge_phones', 'tlf.') + '</span>' : ''}${f.face_count > 0 ? ' <span class="photo-face-badge">' + f.face_count + ' ' + t('m365_badge_faces', f.face_count === 1 ? 'face' : 'faces') + '</span>' : ''}${f.exif && f.exif.gps ? ' <span class="photo-face-badge" style="background:#0a3a5a;color:#7ec8d0">🌍 GPS</span>' : ''}${f._resolved ? ' <span class="resolved-badge">✓ ' + t('history_resolved_badge', 'Resolved') + '</span>' : ''}${f.overdue ? ' <span class="overdue-badge">🗓 Overdue</span>' : ''}
       </div>
-      ${delBtn}`;
+      ${delBtn}${redactBtn}`;
   }
   grid.appendChild(card);
 }
@@ -594,6 +598,32 @@ async function deleteItem(f, cardEl) {
   }
 }
 
+async function redactItem(f, cardEl) {
+  if (!confirm(t('redact_confirm', 'Redact all CPR numbers in') + ' "' + f.name + '"?\n\n' + t('redact_warning', 'CPR numbers will be replaced with █ characters. This cannot be undone.'))) return;
+  if (cardEl) { cardEl.style.opacity = '0.5'; cardEl.style.pointerEvents = 'none'; }
+  try {
+    const r = await fetch('/api/redact_item', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({id: f.id, source_type: f.source_type})
+    });
+    const d = await r.json();
+    if (d.ok) {
+      S.flaggedData  = S.flaggedData.filter(x => x.id !== f.id);
+      S.filteredData = S.filteredData.filter(x => x.id !== f.id);
+      if (cardEl) cardEl.remove();
+      updateStats();
+      log(t('redact_done', 'Redacted') + ' ' + f.name + ' (' + (d.redacted || 0) + ' ' + t('redact_spans', 'CPR spans') + ')', 'ok');
+      if (_previewItemId === f.id) closePreview();
+    } else {
+      if (cardEl) { cardEl.style.opacity = ''; cardEl.style.pointerEvents = ''; }
+      log(t('redact_failed', 'Redaction failed:') + ' ' + (d.error || '?'), 'err');
+    }
+  } catch(e) {
+    if (cardEl) { cardEl.style.opacity = ''; cardEl.style.pointerEvents = ''; }
+    log(t('redact_failed', 'Redaction failed:') + ' ' + e.message, 'err');
+  }
+}
+
 // ── Bulk delete modal ─────────────────────────────────────────────────────────
 
 function openBulkDelete() {
@@ -1049,6 +1079,7 @@ window.loadDisposition = loadDisposition;
 window.saveDisposition = saveDisposition;
 window.closePreview = closePreview;
 window.deleteItem = deleteItem;
+window.redactItem = redactItem;
 window.openBulkDelete = openBulkDelete;
 window.closeBulkDelete = closeBulkDelete;
 window._bdFilters = _bdFilters;

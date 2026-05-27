@@ -7,6 +7,28 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **Built-in file redaction for local files** — a scissor button (`✂`) appears on cards for local DOCX, XLSX, CSV, and TXT files. Clicking it rewrites the file in-place with all detected CPR numbers replaced by `██████-████` (DOCX/XLSX) or `█`-blocks (CSV/TXT), then removes the card from the grid and logs a `"redacted"` disposition. The redaction is atomic: a temp file in the same directory is written first and then moved over the original, so a crash never leaves a half-written file. Implemented in `routes/export.py` (`POST /api/redact_item`) using the existing `document_scanner` redact functions; front-end in `results.js` (`redactItem`) with the button hidden for non-local or unsupported-extension items and for resolved/viewer-mode cards.
+
+- **`DELETE /api/delete_item` route registration fix** — the `delete_item` handler in `routes/export.py` was missing its `@bp.route` decorator, so the endpoint was never registered in Flask's URL map. The route now works correctly.
+
+---
+
+## [1.6.27] — 2026-05-27
+
+### Added
+
+- **Email body excerpt preserved for offline preview** — when an M365 email or Gmail message is flagged, the first 500 characters of its plain-text body are stored in the card (`body_excerpt`), the checkpoint JSON, and a new `body_excerpt` DB column (migration #10). The M365 email preview now falls back to this excerpt when Graph is unavailable (not authenticated, token expired) or when resuming from a checkpoint without a live connection. The Gmail preview now shows the stored excerpt as the primary content (with the "Open in Gmail" link appended below) rather than the previous plain link-card. A helper `_excerpt_page()` in `routes/database.py` renders the excerpt with the same header layout as the full Graph-fetched preview.
+
+- **Re-scan diff — resolved items in history view** — when browsing a past scan session, items that were flagged in the immediately preceding session but are no longer present in the current one are automatically appended below a "N items no longer present" divider. Resolved items are greyed out and carry a green `✓ Resolved` badge; the delete button is hidden since the file is already gone. The history banner updates to show the resolved count alongside the flagged count. The diff is computed client-side by fetching the previous session's items and comparing IDs — no new API endpoint needed. Implemented in `history.js` (`loadHistorySession`) and `results.js` (`appendCard`).
+
+- **Google Workspace scan test suite** — 19 new tests in `tests/test_google_scan.py` covering all three routes (`GET /api/google/scan/users`, `POST /api/google/scan/start`, `POST /api/google/scan/cancel`) and the core scan engine (`_run_google_scan`). Route tests verify: 401 when unauthenticated, 409 when scan already running, lock released on both normal completion and exception, abort event cleared on start. Engine tests verify: CPR hits are broadcast as `scan_file_flagged`, clean items are not, `source_type` is correctly set to `"gmail"` for Gmail items and `"gdrive"` for Drive items, and `google_scan_done` always fires with correct `flagged_count` / `total_scanned` values.
+
+---
+
 ## [1.6.26] — 2026-04-29
 
 ### Fixed

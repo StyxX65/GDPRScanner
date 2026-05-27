@@ -344,6 +344,29 @@ def db_import():
         return jsonify({"error": str(e)}), 500
 
 
+def _excerpt_page(excerpt: str, item_meta: dict) -> str:
+    """Minimal HTML page showing a stored body excerpt as a preview fallback."""
+    import html as _html
+    subject  = _html.escape(item_meta.get("name", ""))
+    modified = item_meta.get("modified", "")
+    account  = _html.escape(item_meta.get("account_name", ""))
+    body     = "<pre style='white-space:pre-wrap;font-family:sans-serif;margin:0'>" + _html.escape(excerpt) + "</pre>"
+    note     = "<p style='font-size:11px;color:#888;margin-top:12px'>Stored excerpt — connect to reload the full message.</p>"
+    return (
+        "<!DOCTYPE html><html><head><meta charset='utf-8'>"
+        "<style>body{font-family:-apple-system,sans-serif;font-size:13px;"
+        "padding:12px 16px;background:#fff;color:#111;word-break:break-word}"
+        ".hdr{border-bottom:1px solid #eee;margin-bottom:12px;padding-bottom:10px}"
+        ".hdr-row{color:#555;font-size:12px;margin-bottom:3px}"
+        ".hdr-row b{color:#111}</style></head><body>"
+        f"<div class='hdr'>"
+        + (f"<div class='hdr-row'><b>From:</b> {account}</div>" if account else "")
+        + (f"<div class='hdr-row'><b>Date:</b> {_html.escape(modified)}</div>" if modified else "")
+        + (f"<div class='hdr-row'><b>Subject:</b> {subject}</div>" if subject else "")
+        + f"</div>{body}{note}</body></html>"
+    )
+
+
 @bp.route("/api/preview/<item_id>")
 def get_preview(item_id):
     """Return a preview URL or HTML for a flagged item."""
@@ -541,7 +564,11 @@ def get_preview(item_id):
 
     try:
         if source_type == "email":
+            excerpt = item_meta.get("body_excerpt", "")
             if not state.connector:
+                if excerpt:
+                    import html as _html
+                    return jsonify({"type": "html", "html": _excerpt_page(excerpt, item_meta)})
                 return jsonify({"error": "not authenticated"}), 401
             uid = account_id
             try:
@@ -550,6 +577,8 @@ def get_preview(item_id):
                     {"$select": "subject,from,receivedDateTime,body"}
                 )
             except Exception as e:
+                if excerpt:
+                    return jsonify({"type": "html", "html": _excerpt_page(excerpt, item_meta)})
                 return jsonify({"error": f"Could not load email: {e}"})
 
             sender   = msg.get("from", {}).get("emailAddress", {})
@@ -619,23 +648,33 @@ def get_preview(item_id):
                     return jsonify({"type": "iframe", "url": f"https://drive.google.com/file/d/{fid}/preview"})
                 # Fallback: generic Drive embed
                 return jsonify({"type": "iframe", "url": item_url.replace("/view", "/preview")})
-            # Gmail — not embeddable; show link card
-            icon  = "✉️" if source_type == "gmail" else "☁️"
-            label = "Open in Gmail" if source_type == "gmail" else "Open in Google Drive"
+            # Gmail — not embeddable; show link card + stored body excerpt if available
+            icon    = "✉️" if source_type == "gmail" else "☁️"
+            label   = "Open in Gmail" if source_type == "gmail" else "Open in Google Drive"
+            excerpt = item_meta.get("body_excerpt", "")
             link_html = (
                 f'<a href="{_html_esc(item_url)}" target="_blank" '
                 f'style="display:inline-block;margin-top:12px;padding:8px 16px;'
                 f'background:#3b7dd8;color:#fff;border-radius:6px;text-decoration:none;font-size:12px">'
                 f'{label}</a>'
             ) if item_url else ""
-            html_out = (
-                f'<div style="padding:24px;text-align:center;font-family:sans-serif">'
-                f'<div style="font-size:40px">{icon}</div>'
-                f'<div style="font-size:13px;font-weight:600;margin:8px 0">{_html_esc(name)}</div>'
-                f'<div style="font-size:11px;color:var(--muted)">No inline preview available for this item</div>'
-                f'{link_html}'
-                f'</div>'
-            )
+            if excerpt and source_type == "gmail":
+                html_out = _excerpt_page(excerpt, item_meta)
+                if item_url:
+                    # Inject the "Open in Gmail" link before </body>
+                    html_out = html_out.replace(
+                        "</body>",
+                        f'<div style="margin-top:12px">{link_html}</div></body>'
+                    )
+            else:
+                html_out = (
+                    f'<div style="padding:24px;text-align:center;font-family:sans-serif">'
+                    f'<div style="font-size:40px">{icon}</div>'
+                    f'<div style="font-size:13px;font-weight:600;margin:8px 0">{_html_esc(name)}</div>'
+                    f'<div style="font-size:11px;color:var(--muted)">No inline preview available for this item</div>'
+                    f'{link_html}'
+                    f'</div>'
+                )
             return jsonify({"type": "html", "html": html_out})
 
         else:

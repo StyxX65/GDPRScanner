@@ -549,6 +549,7 @@ def run_scan(options: dict):
             "special_category": item_meta.get("_special_category", []),
             "face_count":       item_meta.get("_face_count", 0),
             "exif":             item_meta.get("_exif", {}),
+            "body_excerpt":     item_meta.get("_body_excerpt", ""),
         }
         _state.flagged_items.append(card)
         broadcast("scan_file_flagged", _with_disposition(card, _db))
@@ -1153,6 +1154,8 @@ def run_scan(options: dict):
                     meta["_transfer_risk"]    = _check_transfer_risk(meta)
                     meta["_special_category"] = _check_special_category(
                         body_text if scan_email_body else "", all_cprs)
+                    # Store a short excerpt so preview still works if Graph is unavailable
+                    meta["_body_excerpt"] = body_text[:500].strip() if body_text else ""
                     _broadcast_card(meta, all_cprs, pii_counts=_email_pii)
                 del body_text  # free email text — may be large for HTML-rich emails
 

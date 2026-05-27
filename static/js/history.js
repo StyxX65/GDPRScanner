@@ -82,6 +82,31 @@ async function loadHistorySession(refScanId) {
     try { window.markOverdueCards(); } catch(_) {}
     try { window.loadTrend();        } catch(_) {}
     _setHistoryBanner(true, resolvedRef);
+
+    // ── Re-scan diff: append items from previous session no longer present ────
+    const allSessions = _sessions !== null ? _sessions : await _fetchSessions();
+    const idx = allSessions.findIndex(s => s.ref_scan_id === resolvedRef);
+    if (idx !== -1 && idx + 1 < allSessions.length) {
+      const prevRef = allSessions[idx + 1].ref_scan_id;
+      try {
+        const pr        = await fetch('/api/db/flagged?ref=' + prevRef);
+        const prevItems = await pr.json();
+        if (Array.isArray(prevItems) && prevItems.length) {
+          const currentIds = new Set(items.map(f => f.id));
+          const resolved   = prevItems.filter(f => !currentIds.has(f.id));
+          if (resolved.length) {
+            const divider = document.createElement('div');
+            divider.className   = 'resolved-divider';
+            divider.textContent = resolved.length + ' ' + t('history_resolved_label', 'items no longer present');
+            document.getElementById('grid')?.appendChild(divider);
+            resolved.forEach(f => { f._resolved = true; window.appendCard(f); });
+            _setHistoryBanner(true, resolvedRef, resolved.length);
+          }
+        }
+      } catch(e) {
+        console.warn('[history] diff failed:', e);
+      }
+    }
   } catch(e) {
     console.error('[history] failed to load session:', e);
   }
@@ -89,7 +114,7 @@ async function loadHistorySession(refScanId) {
 
 // ── Banner ────────────────────────────────────────────────────────────────────
 
-function _setHistoryBanner(visible, resolvedRef) {
+function _setHistoryBanner(visible, resolvedRef, resolvedCount) {
   const banner    = document.getElementById('historyBanner');
   const bannerTxt = document.getElementById('historyBannerText');
   const latestBtn = document.getElementById('historyLatestBtn');
@@ -107,6 +132,7 @@ function _setHistoryBanner(visible, resolvedRef) {
     label = date + ' ' + time
       + (srcStr ? ' · ' + srcStr : '')
       + ' · ' + sess.flagged_count + ' ' + t('history_items', 'items');
+    if (resolvedCount) label += ' · ' + resolvedCount + ' ' + t('history_resolved_badge', 'resolved');
   } else {
     label = S.flaggedData.length + ' ' + t('history_items', 'items');
   }

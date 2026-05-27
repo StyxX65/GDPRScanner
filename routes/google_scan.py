@@ -255,6 +255,7 @@ def _run_google_scan(options: dict):
             "special_category": [],
             "face_count":       0,
             "exif":             {},
+            "body_excerpt":     item_meta.get("_body_excerpt", ""),
         }
         flagged_items.append(card)
         _google_flagged.append(card)
@@ -305,6 +306,14 @@ def _run_google_scan(options: dict):
                     try:
                         meta["_account"] = _display_name
                         meta["_source_type"] = "gmail"
+                        # Extract a plain-text excerpt before scanning (body is discarded after)
+                        try:
+                            import re as _re
+                            _raw = data[:3000].decode("utf-8", errors="replace")
+                            _plain = _re.sub(r"<[^>]+>", " ", _raw)
+                            meta["_body_excerpt"] = " ".join(_plain.split())[:500]
+                        except Exception:
+                            meta["_body_excerpt"] = ""
                         result = _scan_bytes(data, meta.get("name", "msg.txt"))
                     except Exception as e:
                         broadcast("scan_error", {"file": meta.get("name", ""), "error": str(e)})

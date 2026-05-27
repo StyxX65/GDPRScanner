@@ -253,6 +253,9 @@
   .card-delete-btn { position:absolute; top:6px; right:6px; background:rgba(0,0,0,0.45); color:#fff; border:none; border-radius:50%; width:22px; height:22px; font-size:13px; line-height:22px; text-align:center; cursor:pointer; opacity:0.35; transition:opacity .15s; padding:0; z-index:1; }
   .card:hover .card-delete-btn { opacity:1; }
   .card.list-view .card-delete-btn { position:static; opacity:1; background:transparent; color:var(--muted); flex-shrink:0; }
+  .card-redact-btn { position:absolute; top:6px; right:32px; background:rgba(0,80,40,0.55); color:#7effc0; border:none; border-radius:50%; width:22px; height:22px; font-size:12px; line-height:22px; text-align:center; cursor:pointer; opacity:0; transition:opacity .15s; padding:0; z-index:1; }
+  .card:hover .card-redact-btn { opacity:1; }
+  .card.list-view .card-redact-btn { position:static; opacity:1; background:transparent; color:#7effc0; flex-shrink:0; }
 
   /* Per-card checkbox (select mode) */
   .card-cb { position:absolute; top:6px; left:6px; width:16px; height:16px; margin:0; cursor:pointer; z-index:2;
@@ -491,6 +494,12 @@
   .overdue-badge { font-size: 9px; padding: 1px 5px; border-radius: 10px;
     background: #7c3200; color: #ffb347; font-weight: 600; white-space: nowrap; }
   [data-theme="light"] .overdue-badge { background: #fff3e0; color: #c55a00; }
+  .resolved-badge { font-size: 9px; padding: 1px 5px; border-radius: 10px;
+    background: #1a3a28; color: #7effc0; font-weight: 600; white-space: nowrap; }
+  [data-theme="light"] .resolved-badge { background: #d0f5ea; color: #005a3a; }
+  .card-resolved { opacity: 0.6; }
+  .resolved-divider { grid-column: 1 / -1; padding: 8px 2px; font-size: 11px;
+    color: var(--muted); border-top: 1px dashed var(--border); text-align: center; }
   .email-badge { font-size: 9px; padding: 1px 5px; border-radius: 10px;
     background: #1a3a5c; color: #7ec8f0; font-weight: 500; white-space: nowrap; }
   [data-theme="light"] .email-badge { background: #d0eaff; color: #004a80; }

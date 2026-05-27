@@ -1158,6 +1158,7 @@ def export_article30():
         return jsonify({"error": str(e)}), 500
 
 
+@bp.route("/api/delete_item", methods=["POST"])
 def delete_item():
     """Delete a single flagged item. Returns {ok, error}."""
     if not state.connector:
@@ -1198,6 +1199,104 @@ def delete_item():
             "Go to Azure → App registrations → API permissions → add these and Grant admin consent."})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
+
+
+_REDACT_EXTS = {".docx", ".xlsx", ".csv", ".txt"}
+
+
+@bp.route("/api/redact_item", methods=["POST"])
+def redact_item():
+    """Redact CPR numbers in-place in a local file. Returns {ok, redacted}."""
+    from pathlib import Path as _Path
+    import tempfile as _tempfile
+    import shutil as _shutil
+
+    data    = request.get_json() or {}
+    item_id = data.get("id", "")
+    if not item_id:
+        return jsonify({"ok": False, "error": "id required"}), 400
+
+    # Resolve item meta: in-memory first (active scan), then DB (history)
+    item_meta = next((x for x in state.flagged_items if x.get("id") == item_id), None)
+    if item_meta is None:
+        _db = _get_db() if DB_OK else None
+        if _db:
+            row = _db._connect().execute(
+                "SELECT * FROM flagged_items WHERE id=? LIMIT 1", (item_id,)
+            ).fetchone()
+            item_meta = dict(row) if row else {}
+        else:
+            item_meta = {}
+
+    source_type = item_meta.get("source_type", "")
+    if source_type not in ("local",):
+        return jsonify({"ok": False, "error": "Redaction is only supported for local files"}), 400
+
+    full_path = item_meta.get("full_path", "")
+    if not full_path:
+        return jsonify({"ok": False, "error": "File path not available — rescan to enable redaction"}), 400
+
+    path = _Path(full_path).expanduser()
+    if not path.exists():
+        return jsonify({"ok": False, "error": f"File not found: {full_path}"}), 404
+
+    ext = path.suffix.lower()
+    if ext not in _REDACT_EXTS:
+        return jsonify({"ok": False, "error": f"Redaction not supported for {ext or 'this'} files. Supported: DOCX, XLSX, CSV, TXT"}), 400
+
+    tmp_path = None
+    try:
+        from document_scanner import (
+            scan_docx, redact_docx,
+            scan_xlsx, redact_xlsx,
+            redact_csv,
+            find_pii_spans_in_text,
+        )
+
+        with _tempfile.NamedTemporaryFile(suffix=ext, delete=False, dir=path.parent) as tmp:
+            tmp_path = _Path(tmp.name)
+
+        if ext == ".docx":
+            results  = scan_docx(path)
+            redacted = redact_docx(path, tmp_path, results, use_ner=False)
+        elif ext == ".xlsx":
+            results  = scan_xlsx(path)
+            redacted = redact_xlsx(path, tmp_path, results, use_ner=False)
+        elif ext == ".csv":
+            redacted = redact_csv(path, tmp_path, use_ner=False)
+        else:  # .txt
+            text   = path.read_text(encoding="utf-8", errors="replace")
+            spans  = [(s, e, l) for s, e, l in find_pii_spans_in_text(text, use_ner=False) if l == "CPR"]
+            chars  = list(text)
+            for s, e, _ in sorted(spans, reverse=True):
+                chars[s:e] = ["█"] * (e - s)
+            tmp_path.write_text("".join(chars), encoding="utf-8")
+            redacted = len(spans)
+
+        _shutil.move(str(tmp_path), str(path))
+        tmp_path = None
+
+        state.flagged_items[:] = [x for x in state.flagged_items if x.get("id") != item_id]
+        _db = _get_db() if DB_OK else None
+        if _db:
+            try:
+                _db.log_deletion(item_meta, reason="redacted")
+                _db.delete_item_record(item_id)
+            except Exception:
+                pass
+
+        logger.info("[redact] %s — %d CPR span(s) redacted", path.name, redacted)
+        return jsonify({"ok": True, "redacted": redacted})
+
+    except Exception as e:
+        logger.error("[redact] failed: %s", e)
+        return jsonify({"ok": False, "error": str(e)})
+    finally:
+        if tmp_path and tmp_path.exists():
+            try:
+                tmp_path.unlink()
+            except Exception:
+                pass
 
 
 @bp.route("/api/delete_bulk", methods=["POST"])
