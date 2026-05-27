@@ -149,6 +149,20 @@ Allows reviewing results from any past scan session without running a new scan. 
 - **`window._openRelated(id, itemData)`** (`results.js`) — resolves the target item: looks up `id` in `S.flaggedData` first (live/history grid already loaded), falls back to `itemData` from the API response (history items not yet in the grid). Calls `openPreview`.
 - **No new data collection** — `cpr_index` already stores `(cpr_hash, item_id, scan_id)` for every CPR hit at write time. Cross-referencing is entirely a query-time operation.
 
+## Preview — routes/database.py
+
+`GET /api/preview/<item_id>?source_type=…&account_id=…` dispatches by `source_type`:
+
+- **`local` / `smb`** — re-reads the file from disk; renders images as data URIs, text/CSV/PDF/DOCX/XLSX inline, SMB as a link card.
+- **`email`** — fetches the M365 message body via Graph and renders it as sandboxed HTML (requires `state.connector`).
+- **`gmail`** — Gmail's web UI cannot be embedded (X-Frame-Options). Shows an info card with an "Open in Gmail" link built from the stored `_url` field.
+- **`gdrive`** — extracts the Drive file ID from `webViewLink` and returns `https://drive.google.com/file/d/{id}/preview` as an iframe. Falls back to substituting `/view` → `/preview` in the URL if the pattern doesn't match.
+- **All other values** (M365 files: `onedrive`, `sharepoint`, `teams`, or empty) — calls Graph's `/preview` POST endpoint; tries `drive_id`-based path first, then user-drive path, then `/me/drive`.
+
+**`_source_type` must be set in `google_scan.py`** — Gmail items need `meta["_source_type"] = "gmail"` and Drive items `"gdrive"` before `_broadcast_card` is called. Without it, cards carry an empty `source_type` and fall through to the M365 branch, which calls Graph with a Gmail ID and gets a 404.
+
+**`state.connector` guard** — only the `email` branch and the M365 `else` branch require M365 auth. The `local`/`smb`, `gmail`, and `gdrive` branches must not gate on `state.connector` — they work in Google-only deployments.
+
 ## SSE teardown — static/js/scan.js
 
 - **Do not close `S.es` in `scan_done` if other scans are still running** — M365 (`scan_done`), Google (`google_scan_done`), and File (`file_scan_done`) each emit their own done event. If M365 finishes first and the SSE is closed, the remaining done events are never received and the UI hangs at 100% indefinitely.
