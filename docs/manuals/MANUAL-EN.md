@@ -292,11 +292,27 @@ Every item has a **Disposition** dropdown in the preview panel. Choose one of:
 
 After choosing, click **Save**. A small **✓ Saved** confirmation appears.
 
-### Redacting a local file
+### Redacting a file in-place
 
-For local DOCX, XLSX, CSV, TXT, and PDF files a **✂** button appears in the card. Clicking it rewrites the file in-place, replacing all CPR numbers with `██████-████` blocks. The card is removed from the grid and the action is logged as a `"redacted"` disposition. This is useful when you want to sanitise a file rather than delete it entirely. The button is not available for email items, cloud files, or SFTP files.
+A **✂** button appears on result cards where the scanner can overwrite the file directly. Clicking it replaces all CPR numbers with `██████-████` blocks, removes the card from the grid, and logs the action as a `"redacted"` disposition. This is useful when you want to sanitise a file rather than delete it entirely.
+
+The button is available for the following source types and formats:
+
+| Source | Supported formats |
+|---|---|
+| Local files | DOCX, XLSX, CSV, TXT, PDF |
+| Network share (SMB) | DOCX, XLSX, CSV, TXT, PDF |
+| SFTP | DOCX, XLSX, CSV, TXT, PDF |
+| OneDrive / SharePoint / Teams | DOCX, XLSX, PDF |
+| Google Drive | DOCX, XLSX, PDF |
+
+The button is **not** available for email items (Exchange/Gmail) or viewer mode. Google Docs and Sheets that were exported as DOCX/XLSX during scanning cannot be redacted in-place — export the file from Google manually first, then redact the downloaded copy.
 
 > **PDF security note:** PDF redaction uses physical removal — the CPR number text is erased from the PDF data stream, not just painted over with a black box. A reader cannot recover the original text by selecting under the redaction or inspecting the file programmatically. Image-based (scanned) PDFs are also supported: the scanner locates the CPR number on the page image via OCR and physically overwrites that region.
+
+> **Google Drive note:** Drive redaction requires the `drive` scope on the service account's domain-wide delegation grant (not just `drive.readonly`). If redaction fails with a permission error, ask your Google Workspace admin to add the `https://www.googleapis.com/auth/drive` scope to the service account delegation in the Admin Console.
+
+> **SFTP note:** SFTP redaction is only available for items found in the current scan session. If you are browsing historical results, re-run the scan first.
 
 ### Bulk tagging multiple items at once
 

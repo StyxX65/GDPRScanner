@@ -292,11 +292,27 @@ Hvert element har en **Disposition**-rullemenu i forhåndsvisningspanelet. Vælg
 
 Klik på **Gem** efter valget. En lille **✓ Gemt**-bekræftelse vises.
 
-### Redigér en lokal fil
+### Redigér en fil på stedet
 
-For lokale DOCX-, XLSX-, CSV-, TXT- og PDF-filer vises en **✂**-knap på kortet. Klikker du på den, overskrives filen på stedet, og alle CPR-numre erstattes med `██████-████`-blokke. Kortet fjernes fra gitteret, og handlingen registreres som en `"redacted"`-disposition. Brug denne mulighed, når du ønsker at anonymisere en fil frem for at slette den helt. Knappen er ikke tilgængelig for e-mails, cloud-filer eller SFTP-filer.
+En **✂**-knap vises på resultatkort, hvor scanneren kan overskrive filen direkte. Klikker du på den, erstattes alle CPR-numre med `██████-████`-blokke, kortet fjernes fra gitteret, og handlingen registreres som en `"redacted"`-disposition. Brug denne mulighed, når du ønsker at anonymisere en fil frem for at slette den helt.
+
+Knappen er tilgængelig for følgende kildetyper og formater:
+
+| Kilde | Understøttede formater |
+|---|---|
+| Lokale filer | DOCX, XLSX, CSV, TXT, PDF |
+| Netværksdrev (SMB) | DOCX, XLSX, CSV, TXT, PDF |
+| SFTP | DOCX, XLSX, CSV, TXT, PDF |
+| OneDrive / SharePoint / Teams | DOCX, XLSX, PDF |
+| Google Drev | DOCX, XLSX, PDF |
+
+Knappen er **ikke** tilgængelig for e-mail-elementer (Exchange/Gmail) eller i visningsmode. Google Docs og Sheets, der er eksporteret som DOCX/XLSX under scanning, kan ikke redigeres på stedet — eksportér filen manuelt fra Google først og redigér derefter den hentede kopi.
 
 > **PDF-sikkerhedsnote:** PDF-redigering sker fysisk — CPR-nummerteksten slettes fra PDF-datastrømmen og er ikke blot dækket over med en sort boks. En læser kan ikke gendanne den oprindelige tekst ved at markere under redigeringen eller ved programmatisk inspektion af filen. Billedbaserede (scannede) PDF-filer understøttes også: scanneren lokaliserer CPR-nummeret på sidebilledet via OCR og overskriver det pågældende område fysisk.
+
+> **Google Drev-note:** Redigering i Google Drev kræver `drive`-scopet på servicekontoens domain-wide delegation (ikke blot `drive.readonly`). Hvis redigeringen fejler med en rettighedsfejl, bedes du kontakte din Google Workspace-administrator for at tilføje scopet `https://www.googleapis.com/auth/drive` til servicekontoens delegation i Admin Console.
+
+> **SFTP-note:** SFTP-redigering er kun tilgængelig for elementer fundet i den aktuelle scansession. Gennemfør en ny scanning, hvis du gennemser historiske resultater.
 
 ### Massemarkering af flere elementer på én gang
 
