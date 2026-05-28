@@ -154,6 +154,53 @@ class SFTPScanner:
         finally:
             ssh.close()
 
+    def _ssh_connect(self):
+        """Return a connected paramiko SSHClient. Caller must call .close()."""
+        if not SFTP_OK:
+            raise RuntimeError("paramiko not installed — run: pip install paramiko")
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        kw: dict = {
+            "hostname": self.host,
+            "port":     self.port,
+            "username": self.username,
+            "timeout":  30,
+        }
+        if self.auth_type == "key" and self.key_path:
+            kw["pkey"] = _load_pkey(self.key_path, self._passphrase)
+        else:
+            kw["password"]       = self._password or ""
+            kw["look_for_keys"]  = False
+            kw["allow_agent"]    = False
+        ssh.connect(**kw)
+        return ssh
+
+    def read_file(self, remote_path: str) -> bytes:
+        """Download and return the raw bytes of a single remote file."""
+        ssh = self._ssh_connect()
+        try:
+            sftp = ssh.open_sftp()
+            try:
+                with sftp.open(remote_path, "rb") as fh:
+                    return fh.read()
+            finally:
+                sftp.close()
+        finally:
+            ssh.close()
+
+    def write_file(self, remote_path: str, content: bytes) -> None:
+        """Write content to remote_path on the SFTP server, overwriting if it exists."""
+        ssh = self._ssh_connect()
+        try:
+            sftp = ssh.open_sftp()
+            try:
+                with sftp.open(remote_path, "wb") as fh:
+                    fh.write(content)
+            finally:
+                sftp.close()
+        finally:
+            ssh.close()
+
     # ── Private walker ────────────────────────────────────────────────────────
 
     def _walk(

@@ -70,6 +70,9 @@ GMAIL_SCOPES = [
 DRIVE_SCOPES = [
     "https://www.googleapis.com/auth/drive.readonly",
 ]
+DRIVE_WRITE_SCOPES = [
+    "https://www.googleapis.com/auth/drive",
+]
 ADMIN_SCOPES = [
     "https://www.googleapis.com/auth/admin.directory.user.readonly",
 ]
@@ -283,6 +286,26 @@ class GoogleConnector:
         except HttpError as e:
             raise GoogleError(f"Drive auth failed for {user_email}: {e}") from e
         return _drive_changes_collect(service, user_email, page_token, max_files, max_file_mb)
+
+    # ── Drive write-back (redaction) ──────────────────────────────────────────
+
+    def get_drive_file_mime(self, user_email: str, file_id: str) -> str:
+        """Return the mimeType of a Drive file."""
+        creds   = self._creds_for(user_email, DRIVE_WRITE_SCOPES)
+        service = build("drive", "v3", credentials=creds, cache_discovery=False)
+        return _get_drive_file_mime(service, file_id)
+
+    def download_drive_file_by_id(self, user_email: str, file_id: str) -> bytes:
+        """Download raw bytes of a non-Google-native Drive file by ID."""
+        creds   = self._creds_for(user_email, DRIVE_WRITE_SCOPES)
+        service = build("drive", "v3", credentials=creds, cache_discovery=False)
+        return _download_drive_file_by_id(service, file_id)
+
+    def update_drive_file(self, user_email: str, file_id: str, content: bytes, mime_type: str) -> None:
+        """Replace Drive file content in-place. Requires drive (not drive.readonly) scope."""
+        creds   = self._creds_for(user_email, DRIVE_WRITE_SCOPES)
+        service = build("drive", "v3", credentials=creds, cache_discovery=False)
+        _update_drive_file_content(service, file_id, content, mime_type)
 
 
 # ── Persistence helpers ───────────────────────────────────────────────────────
@@ -505,6 +528,30 @@ def _download_drive_file(
             return (meta, data)
         except HttpError:
             return None
+
+
+def _get_drive_file_mime(service, file_id: str) -> str:
+    """Return the mimeType of a Drive file."""
+    info = service.files().get(fileId=file_id, fields="mimeType").execute()
+    return info.get("mimeType", "")
+
+
+def _download_drive_file_by_id(service, file_id: str) -> bytes:
+    """Download raw bytes of a non-Google-native Drive file by ID."""
+    req = service.files().get_media(fileId=file_id)
+    buf = io.BytesIO()
+    dl  = MediaIoBaseDownload(buf, req, chunksize=4 * 1024 * 1024)
+    done = False
+    while not done:
+        _, done = dl.next_chunk()
+    return buf.getvalue()
+
+
+def _update_drive_file_content(service, file_id: str, content: bytes, mime_type: str) -> None:
+    """Replace a Drive file's content in-place."""
+    from googleapiclient.http import MediaInMemoryUpload
+    media = MediaInMemoryUpload(content, mimetype=mime_type, resumable=False)
+    service.files().update(fileId=file_id, media_body=media).execute()
 
 
 def _drive_iter(
@@ -742,6 +789,26 @@ class PersonalGoogleConnector:
         except HttpError as e:
             raise GoogleError(f"Drive auth failed: {e}") from e
         return _drive_changes_collect(service, user_email, page_token, max_files, max_file_mb)
+
+    # ── Drive write-back (redaction) ──────────────────────────────────────────
+
+    def get_drive_file_mime(self, user_email: str, file_id: str) -> str:
+        """Return the mimeType of a Drive file."""
+        self._refresh_if_needed()
+        service = build("drive", "v3", credentials=self._creds, cache_discovery=False)
+        return _get_drive_file_mime(service, file_id)
+
+    def download_drive_file_by_id(self, user_email: str, file_id: str) -> bytes:
+        """Download raw bytes of a non-Google-native Drive file by ID."""
+        self._refresh_if_needed()
+        service = build("drive", "v3", credentials=self._creds, cache_discovery=False)
+        return _download_drive_file_by_id(service, file_id)
+
+    def update_drive_file(self, user_email: str, file_id: str, content: bytes, mime_type: str) -> None:
+        """Replace Drive file content in-place. Requires drive (not drive.readonly) scope."""
+        self._refresh_if_needed()
+        service = build("drive", "v3", credentials=self._creds, cache_discovery=False)
+        _update_drive_file_content(service, file_id, content, mime_type)
 
     @staticmethod
     def get_device_code_flow(client_id: str, client_secret: str) -> dict:

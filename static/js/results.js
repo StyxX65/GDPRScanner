@@ -36,9 +36,16 @@ function appendCard(f) {
   card.appendChild(cb);
 
   const delBtn = (window.VIEWER_MODE || f._resolved) ? '' : `<button class="card-delete-btn" title="${t('m365_delete_confirm','Delete')}" onclick="event.stopPropagation();deleteItem(${JSON.stringify(f).replace(/"/g,'&quot;')},this.closest('.card'))">🗑</button>`;
-  const _redactExts = new Set(['.docx', '.xlsx', '.txt', '.csv']);
-  const _redactable = !window.VIEWER_MODE && !f._resolved && f.source_type === 'local' && f.cpr_count > 0
-    && _redactExts.has((f.name || '').substring((f.name || '').lastIndexOf('.')).toLowerCase());
+  const _redactExts = new Set(['.docx', '.xlsx', '.txt', '.csv', '.pdf']);
+  const _cloudRedactExts = new Set(['.docx', '.xlsx', '.pdf']);
+  const _m365Types = new Set(['onedrive', 'sharepoint', 'teams']);
+  const _fileExt = (f.name || '').substring((f.name || '').lastIndexOf('.')).toLowerCase();
+  const _redactable = !window.VIEWER_MODE && !f._resolved && f.cpr_count > 0 && (
+    f.source_type === 'local' ? _redactExts.has(_fileExt) :
+    _m365Types.has(f.source_type) ? _cloudRedactExts.has(_fileExt) :
+    f.source_type === 'gdrive' ? _cloudRedactExts.has(_fileExt) :
+    (f.source_type === 'smb' || f.source_type === 'sftp') ? _redactExts.has(_fileExt) : false
+  );
   const redactBtn = _redactable ? `<button class="card-redact-btn" title="${t('redact_btn','Redact CPR')}" onclick="event.stopPropagation();redactItem(${JSON.stringify(f).replace(/"/g,'&quot;')},this.closest('.card'))">✏</button>` : '';
 
   if (S.isListView) {

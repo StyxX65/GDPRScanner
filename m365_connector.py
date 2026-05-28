@@ -885,6 +885,50 @@ class M365Connector:
         url = f"{GRAPH_BASE}/drives/{drive_id}/items/{item_id}/content"
         return self._get_bytes(url)
 
+    def put_drive_item_content(self, drive_id: str, item_id: str, content: bytes,
+                               user_id: str = "") -> None:
+        """Replace file content via Graph.  Tries drives/{drive_id} first; falls back
+        to users/{user_id}/drive when drive_id is absent, then /me/drive."""
+        if drive_id:
+            url = f"{GRAPH_BASE}/drives/{drive_id}/items/{item_id}/content"
+        elif user_id and user_id != "me":
+            url = f"{GRAPH_BASE}/users/{user_id}/drive/items/{item_id}/content"
+        else:
+            url = f"{GRAPH_BASE}/me/drive/items/{item_id}/content"
+
+        for attempt in range(self._MAX_RETRIES):
+            try:
+                r = _requests.put(url, headers={**self._headers(),
+                                                "Content-Type": "application/octet-stream"},
+                                  data=content, timeout=self._TIMEOUT_BYTES)
+            except self._RETRYABLE_ERRORS:
+                if attempt == self._MAX_RETRIES - 1:
+                    raise
+                self._backoff_sleep(attempt)
+                continue
+
+            if r.status_code == 429:
+                self._backoff_sleep(attempt, float(r.headers.get("Retry-After", 5)))
+                continue
+            if r.status_code in (503, 504):
+                if attempt < self._MAX_RETRIES - 1:
+                    self._backoff_sleep(attempt)
+                    continue
+            if r.status_code == 401 and attempt == 0:
+                self._token = None
+                if self.try_silent_auth():
+                    self.put_drive_item_content(drive_id, item_id, content, user_id)
+                    return
+            if r.status_code == 403:
+                try:
+                    msg = r.json().get("error", {}).get("message", "")
+                except Exception:
+                    msg = r.text[:200]
+                raise M365PermissionError(url, msg)
+            r.raise_for_status()
+            return
+        raise _requests.exceptions.RetryError(f"Gave up after {self._MAX_RETRIES} attempts: {url}")
+
     # ── Teams ─────────────────────────────────────────────────────────────────
 
     def list_all_teams(self) -> list:

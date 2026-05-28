@@ -294,7 +294,9 @@ Klik på **Gem** efter valget. En lille **✓ Gemt**-bekræftelse vises.
 
 ### Redigér en lokal fil
 
-For lokale DOCX-, XLSX-, CSV- og TXT-filer vises en **✂**-knap på kortet. Klikker du på den, overskrives filen på stedet, og alle CPR-numre erstattes med `██████-████`-blokke. Kortet fjernes fra gitteret, og handlingen registreres som en `"redacted"`-disposition. Brug denne mulighed, når du ønsker at anonymisere en fil frem for at slette den helt. Knappen er ikke tilgængelig for e-mails, cloud-filer eller SFTP-filer.
+For lokale DOCX-, XLSX-, CSV-, TXT- og PDF-filer vises en **✂**-knap på kortet. Klikker du på den, overskrives filen på stedet, og alle CPR-numre erstattes med `██████-████`-blokke. Kortet fjernes fra gitteret, og handlingen registreres som en `"redacted"`-disposition. Brug denne mulighed, når du ønsker at anonymisere en fil frem for at slette den helt. Knappen er ikke tilgængelig for e-mails, cloud-filer eller SFTP-filer.
+
+> **PDF-sikkerhedsnote:** PDF-redigering sker fysisk — CPR-nummerteksten slettes fra PDF-datastrømmen og er ikke blot dækket over med en sort boks. En læser kan ikke gendanne den oprindelige tekst ved at markere under redigeringen eller ved programmatisk inspektion af filen. Billedbaserede (scannede) PDF-filer understøttes også: scanneren lokaliserer CPR-nummeret på sidebilledet via OCR og overskriver det pågældende område fysisk.
 
 ### Massemarkering af flere elementer på én gang
 

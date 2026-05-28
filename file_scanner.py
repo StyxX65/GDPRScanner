@@ -551,6 +551,68 @@ def _smb_read_file(tree, smb_path: str) -> bytes:
         fh.close(get_attributes=False)
 
 
+def write_smb_file(smb_path_uri: str, content: bytes,
+                   username: str, password: str, domain: str = "") -> None:
+    """Overwrite an SMB file at smb_path_uri (e.g. '//host/share/folder/file.docx').
+
+    Raises RuntimeError if smbprotocol is not installed.
+    Raises ValueError if the path cannot be parsed.
+    All SMB errors propagate as-is.
+    """
+    if not SMB_OK:
+        raise RuntimeError("smbprotocol not installed — run: pip install smbprotocol")
+
+    norm  = smb_path_uri.replace("\\", "/").lstrip("/")
+    parts = norm.split("/", 2)
+    if len(parts) < 2:
+        raise ValueError(f"Cannot parse SMB path '{smb_path_uri}' — expected //host/share[/path]")
+    host      = parts[0]
+    share     = parts[1]
+    file_rel  = parts[2].replace("/", "\\") if len(parts) > 2 else ""
+
+    if not host or not share or not file_rel:
+        raise ValueError(f"Cannot parse SMB path '{smb_path_uri}'")
+
+    import uuid as _uuid
+    conn = Connection(_uuid.uuid4(), host, 445)
+    conn.connect(timeout=30)
+    try:
+        session = Session(conn, username=username, password=password,
+                          require_encryption=False)
+        if domain:
+            session.username = f"{domain}\\{username}"
+        session.connect()
+        try:
+            tree = TreeConnect(session, f"\\\\{host}\\{share}")
+            tree.connect()
+            try:
+                fh = Open(tree, file_rel)
+                fh.create(
+                    ImpersonationLevel.Impersonation,
+                    FilePipePrinterAccessMask.FILE_WRITE_DATA |
+                    FilePipePrinterAccessMask.FILE_WRITE_ATTRIBUTES,
+                    FileAttributes.FILE_ATTRIBUTE_NORMAL,
+                    ShareAccess.FILE_SHARE_NONE,
+                    CreateDisposition.FILE_SUPERSEDE,
+                    CreateOptions.FILE_NON_DIRECTORY_FILE,
+                )
+                try:
+                    chunk_size = 1024 * 1024
+                    offset = 0
+                    while offset < len(content):
+                        chunk = content[offset:offset + chunk_size]
+                        fh.write(chunk, offset)
+                        offset += len(chunk)
+                finally:
+                    fh.close(get_attributes=False)
+            finally:
+                tree.disconnect()
+        finally:
+            session.disconnect()
+    finally:
+        conn.disconnect()
+
+
 def _smb_ts(windows_ts: int) -> str:
     """Convert Windows FILETIME (100ns intervals since 1601-01-01) to YYYY-MM-DD."""
     if not windows_ts:

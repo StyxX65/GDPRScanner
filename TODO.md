@@ -181,6 +181,25 @@ Extended the M365 checkpoint/resume mechanism to all three scan engines. Each en
 
 ---
 
+### Extended document anonymisation (redaction beyond local DOCX/XLSX/CSV/TXT)
+
+Currently the ✂ redact button only works for local files with extensions `.docx`, `.xlsx`, `.csv`, `.txt`. Several valuable cases are not yet covered:
+
+**1. PDF redaction for local files** ✅ — `redact_pdf_secure` (PyMuPDF physical redaction) wired to `_REDACT_EXTS` and the ✂ button. Falls back to reportlab overlay if PyMuPDF is absent.
+
+**2. OneDrive / SharePoint / Teams file redaction** ✅ — `put_drive_item_content()` added to `m365_connector.py`; `redact_item()` in `routes/export.py` extended with a cloud branch: download via Graph, redact to a local temp file, re-upload via PUT. Supports DOCX, XLSX, PDF. ✂ button shown on cloud cards with supported extensions.
+
+**3. Google Drive file redaction** ✅ — `get_drive_file_mime`, `download_drive_file_by_id`, `update_drive_file` added to both `GoogleWorkspaceConnector` and `PersonalGoogleConnector`. `redact_item()` extended with a `gdrive` branch: check MIME type (rejects Google Docs/Sheets), download bytes, redact locally, upload back via `files().update()`. Requires `drive` scope (not `drive.readonly`) on the service-account delegation. ✂ button shown on Drive cards with DOCX/XLSX/PDF extension.
+
+**4. SMB / SFTP file redaction** ✅ — `write_file(remote_path, content)` added to `SFTPScanner`; `write_smb_file(path, content, user, password, domain)` added to `file_scanner.py`. `redact_item()` extended with `sftp` and `smb` branches: download via native protocol, redact locally, write back. Source config matched from `_load_file_sources()`. SFTP requires the item to still be in `state.flagged_items` (in-session only). ✂ button shown on SMB/SFTP cards with DOCX/XLSX/CSV/TXT/PDF extension.
+
+**5. Email body redaction (Exchange / Gmail)** — overwrite the message body via Graph `PATCH /messages/{id}` or Gmail API. High effort and high risk: HTML formatting must be preserved, inline images handled, and a mistake permanently corrupts the email. **Recommendation: skip** — deleting the email is a safer and simpler GDPR response for emails containing CPR numbers.
+
+**Priority order:** PDF (1) first since it reuses existing code. Cloud files (2–4) on demand.  
+**Size:** Small (PDF) · Medium (cloud/SMB/SFTP) · **Priority:** Medium
+
+---
+
 ### #32 — Windowed mode for Profiles, Sources, and Settings ✗ Won't do
 The workflow is sequential (configure → scan → review), not parallel — there is no realistic scenario where a modal and the results grid need to be open simultaneously. The Sources panel is already visible in the sidebar. Option A (the least-work path) still loads the full 3800-line JS stack twice. Closed.
 

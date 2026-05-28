@@ -294,7 +294,9 @@ After choosing, click **Save**. A small **✓ Saved** confirmation appears.
 
 ### Redacting a local file
 
-For local DOCX, XLSX, CSV, and TXT files a **✂** button appears in the card. Clicking it rewrites the file in-place, replacing all CPR numbers with `██████-████` blocks. The card is removed from the grid and the action is logged as a `"redacted"` disposition. This is useful when you want to sanitise a file rather than delete it entirely. The button is not available for email items, cloud files, or SFTP files.
+For local DOCX, XLSX, CSV, TXT, and PDF files a **✂** button appears in the card. Clicking it rewrites the file in-place, replacing all CPR numbers with `██████-████` blocks. The card is removed from the grid and the action is logged as a `"redacted"` disposition. This is useful when you want to sanitise a file rather than delete it entirely. The button is not available for email items, cloud files, or SFTP files.
+
+> **PDF security note:** PDF redaction uses physical removal — the CPR number text is erased from the PDF data stream, not just painted over with a black box. A reader cannot recover the original text by selecting under the redaction or inspecting the file programmatically. Image-based (scanned) PDFs are also supported: the scanner locates the CPR number on the page image via OCR and physically overwrites that region.
 
 ### Bulk tagging multiple items at once
 

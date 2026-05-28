@@ -1205,12 +1205,23 @@ def delete_item():
         return jsonify({"ok": False, "error": str(e)})
 
 
-_REDACT_EXTS = {".docx", ".xlsx", ".csv", ".txt"}
+_REDACT_EXTS = {".docx", ".xlsx", ".csv", ".txt", ".pdf"}
+
+
+_M365_CLOUD_TYPES = {"onedrive", "sharepoint", "teams"}
+
+_GDRIVE_MIME_MAP = {
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".pdf":  "application/pdf",
+}
+
+_ALL_REDACTABLE_TYPES = {"local", "smb", "sftp", "gdrive"} | _M365_CLOUD_TYPES
 
 
 @bp.route("/api/redact_item", methods=["POST"])
 def redact_item():
-    """Redact CPR numbers in-place in a local file. Returns {ok, redacted}."""
+    """Redact CPR numbers in-place in a local, SMB, SFTP, M365, or Google Drive file."""
     from pathlib import Path as _Path
     import tempfile as _tempfile
     import shutil as _shutil
@@ -1233,77 +1244,461 @@ def redact_item():
             item_meta = {}
 
     source_type = item_meta.get("source_type", "")
-    if source_type not in ("local",):
-        return jsonify({"ok": False, "error": "Redaction is only supported for local files"}), 400
+    is_m365_cloud = source_type in _M365_CLOUD_TYPES
+    if source_type not in _ALL_REDACTABLE_TYPES:
+        return jsonify({"ok": False, "error": "Redaction is only supported for local, SMB, SFTP, M365, and Google Drive files"}), 400
 
-    full_path = item_meta.get("full_path", "")
-    if not full_path:
-        return jsonify({"ok": False, "error": "File path not available — rescan to enable redaction"}), 400
+    # --- local path branch ---
+    if source_type == "local":
+        full_path = item_meta.get("full_path", "")
+        if not full_path:
+            return jsonify({"ok": False, "error": "File path not available — rescan to enable redaction"}), 400
 
-    path = _Path(full_path).expanduser()
-    if not path.exists():
-        return jsonify({"ok": False, "error": f"File not found: {full_path}"}), 404
+        path = _Path(full_path).expanduser()
+        if not path.exists():
+            return jsonify({"ok": False, "error": f"File not found: {full_path}"}), 404
 
-    ext = path.suffix.lower()
-    if ext not in _REDACT_EXTS:
-        return jsonify({"ok": False, "error": f"Redaction not supported for {ext or 'this'} files. Supported: DOCX, XLSX, CSV, TXT"}), 400
+        ext = path.suffix.lower()
+        if ext not in _REDACT_EXTS:
+            return jsonify({"ok": False, "error": f"Redaction not supported for {ext or 'this'} files. Supported: DOCX, XLSX, CSV, TXT, PDF"}), 400
 
-    tmp_path = None
-    try:
-        from document_scanner import (
-            scan_docx, redact_docx,
-            scan_xlsx, redact_xlsx,
-            redact_csv,
-            find_pii_spans_in_text,
-        )
-
-        with _tempfile.NamedTemporaryFile(suffix=ext, delete=False, dir=path.parent) as tmp:
-            tmp_path = _Path(tmp.name)
-
-        if ext == ".docx":
-            results  = scan_docx(path)
-            redacted = redact_docx(path, tmp_path, results, use_ner=False)
-        elif ext == ".xlsx":
-            results  = scan_xlsx(path)
-            redacted = redact_xlsx(path, tmp_path, results, use_ner=False)
-        elif ext == ".csv":
-            redacted = redact_csv(path, tmp_path, use_ner=False)
-        else:  # .txt
-            text   = path.read_text(encoding="utf-8", errors="replace")
-            spans  = [(s, e, l) for s, e, l in find_pii_spans_in_text(text, use_ner=False) if l == "CPR"]
-            chars  = list(text)
-            for s, e, _ in sorted(spans, reverse=True):
-                chars[s:e] = ["█"] * (e - s)
-            tmp_path.write_text("".join(chars), encoding="utf-8")
-            redacted = len(spans)
-
-        _shutil.move(str(tmp_path), str(path))
         tmp_path = None
+        try:
+            from document_scanner import (
+                scan_docx, redact_docx,
+                scan_xlsx, redact_xlsx,
+                redact_csv,
+                scan_pdf, redact_pdf_secure,
+                find_pii_spans_in_text,
+            )
 
-        state.flagged_items[:] = [x for x in state.flagged_items if x.get("id") != item_id]
-        _db = _get_db() if DB_OK else None
-        if _db:
+            with _tempfile.NamedTemporaryFile(suffix=ext, delete=False, dir=path.parent) as tmp:
+                tmp_path = _Path(tmp.name)
+
+            if ext == ".docx":
+                results  = scan_docx(path)
+                redacted = redact_docx(path, tmp_path, results, use_ner=False)
+            elif ext == ".xlsx":
+                results  = scan_xlsx(path)
+                redacted = redact_xlsx(path, tmp_path, results, use_ner=False)
+            elif ext == ".csv":
+                redacted = redact_csv(path, tmp_path, use_ner=False)
+            elif ext == ".pdf":
+                results  = scan_pdf(path)
+                redacted = redact_pdf_secure(path, tmp_path, results,
+                                             force_ocr=False, lang="dan+eng",
+                                             dpi=200, poppler_path=None,
+                                             use_ner=False)
+                if redacted is False:
+                    raise RuntimeError("PDF redaction failed — PyMuPDF and reportlab both unavailable. Install with: pip install pymupdf")
+            else:  # .txt
+                text   = path.read_text(encoding="utf-8", errors="replace")
+                spans  = [(s, e, l) for s, e, l in find_pii_spans_in_text(text, use_ner=False) if l == "CPR"]
+                chars  = list(text)
+                for s, e, _ in sorted(spans, reverse=True):
+                    chars[s:e] = ["█"] * (e - s)
+                tmp_path.write_text("".join(chars), encoding="utf-8")
+                redacted = len(spans)
+
+            _shutil.move(str(tmp_path), str(path))
+            tmp_path = None
+
+        except Exception as exc:
+            if tmp_path and tmp_path.exists():
+                try:
+                    tmp_path.unlink()
+                except Exception:
+                    pass
+            logger.exception("[redact] local file error")
+            return jsonify({"ok": False, "error": str(exc)}), 500
+
+    # --- M365 cloud branch (OneDrive / SharePoint / Teams) ---
+    elif is_m365_cloud:
+        conn = state.connector
+        if conn is None:
+            return jsonify({"ok": False, "error": "M365 not connected — cannot redact cloud files"}), 400
+
+        name     = item_meta.get("name", "")
+        ext      = _Path(name).suffix.lower() if name else ""
+        if ext not in _REDACT_EXTS - {".csv", ".txt"}:
+            return jsonify({"ok": False, "error": f"Redaction not supported for {ext or 'this'} cloud files. Supported: DOCX, XLSX, PDF"}), 400
+
+        drive_id  = item_meta.get("drive_id") or item_meta.get("_drive_id", "")
+        account_id = item_meta.get("account_id") or item_meta.get("_account_id", "")
+
+        tmp_path = None
+        try:
+            # Download
+            if drive_id:
+                raw = conn.download_sharepoint_item(drive_id, item_id)
+            elif account_id and account_id != "me":
+                raw = conn.download_drive_item_for(account_id, item_id)
+            else:
+                raw = conn.download_drive_item(item_id)
+
+            from document_scanner import (
+                scan_docx, redact_docx,
+                scan_xlsx, redact_xlsx,
+                scan_pdf, redact_pdf_secure,
+            )
+
+            with _tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+                tmp.write(raw)
+                tmp_path = _Path(tmp.name)
+            del raw
+
+            with _tempfile.NamedTemporaryFile(suffix=ext, delete=False) as out:
+                out_path = _Path(out.name)
+
+            if ext == ".docx":
+                results  = scan_docx(tmp_path)
+                redacted = redact_docx(tmp_path, out_path, results, use_ner=False)
+            elif ext == ".xlsx":
+                results  = scan_xlsx(tmp_path)
+                redacted = redact_xlsx(tmp_path, out_path, results, use_ner=False)
+            else:  # .pdf
+                results  = scan_pdf(tmp_path)
+                redacted = redact_pdf_secure(tmp_path, out_path, results,
+                                             force_ocr=False, lang="dan+eng",
+                                             dpi=200, poppler_path=None,
+                                             use_ner=False)
+                if redacted is False:
+                    raise RuntimeError("PDF redaction failed — PyMuPDF and reportlab both unavailable. Install with: pip install pymupdf")
+
+            # Upload redacted bytes back
+            redacted_bytes = out_path.read_bytes()
+            conn.put_drive_item_content(drive_id, item_id, redacted_bytes, user_id=account_id)
+            del redacted_bytes
+
+        except Exception as exc:
+            logger.exception("[redact] cloud file error")
+            return jsonify({"ok": False, "error": str(exc)}), 500
+        finally:
+            for p in ("tmp_path", "out_path"):
+                _p = locals().get(p)
+                if _p and _p.exists():
+                    try:
+                        _p.unlink()
+                    except Exception:
+                        pass
+
+    # --- Google Drive branch ---
+    elif source_type == "gdrive":
+        gconn = state.google_connector
+        if gconn is None:
+            return jsonify({"ok": False, "error": "Google not connected — cannot redact Drive files"}), 400
+
+        name = item_meta.get("name", "")
+        ext  = _Path(name).suffix.lower() if name else ""
+        if ext not in _GDRIVE_MIME_MAP:
+            return jsonify({"ok": False, "error": f"Redaction not supported for {ext or 'this'} Drive files. Supported: DOCX, XLSX, PDF"}), 400
+
+        # item_id is "gdrive:{file_id}"
+        gfile_id  = item_id[len("gdrive:"):] if item_id.startswith("gdrive:") else item_id
+        user_email = item_meta.get("account_id") or item_meta.get("_account_id", "")
+
+        tmp_path = out_path = None
+        try:
+            from document_scanner import (
+                scan_docx, redact_docx,
+                scan_xlsx, redact_xlsx,
+                scan_pdf, redact_pdf_secure,
+            )
+            from google_connector import GoogleError as _GoogleError
+
+            # Refuse Google-native formats (Docs/Sheets exported as DOCX)
             try:
-                _db.log_deletion(item_meta, reason="redacted")
-                _db.delete_item_record(item_id)
-            except Exception:
-                pass
+                mime = gconn.get_drive_file_mime(user_email, gfile_id)
+            except Exception as exc:
+                return jsonify({"ok": False, "error": f"Could not read Drive file info: {exc}"}), 500
+            if mime.startswith("application/vnd.google-apps."):
+                return jsonify({"ok": False, "error": (
+                    "Cannot redact a Google Docs/Sheets/Slides file in-place. "
+                    "Export it as DOCX/XLSX/PDF first, then redact the exported copy."
+                )}), 400
 
-        _audit("item_redact",
-               f"id={item_id!r} name={item_meta.get('name','')!r} spans={redacted}",
-               ip=request.remote_addr or "")
-        logger.info("[redact] %s — %d CPR span(s) redacted", path.name, redacted)
-        return jsonify({"ok": True, "redacted": redacted})
+            raw = gconn.download_drive_file_by_id(user_email, gfile_id)
 
-    except Exception as e:
-        logger.error("[redact] failed: %s", e)
-        return jsonify({"ok": False, "error": str(e)})
-    finally:
-        if tmp_path and tmp_path.exists():
+            with _tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+                tmp.write(raw)
+                tmp_path = _Path(tmp.name)
+            del raw
+
+            with _tempfile.NamedTemporaryFile(suffix=ext, delete=False) as out:
+                out_path = _Path(out.name)
+
+            if ext == ".docx":
+                results  = scan_docx(tmp_path)
+                redacted = redact_docx(tmp_path, out_path, results, use_ner=False)
+            elif ext == ".xlsx":
+                results  = scan_xlsx(tmp_path)
+                redacted = redact_xlsx(tmp_path, out_path, results, use_ner=False)
+            else:  # .pdf
+                results  = scan_pdf(tmp_path)
+                redacted = redact_pdf_secure(tmp_path, out_path, results,
+                                             force_ocr=False, lang="dan+eng",
+                                             dpi=200, poppler_path=None,
+                                             use_ner=False)
+                if redacted is False:
+                    raise RuntimeError("PDF redaction failed — PyMuPDF and reportlab both unavailable. Install with: pip install pymupdf")
+
+            redacted_bytes = out_path.read_bytes()
+            gconn.update_drive_file(user_email, gfile_id, redacted_bytes, _GDRIVE_MIME_MAP[ext])
+            del redacted_bytes
+
+        except Exception as exc:
+            logger.exception("[redact] gdrive file error")
+            return jsonify({"ok": False, "error": str(exc)}), 500
+        finally:
+            for _p in (tmp_path, out_path):
+                if _p and _p.exists():
+                    try:
+                        _p.unlink()
+                    except Exception:
+                        pass
+
+    # --- SFTP branch ---
+    elif source_type == "sftp":
+        full_path  = item_meta.get("full_path", "")
+        source_uri = item_meta.get("account_name", "")  # sftp://user@host/root_path
+        if not full_path:
+            return jsonify({"ok": False, "error": "File path not available — rescan to enable SFTP redaction"}), 400
+        if not source_uri:
+            return jsonify({"ok": False, "error": "SFTP source info not in memory — rescan and redact in the same session"}), 400
+
+        ext = _Path(full_path).suffix.lower()
+        if ext not in _REDACT_EXTS:
+            return jsonify({"ok": False, "error": f"Redaction not supported for {ext or 'this'} files. Supported: DOCX, XLSX, CSV, TXT, PDF"}), 400
+
+        # Parse sftp://user@host/root to find matching source config
+        try:
+            from urllib.parse import urlparse as _urlparse
+            _u = _urlparse(source_uri)
+            _sftp_host = _u.hostname or ""
+            _sftp_user = _u.username or ""
+        except Exception:
+            _sftp_host = _sftp_user = ""
+
+        from app_config import _load_file_sources, _resolve_sftp_credentials
+        _sftp_source = next(
+            (s for s in _load_file_sources()
+             if s.get("source_type") == "sftp"
+             and s.get("sftp_host", "") == _sftp_host
+             and s.get("sftp_user", "") == _sftp_user),
+            None,
+        )
+        if _sftp_source is None:
+            return jsonify({"ok": False, "error": f"SFTP source config not found for {_sftp_host} — rescan to enable redaction"}), 400
+
+        _sftp_source = _resolve_sftp_credentials(_sftp_source)
+
+        tmp_path = out_path = None
+        try:
+            from sftp_connector import SFTPScanner as _SFTPScanner
+            from document_scanner import (
+                scan_docx, redact_docx,
+                scan_xlsx, redact_xlsx,
+                redact_csv,
+                scan_pdf, redact_pdf_secure,
+                find_pii_spans_in_text,
+            )
+
+            _sftp = _SFTPScanner(
+                host=_sftp_source.get("sftp_host", ""),
+                root_path=_sftp_source.get("path", "/"),
+                username=_sftp_source.get("sftp_user", ""),
+                port=int(_sftp_source.get("sftp_port", 22)),
+                auth_type=_sftp_source.get("sftp_auth", "password"),
+                password=_sftp_source.get("sftp_password") or None,
+                key_path=_sftp_source.get("sftp_key_path") or None,
+                passphrase=_sftp_source.get("sftp_passphrase") or None,
+            )
+
+            raw = _sftp.read_file(full_path)
+
+            with _tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+                tmp.write(raw)
+                tmp_path = _Path(tmp.name)
+            del raw
+
+            with _tempfile.NamedTemporaryFile(suffix=ext, delete=False) as out:
+                out_path = _Path(out.name)
+
+            if ext == ".docx":
+                results  = scan_docx(tmp_path)
+                redacted = redact_docx(tmp_path, out_path, results, use_ner=False)
+            elif ext == ".xlsx":
+                results  = scan_xlsx(tmp_path)
+                redacted = redact_xlsx(tmp_path, out_path, results, use_ner=False)
+            elif ext == ".csv":
+                redacted = redact_csv(tmp_path, out_path, use_ner=False)
+            elif ext == ".pdf":
+                results  = scan_pdf(tmp_path)
+                redacted = redact_pdf_secure(tmp_path, out_path, results,
+                                             force_ocr=False, lang="dan+eng",
+                                             dpi=200, poppler_path=None,
+                                             use_ner=False)
+                if redacted is False:
+                    raise RuntimeError("PDF redaction failed — install PyMuPDF: pip install pymupdf")
+            else:  # .txt
+                text  = tmp_path.read_text(encoding="utf-8", errors="replace")
+                spans = [(s, e, l) for s, e, l in find_pii_spans_in_text(text, use_ner=False) if l == "CPR"]
+                chars = list(text)
+                for s, e, _ in sorted(spans, reverse=True):
+                    chars[s:e] = ["█"] * (e - s)
+                out_path.write_text("".join(chars), encoding="utf-8")
+                redacted = len(spans)
+
+            _sftp.write_file(full_path, out_path.read_bytes())
+
+        except Exception as exc:
+            logger.exception("[redact] sftp file error")
+            return jsonify({"ok": False, "error": str(exc)}), 500
+        finally:
+            for _p in (tmp_path, out_path):
+                if _p and _p.exists():
+                    try:
+                        _p.unlink()
+                    except Exception:
+                        pass
+
+    # --- SMB branch ---
+    elif source_type == "smb":
+        full_path = item_meta.get("full_path", "")
+        if not full_path:
+            return jsonify({"ok": False, "error": "File path not available — rescan to enable SMB redaction"}), 400
+
+        ext = _Path(full_path.replace("\\", "/").split("/")[-1]).suffix.lower()
+        if ext not in _REDACT_EXTS:
+            return jsonify({"ok": False, "error": f"Redaction not supported for {ext or 'this'} files. Supported: DOCX, XLSX, CSV, TXT, PDF"}), 400
+
+        # Parse //host/share/... to find matching source config
+        _norm = full_path.replace("\\", "/").lstrip("/")
+        _parts = _norm.split("/", 2)
+        _smb_host_fp = _parts[0] if len(_parts) > 0 else ""
+
+        from app_config import _load_file_sources
+        from file_scanner import get_smb_password as _get_smb_pw
+        _smb_source = next(
+            (s for s in _load_file_sources()
+             if s.get("source_type", "smb") in ("smb", "")
+             and (s.get("smb_host", "") == _smb_host_fp
+                  or s.get("path", "").replace("\\", "/").lstrip("/").split("/")[0] == _smb_host_fp)),
+            None,
+        )
+        if _smb_source is None:
+            return jsonify({"ok": False, "error": f"SMB source config not found for {_smb_host_fp}"}), 400
+
+        _smb_user   = _smb_source.get("smb_user", "")
+        _smb_domain = _smb_source.get("smb_domain", "")
+        _smb_kc     = _smb_source.get("keychain_key") or None
+        _smb_pw     = _smb_source.get("smb_password") or _get_smb_pw(_smb_host_fp, _smb_user, _smb_kc) or ""
+
+        tmp_path = out_path = None
+        try:
+            from file_scanner import write_smb_file as _write_smb
+            from document_scanner import (
+                scan_docx, redact_docx,
+                scan_xlsx, redact_xlsx,
+                redact_csv,
+                scan_pdf, redact_pdf_secure,
+                find_pii_spans_in_text,
+            )
+
+            # Download current content
+            from file_scanner import _smb_read_file as _smb_read, SMB_OK as _SMB_OK
+            if not _SMB_OK:
+                raise RuntimeError("smbprotocol not installed — run: pip install smbprotocol")
+
+            import uuid as _uuid
+            from smbprotocol.connection import Connection as _SmbConn
+            from smbprotocol.session import Session as _SmbSession
+            from smbprotocol.tree import TreeConnect as _SmbTree
+            _norm2 = full_path.replace("\\", "/").lstrip("/")
+            _fp    = _norm2.split("/", 2)
+            _fhost = _fp[0]; _fshare = _fp[1] if len(_fp) > 1 else ""
+            _frel  = (_fp[2].replace("/", "\\")) if len(_fp) > 2 else ""
+
+            _smb_conn = _SmbConn(_uuid.uuid4(), _fhost, 445)
+            _smb_conn.connect(timeout=30)
             try:
-                tmp_path.unlink()
-            except Exception:
-                pass
+                _smb_sess = _SmbSession(_smb_conn,
+                                        username=f"{_smb_domain}\\{_smb_user}" if _smb_domain else _smb_user,
+                                        password=_smb_pw, require_encryption=False)
+                _smb_sess.connect()
+                try:
+                    _smb_tree = _SmbTree(_smb_sess, f"\\\\{_fhost}\\{_fshare}")
+                    _smb_tree.connect()
+                    try:
+                        raw = _smb_read(_smb_tree, _frel)
+                    finally:
+                        _smb_tree.disconnect()
+                finally:
+                    _smb_sess.disconnect()
+            finally:
+                _smb_conn.disconnect()
+
+            with _tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+                tmp.write(raw)
+                tmp_path = _Path(tmp.name)
+            del raw
+
+            with _tempfile.NamedTemporaryFile(suffix=ext, delete=False) as out:
+                out_path = _Path(out.name)
+
+            if ext == ".docx":
+                results  = scan_docx(tmp_path)
+                redacted = redact_docx(tmp_path, out_path, results, use_ner=False)
+            elif ext == ".xlsx":
+                results  = scan_xlsx(tmp_path)
+                redacted = redact_xlsx(tmp_path, out_path, results, use_ner=False)
+            elif ext == ".csv":
+                redacted = redact_csv(tmp_path, out_path, use_ner=False)
+            elif ext == ".pdf":
+                results  = scan_pdf(tmp_path)
+                redacted = redact_pdf_secure(tmp_path, out_path, results,
+                                             force_ocr=False, lang="dan+eng",
+                                             dpi=200, poppler_path=None,
+                                             use_ner=False)
+                if redacted is False:
+                    raise RuntimeError("PDF redaction failed — install PyMuPDF: pip install pymupdf")
+            else:  # .txt
+                text  = tmp_path.read_text(encoding="utf-8", errors="replace")
+                spans = [(s, e, l) for s, e, l in find_pii_spans_in_text(text, use_ner=False) if l == "CPR"]
+                chars = list(text)
+                for s, e, _ in sorted(spans, reverse=True):
+                    chars[s:e] = ["█"] * (e - s)
+                out_path.write_text("".join(chars), encoding="utf-8")
+                redacted = len(spans)
+
+            _write_smb(full_path, out_path.read_bytes(), _smb_user, _smb_pw, _smb_domain)
+
+        except Exception as exc:
+            logger.exception("[redact] smb file error")
+            return jsonify({"ok": False, "error": str(exc)}), 500
+        finally:
+            for _p in (tmp_path, out_path):
+                if _p and _p.exists():
+                    try:
+                        _p.unlink()
+                    except Exception:
+                        pass
+
+    # --- shared: remove from grid + DB ---
+    state.flagged_items[:] = [x for x in state.flagged_items if x.get("id") != item_id]
+    _db = _get_db() if DB_OK else None
+    if _db:
+        try:
+            _db.log_deletion(item_meta, reason="redacted")
+            _db.delete_item_record(item_id)
+        except Exception:
+            pass
+
+    _audit("item_redact",
+           f"id={item_id!r} name={item_meta.get('name','')!r} spans={redacted}",
+           ip=request.remote_addr or "")
+    logger.info("[redact] %s — %d CPR span(s) redacted", item_meta.get('name', item_id), redacted)
+    return jsonify({"ok": True, "redacted": redacted})
 
 
 @bp.route("/api/delete_bulk", methods=["POST"])
