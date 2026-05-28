@@ -11,6 +11,8 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ### Added
 
+- **Date-range scoping for viewer tokens** — tokens can now carry optional `valid_from` and `valid_to` scope fields (YYYY-MM-DD). When set, `GET /api/db/flagged` filters items whose `modified` date falls outside the range. The share modal now shows two date inputs ("Items from" / "Items until") that apply to any scope type (all/role/user). The token list shows a green date-range badge when a range is stored. The server validates format and enforces `valid_from ≤ valid_to`. All three scope dimensions (role, user, date-range) are independent and combinable.
+
 - **CPR-only mode** — a new `cpr_only` scan option (sidebar toggle `#optCprOnly`, profile editor `#peOptCprOnly`) makes all three scan engines skip items that have no qualifying CPR numbers. Files whose only hits are email addresses, phone numbers, detected faces, or EXIF/GPS metadata are not flagged. The flag already detected is still shown on cards when `cpr_only=false` (default). Gated in all three engines: file scan skip condition, M365 email flagging, M365 file flagging, and Google Gmail/Drive flagging.
 
 - **OCR language override** — a new `ocr_lang` scan option (sidebar select `#optOcrLang`, profile editor `#peOptOcrLang`) lets operators choose the Tesseract language pack(s) used when scanning scanned PDFs and images. Presets: `dan+eng` (default), `dan`, `eng`, `dan+eng+deu`, `dan+eng+swe`, `dan+eng+fra`. The setting flows from the UI through the profile, into all three scan engines (M365 `_scan_bytes_timeout`, M365 attachments `_scan_bytes`, M365 files `_scan_bytes`, Google `_scan_bytes` for both Gmail and Drive). The `lang` parameter is threaded through `cpr_detector._scan_bytes` → `document_scanner.scan_pdf` / `scan_image` and the spawned PDF-OCR subprocess worker. The OCR cache key already included `lang`, so per-language results are cached independently.
@@ -18,6 +20,10 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 - **Built-in file redaction for local files** — a scissor button (`✂`) appears on cards for local DOCX, XLSX, CSV, and TXT files. Clicking it rewrites the file in-place with all detected CPR numbers replaced by `██████-████` (DOCX/XLSX) or `█`-blocks (CSV/TXT), then removes the card from the grid and logs a `"redacted"` disposition. The redaction is atomic: a temp file in the same directory is written first and then moved over the original, so a crash never leaves a half-written file. Implemented in `routes/export.py` (`POST /api/redact_item`) using the existing `document_scanner` redact functions; front-end in `results.js` (`redactItem`) with the button hidden for non-local or unsupported-extension items and for resolved/viewer-mode cards.
 
 - **`DELETE /api/delete_item` route registration fix** — the `delete_item` handler in `routes/export.py` was missing its `@bp.route` decorator, so the endpoint was never registered in Flask's URL map. The route now works correctly.
+
+### Fixed
+
+- **Stop button had no effect on Google Workspace scans** — `POST /api/scan/stop` only set `state._scan_abort` (the M365/file abort event) and never touched `state._google_scan_abort`. Separately, `_check_abort()` inside `_run_google_scan` was checking `gdpr_scanner._scan_abort` (the M365 event) instead of the module-level `_scan_abort` alias that points to `state._google_scan_abort`. Both bugs combined meant neither the Stop button nor `POST /api/google/scan/cancel` had any effect on a running Google scan. Fixed by having `scan_stop()` set both events and having `_check_abort()` use the correct module-level alias.
 
 ---
 

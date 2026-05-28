@@ -97,12 +97,27 @@ def create_token():
         return jsonify({"error": "scope.role must be '', 'student', or 'staff'"}), 400
     if user_emails and not all("@" in e for e in user_emails):
         return jsonify({"error": "scope.user entries must be valid email addresses"}), 400
+    valid_from = str(raw_scope.get("valid_from", "")).strip()
+    valid_to   = str(raw_scope.get("valid_to",   "")).strip()
+    from datetime import datetime as _dt
+    for _d, _lbl in ((valid_from, "valid_from"), (valid_to, "valid_to")):
+        if _d:
+            try:
+                _dt.strptime(_d, "%Y-%m-%d")
+            except ValueError:
+                return jsonify({"error": f"scope.{_lbl} must be YYYY-MM-DD"}), 400
+    if valid_from and valid_to and valid_from > valid_to:
+        return jsonify({"error": "scope.valid_from must be ≤ scope.valid_to"}), 400
     if user_emails:
         scope = {"user": user_emails, "display_name": display_name or user_emails[0]}
     elif role:
         scope = {"role": role}
     else:
         scope = {}
+    if valid_from:
+        scope["valid_from"] = valid_from
+    if valid_to:
+        scope["valid_to"] = valid_to
     entry = create_viewer_token(label=label, expires_days=expires_days, scope=scope)
     return jsonify(entry), 201
 

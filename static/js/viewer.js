@@ -136,6 +136,8 @@ function openShareModal() {
   if (scopeUser) scopeUser.value = '';
   const scopeDrop = document.getElementById('shareScopeUserDropdown');
   if (scopeDrop) scopeDrop.style.display = 'none';
+  const vf = document.getElementById('shareValidFrom'); if (vf) vf.value = '';
+  const vt = document.getElementById('shareValidTo');   if (vt) vt.value = '';
   _renderTokenList();
   fetch('/api/viewer/pin').then(function(r){ return r.json(); }).then(function(d) {
     const el = document.getElementById('sharePinStatus');
@@ -180,11 +182,18 @@ async function _renderTokenList() {
       const userBadge = userLbl
         ? '<span style="font-size:9px;padding:1px 5px;border-radius:10px;background:var(--muted);color:#fff;margin-left:5px;font-weight:600;vertical-align:middle;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block">' + userLbl + '</span>'
         : '';
+      const dateFrom  = tok.scope?.valid_from || '';
+      const dateTo    = tok.scope?.valid_to   || '';
+      const dateBadge = (dateFrom || dateTo)
+        ? '<span style="font-size:9px;padding:1px 5px;border-radius:10px;background:rgba(80,160,80,.25);color:var(--text);margin-left:5px;font-weight:600;vertical-align:middle">' +
+            (dateFrom || '…') + ' – ' + (dateTo || '…') +
+          '</span>'
+        : '';
       row.innerHTML =
         '<div style="flex:1;min-width:0">' +
           '<div style="font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
             (tok.label || '<span style="color:var(--muted);font-style:italic">' + t('share_unlabelled', 'Unlabelled') + '</span>') +
-            roleBadge + userBadge +
+            roleBadge + userBadge + dateBadge +
           '</div>' +
           '<div style="font-size:10px;color:var(--muted);margin-top:1px">' +
             t('share_expires_prefix', 'Expires:') + ' ' + expires + ' &nbsp;·&nbsp; ' + t('share_last_used', 'Last used:') + ' ' + lastUsed +
@@ -205,6 +214,8 @@ async function createShareLink() {
   const label     = document.getElementById('shareLabel').value.trim();
   const expiry    = document.getElementById('shareExpiry').value;
   const scopeType = document.getElementById('shareScopeType')?.value || '';
+  const validFrom = document.getElementById('shareValidFrom')?.value || '';
+  const validTo   = document.getElementById('shareValidTo')?.value   || '';
   const body      = {label};
   if (expiry) body.expires_days = parseInt(expiry);
   if (scopeType === 'role') {
@@ -222,6 +233,11 @@ async function createShareLink() {
       }
       body.scope = { user: [email], display_name: email };
     }
+  }
+  if (validFrom || validTo) {
+    if (!body.scope) body.scope = {};
+    if (validFrom) body.scope.valid_from = validFrom;
+    if (validTo)   body.scope.valid_to   = validTo;
   }
   try {
     const r = await fetch('/api/viewer/tokens', {

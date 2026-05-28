@@ -838,6 +838,8 @@
   "share_scope_all": "Alle",
   "share_scope_type_role": "Rolle",
   "share_scope_type_user": "Bruger",
+  "share_date_from": "Emner fra",
+  "share_date_to": "Emner til og med",
   "share_scope_role_lbl": "Rolle",
   "share_scope_user_lbl": "Brugerens e-mail",
   "share_scope_user_placeholder": "alice@skole.dk",

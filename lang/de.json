@@ -838,6 +838,8 @@
   "share_scope_all": "Alle",
   "share_scope_type_role": "Rolle",
   "share_scope_type_user": "Benutzer",
+  "share_date_from": "Elemente ab",
+  "share_date_to": "Elemente bis",
   "share_scope_role_lbl": "Rolle",
   "share_scope_user_lbl": "Benutzer-E-Mail",
   "share_scope_user_placeholder": "alice@schule.de",

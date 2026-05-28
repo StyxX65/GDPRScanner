@@ -838,6 +838,8 @@
   "share_scope_all": "All",
   "share_scope_type_role": "Role",
   "share_scope_type_user": "User",
+  "share_date_from": "Items from",
+  "share_date_to": "Items until",
   "share_scope_role_lbl": "Role",
   "share_scope_user_lbl": "User email",
   "share_scope_user_placeholder": "alice@school.dk",

@@ -999,6 +999,16 @@ document.addEventListener('DOMContentLoaded', applyI18n);
           <input id="shareScopeUser" type="text" autocomplete="off" data-i18n-placeholder="share_scope_user_placeholder" placeholder="alice@school.dk" style="width:100%;box-sizing:border-box;font-size:12px;padding:5px 8px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text)">
           <div id="shareScopeUserDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;margin-top:2px;background:var(--surface);border:1px solid var(--border);border-radius:6px;z-index:9999;max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.3)"></div>
         </div>
+        <div style="display:flex;gap:6px;flex:1.5;min-width:200px">
+          <div style="flex:1">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:3px" data-i18n="share_date_from">Items from</div>
+            <input id="shareValidFrom" type="date" style="width:100%;box-sizing:border-box;font-size:12px;padding:5px 6px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text)">
+          </div>
+          <div style="flex:1">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:3px" data-i18n="share_date_to">Items until</div>
+            <input id="shareValidTo" type="date" style="width:100%;box-sizing:border-box;font-size:12px;padding:5px 6px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text)">
+          </div>
+        </div>
         <div style="width:100px">
           <div style="font-size:11px;color:var(--muted);margin-bottom:3px" data-i18n="share_expires_in">Expires in</div>
           <select id="shareExpiry" style="width:100%;font-size:12px;padding:5px 6px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text)">

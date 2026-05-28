@@ -179,8 +179,10 @@ def db_flagged_items():
     """
     if not DB_OK: return jsonify([])
     from flask import session as _session
-    scope     = _session.get("viewer_scope", {})
-    role_filt = scope.get("role", "") if isinstance(scope, dict) else ""
+    scope      = _session.get("viewer_scope", {})
+    role_filt  = scope.get("role",       "") if isinstance(scope, dict) else ""
+    date_from  = scope.get("valid_from", "") if isinstance(scope, dict) else ""
+    date_to    = scope.get("valid_to",   "") if isinstance(scope, dict) else ""
     # user may be a list of emails (current) or a legacy single string
     raw_user  = scope.get("user", "") if isinstance(scope, dict) else ""
     if isinstance(raw_user, list):
@@ -196,6 +198,10 @@ def db_flagged_items():
         if role_filt and row.get("user_role", "") != role_filt:
             continue
         if user_filt and (row.get("account_id", "") or "").lower() not in user_filt:
+            continue
+        if date_from and (row.get("modified") or "") < date_from:
+            continue
+        if date_to and (row.get("modified") or "") > date_to:
             continue
         row["special_category"] = _json.loads(row.get("special_category") or "[]") if isinstance(row.get("special_category"), str) else row.get("special_category", [])
         row["exif"] = _json.loads(row.get("exif_json") or "{}") if isinstance(row.get("exif_json"), str) else row.get("exif", {})
