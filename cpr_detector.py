@@ -586,7 +586,7 @@ def _find_emails_phones(text: str) -> dict:
     }
 
 
-def _scan_bytes(content: bytes, filename: str, poppler_path=None) -> dict:
+def _scan_bytes(content: bytes, filename: str, poppler_path=None, lang: str = "dan+eng") -> dict:
     """Scan raw bytes for CPRs, emails, and phone numbers. Returns result dict."""
     if not SCANNER_OK:
         return {"cprs": [], "dates": [], "emails": [], "phones": [], "error": "scanner not available"}
@@ -608,7 +608,7 @@ def _scan_bytes(content: bytes, filename: str, poppler_path=None) -> dict:
                     return {"cprs": [], "dates": [], "emails": [], "phones": []}
             except Exception:
                 pass  # if pdfplumber fails, fall through to full scan_pdf
-            result = ds.scan_pdf(tmp_path, poppler_path=poppler_path)
+            result = ds.scan_pdf(tmp_path, poppler_path=poppler_path, lang=lang)
         elif ext in {".docx", ".doc"}:
             result = ds.scan_docx(tmp_path)
         elif ext in {".xlsx", ".xlsm"}:
@@ -620,7 +620,7 @@ def _scan_bytes(content: bytes, filename: str, poppler_path=None) -> dict:
             cprs, dates = ds.extract_matches(text, 1, "text")
             result = {"cprs": cprs, "dates": dates}
         elif ext in {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp"}:
-            result = ds.scan_image(tmp_path)
+            result = ds.scan_image(tmp_path, lang=lang)
         else:
             try:
                 text = content.decode("utf-8", errors="replace")
@@ -640,17 +640,17 @@ def _scan_bytes(content: bytes, filename: str, poppler_path=None) -> dict:
     result["phones"] = ep["phones"]
     return result
 
-def _worker_scan_pdf(pdf_path_str: str, result_q) -> None:
+def _worker_scan_pdf(pdf_path_str: str, result_q, lang: str = "dan+eng") -> None:
     """Worker executed in a spawned subprocess — must be a module-level function."""
     try:
         import document_scanner as _ds
         from pathlib import Path as _Path
-        result_q.put(_ds.scan_pdf(_Path(pdf_path_str)))
+        result_q.put(_ds.scan_pdf(_Path(pdf_path_str), lang=lang))
     except Exception as e:
         result_q.put({"cprs": [], "dates": [], "error": str(e)})
 
 
-def _scan_bytes_timeout(content: bytes, filename: str, timeout: int = 60) -> dict:
+def _scan_bytes_timeout(content: bytes, filename: str, timeout: int = 60, lang: str = "dan+eng") -> dict:
     """Like _scan_bytes but runs PDF scanning in a spawned subprocess with a hard timeout.
 
     For non-PDF files delegates straight to _scan_bytes.  For PDFs it writes the
@@ -660,7 +660,7 @@ def _scan_bytes_timeout(content: bytes, filename: str, timeout: int = 60) -> dic
     """
     ext = Path(filename).suffix.lower()
     if ext != ".pdf":
-        return _scan_bytes(content, filename)
+        return _scan_bytes(content, filename, lang=lang)
 
     import multiprocessing
     ctx = multiprocessing.get_context("spawn")
@@ -673,7 +673,7 @@ def _scan_bytes_timeout(content: bytes, filename: str, timeout: int = 60) -> dic
     try:
         with _pdf_subprocess_sem:
             q = ctx.Queue()
-            p = ctx.Process(target=_worker_scan_pdf, args=(tmp_path_str, q))
+            p = ctx.Process(target=_worker_scan_pdf, args=(tmp_path_str, q, lang))
             p.start()
             p.join(timeout)
             if p.is_alive():

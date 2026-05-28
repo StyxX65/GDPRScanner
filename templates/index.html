@@ -137,6 +137,21 @@ document.addEventListener('DOMContentLoaded', applyI18n);
                  style="width:46px;padding:3px 6px;font-size:11px;text-align:right">
         </div>
 
+        <!-- OCR language -->
+        <div class="toggle-row">
+          <span class="toggle-label" style="flex:1">
+            <span data-i18n="m365_opt_ocr_lang">OCR language</span><span class="hint-wrap"><span class="hint-icon" onclick="toggleHint(this)">?</span><span class="hint-bubble" data-i18n="m365_opt_ocr_lang_hint">Tesseract language pack(s) used when scanning scanned PDFs and images. Must match installed language packs.</span></span>
+          </span>
+          <select id="optOcrLang" style="font-size:11px;padding:2px 4px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:4px">
+            <option value="dan+eng">dan+eng</option>
+            <option value="dan">dan</option>
+            <option value="eng">eng</option>
+            <option value="dan+eng+deu">dan+eng+deu</option>
+            <option value="dan+eng+swe">dan+eng+swe</option>
+            <option value="dan+eng+fra">dan+eng+fra</option>
+          </select>
+        </div>
+
         <!-- Scan for email addresses -->
         <div class="toggle-row">
           <span class="toggle-label" style="flex:1">

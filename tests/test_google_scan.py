@@ -193,7 +193,7 @@ class TestRunGoogleScan:
         monkeypatch.setattr(gdpr_scanner, "broadcast",
                             lambda evt, data=None: events.append((evt, data or {})))
         monkeypatch.setattr(gdpr_scanner, "_scan_bytes",
-                            lambda data, name: scan_bytes_result or {
+                            lambda data, name, **kw: scan_bytes_result or {
                                 "cprs": [], "pii_counts": None, "emails": [], "phones": []
                             })
         monkeypatch.setattr(checkpoint, "_load_checkpoint", lambda *a, **kw: None)

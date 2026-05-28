@@ -577,6 +577,8 @@
   "m365_badge_emails": "E-Mail",
   "m365_badge_phones": "Tel.",
   "m365_opt_min_cpr_hint": "Dateien mit weniger eindeutigen CPR-Nummern als dieser Schwellenwert werden nicht gemeldet. Auf 2 setzen, um Falsch-Positive zu vermeiden, wenn Schüler eigene CPR-Nummern in Dateien haben.",
+  "m365_opt_ocr_lang": "OCR-Sprache",
+  "m365_opt_ocr_lang_hint": "Tesseract-Sprachpaket(e) für das Scannen von gescannten PDFs und Bildern. Pakete müssen auf dem Server installiert sein (z.B. tesseract-ocr-dan). Mehrere Pakete: dan+eng.",
   "m365_filter_photo_only": "📷 Fotos / biometrisch",
   "m365_filter_all_roles": "Alle Rollen",
   "m365_filter_staff": "Personal",

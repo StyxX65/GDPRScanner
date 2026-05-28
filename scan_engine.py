@@ -110,8 +110,8 @@ AUDIO_EXTS: set = set()
 SUPPORTED_EXTS: set = set()
 
 # cpr_detector helpers — injected by gdpr_scanner.py
-def _scan_bytes(content, filename, poppler_path=None): return {"cprs": [], "dates": []}  # type: ignore[misc]
-def _scan_bytes_timeout(content, filename, timeout=60): return {"cprs": [], "dates": []}  # type: ignore[misc]
+def _scan_bytes(content, filename, poppler_path=None, lang="dan+eng"): return {"cprs": [], "dates": []}  # type: ignore[misc]
+def _scan_bytes_timeout(content, filename, timeout=60, lang="dan+eng"): return {"cprs": [], "dates": []}  # type: ignore[misc]
 def _detect_photo_faces(content, filename): return 0  # type: ignore[misc]
 def _extract_exif(content, filename): return {}  # type: ignore[misc]
 def _extract_video_metadata(content, filename): return {}  # type: ignore[misc]
@@ -286,7 +286,7 @@ def run_file_scan(source: dict):
             result: dict = {"cprs": [], "dates": []}
             if ext not in PHOTO_EXTS and ext not in VIDEO_EXTS and ext not in AUDIO_EXTS:
                 try:
-                    result = _scan_bytes_timeout(content, rel_path)
+                    result = _scan_bytes_timeout(content, rel_path, lang=ocr_lang)
                 except Exception as e:
                     broadcast("scan_error", {"file": rel_path, "error": str(e)})
                     continue
@@ -476,6 +476,7 @@ def run_scan(options: dict):
     scan_photos    = bool(scan_opts.get("scan_photos", False))  # biometric photo scan (#9)
     skip_gps_images= bool(scan_opts.get("skip_gps_images", False))
     min_cpr_count  = max(1, int(scan_opts.get("min_cpr_count", 1)))
+    ocr_lang       = str(scan_opts.get("ocr_lang", "dan+eng")) or "dan+eng"
     scan_emails    = bool(scan_opts.get("scan_emails",  False))
     scan_phones    = bool(scan_opts.get("scan_phones",  False))
 
@@ -1131,7 +1132,7 @@ def run_scan(options: dict):
                         try:
                             att_bytes = (conn.download_attachment_for(uid, msg_id, att["id"])
                                          if uid != "me" else conn.download_attachment(msg_id, att["id"]))
-                            att_result = _scan_bytes(att_bytes, att_name)
+                            att_result = _scan_bytes(att_bytes, att_name, lang=ocr_lang)
                             att_cprs   = att_result.get("cprs", [])
                             all_cprs.extend(att_cprs)
                             if scan_emails:
@@ -1183,7 +1184,7 @@ def run_scan(options: dict):
 
                 # CPR/email/phone scan — skip for video and audio (metadata-only; no text layer)
                 _media_only = ext in VIDEO_EXTS or ext in AUDIO_EXTS
-                result = {"cprs": [], "dates": [], "emails": [], "phones": []} if _media_only else _scan_bytes(content, name)
+                result = {"cprs": [], "dates": [], "emails": [], "phones": []} if _media_only else _scan_bytes(content, name, lang=ocr_lang)
                 cprs   = result.get("cprs", [])
                 emails = result.get("emails", []) if scan_emails else []
                 phones = result.get("phones", []) if scan_phones else []

@@ -143,6 +143,7 @@ def _run_google_scan(options: dict):
     delta_enabled = bool(scan_opts.get("delta", False))
     scan_emails   = bool(scan_opts.get("scan_emails",  False))
     scan_phones   = bool(scan_opts.get("scan_phones",  False))
+    ocr_lang      = str(scan_opts.get("ocr_lang", "dan+eng")) or "dan+eng"
 
     from checkpoint import (_load_delta_tokens, _save_delta_tokens,
                             _save_checkpoint, _load_checkpoint, _clear_checkpoint)
@@ -314,7 +315,7 @@ def _run_google_scan(options: dict):
                             meta["_body_excerpt"] = " ".join(_plain.split())[:500]
                         except Exception:
                             meta["_body_excerpt"] = ""
-                        result = _scan_bytes(data, meta.get("name", "msg.txt"))
+                        result = _scan_bytes(data, meta.get("name", "msg.txt"), lang=ocr_lang)
                     except Exception as e:
                         broadcast("scan_error", {"file": meta.get("name", ""), "error": str(e)})
                         _g_scanned_ids.add(_item_id)
@@ -387,7 +388,7 @@ def _run_google_scan(options: dict):
                     try:
                         meta["_account"] = _display_name
                         meta["_source_type"] = "gdrive"
-                        result = _scan_bytes(data, meta.get("name", "file"))
+                        result = _scan_bytes(data, meta.get("name", "file"), lang=ocr_lang)
                     except Exception as e:
                         broadcast("scan_error", {"file": meta.get("name", ""), "error": str(e)})
                         _g_scanned_ids.add(_item_id)
