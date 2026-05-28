@@ -19,6 +19,10 @@ from app_config import (
     verify_interface_pin,
     clear_interface_pin,
 )
+try:
+    from gdpr_db import log_audit_event as _audit
+except ImportError:
+    def _audit(*a, **kw): pass  # type: ignore[misc]
 
 bp = Blueprint("viewer", __name__)
 
@@ -119,6 +123,8 @@ def create_token():
     if valid_to:
         scope["valid_to"] = valid_to
     entry = create_viewer_token(label=label, expires_days=expires_days, scope=scope)
+    _audit("token_create", f"label={label!r} scope={scope}",
+           ip=request.remote_addr or "")
     return jsonify(entry), 201
 
 
@@ -129,6 +135,7 @@ def delete_token(token: str):
     removed = revoke_viewer_token(token)
     if not removed:
         return jsonify({"error": "token not found"}), 404
+    _audit("token_revoke", f"token={token[:8]}...", ip=request.remote_addr or "")
     return jsonify({"ok": True})
 
 
@@ -162,10 +169,13 @@ def pin_set():
         return jsonify({"error": "pin required"}), 400
     if not new_pin.isdigit() or not (4 <= len(new_pin) <= 8):
         return jsonify({"error": "PIN must be 4–8 digits"}), 400
-    if get_viewer_pin_hash():
+    had_pin = bool(get_viewer_pin_hash())
+    if had_pin:
         if not verify_viewer_pin(str(body.get("current_pin", "")).strip()):
             return jsonify({"error": "current PIN is incorrect"}), 403
     set_viewer_pin(new_pin)
+    _audit("viewer_pin_change" if had_pin else "viewer_pin_set", "",
+           ip=request.remote_addr or "")
     return jsonify({"ok": True})
 
 
@@ -177,6 +187,7 @@ def pin_clear():
         if not verify_viewer_pin(str(body.get("current_pin", "")).strip()):
             return jsonify({"error": "current PIN is incorrect"}), 403
     clear_viewer_pin()
+    _audit("viewer_pin_clear", "", ip=request.remote_addr or "")
     return jsonify({"ok": True})
 
 
@@ -200,10 +211,13 @@ def interface_pin_set():
         return jsonify({"error": "pin required"}), 400
     if not new_pin.isdigit() or not (4 <= len(new_pin) <= 8):
         return jsonify({"error": "PIN must be 4–8 digits"}), 400
-    if get_interface_pin_hash():
+    had_ipin = bool(get_interface_pin_hash())
+    if had_ipin:
         if not verify_interface_pin(str(body.get("current_pin", "")).strip()):
             return jsonify({"error": "current PIN is incorrect"}), 403
     set_interface_pin(new_pin)
+    _audit("interface_pin_change" if had_ipin else "interface_pin_set", "",
+           ip=request.remote_addr or "")
     return jsonify({"ok": True})
 
 
@@ -215,6 +229,7 @@ def interface_pin_clear():
         if not verify_interface_pin(str(body.get("current_pin", "")).strip()):
             return jsonify({"error": "current PIN is incorrect"}), 403
     clear_interface_pin()
+    _audit("interface_pin_clear", "", ip=request.remote_addr or "")
     return jsonify({"ok": True})
 
 

@@ -11,11 +11,12 @@ from checkpoint import _clear_checkpoint, _DELTA_PATH
 from cpr_detector import _extract_exif, _html_esc, _placeholder_svg
 
 try:
-    from gdpr_db import get_db as _get_db
+    from gdpr_db import get_db as _get_db, log_audit_event as _audit
     DB_OK = True
 except ImportError:
     DB_OK = False
     def _get_db(*a, **kw): return None  # type: ignore[misc]
+    def _audit(*a, **kw): pass  # type: ignore[misc]
 
 try:
     import document_scanner as _ds  # noqa: F401
@@ -140,6 +141,9 @@ def db_set_disposition():
         notes       = data.get("notes", ""),
         reviewed_by = data.get("reviewed_by", ""),
     )
+    _audit("disposition",
+           f"item_id={item_id!r} status={data.get('status','')!r}",
+           ip=request.remote_addr or "")
     return jsonify({"status": "saved"})
 
 
@@ -160,6 +164,9 @@ def db_set_disposition_bulk():
                            legal_basis=data.get("legal_basis", ""),
                            notes=data.get("notes", ""),
                            reviewed_by=data.get("reviewed_by", ""))
+    _audit("disposition_bulk",
+           f"count={len(item_ids)} status={status!r}",
+           ip=request.remote_addr or "")
     return jsonify({"saved": len(item_ids)})
 
 
@@ -281,10 +288,13 @@ def admin_pin_set():
     new_pin = data.get("new_pin", "").strip()
     if not new_pin:
         return jsonify({"error": "new_pin required"}), 400
-    if _admin_pin_is_set():
+    had_pin = _admin_pin_is_set()
+    if had_pin:
         if not _verify_admin_pin(data.get("current_pin", "")):
             return jsonify({"error": "incorrect_pin"}), 403
     _set_admin_pin(new_pin)
+    _audit("admin_pin_change" if had_pin else "admin_pin_set", "",
+           ip=request.remote_addr or "")
     return jsonify({"ok": True})
 
 

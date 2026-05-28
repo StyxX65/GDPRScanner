@@ -361,17 +361,17 @@
   .settings-backdrop.open { display:flex; }
   .settings-modal {
     background:var(--surface); border:1px solid var(--border);
-    border-radius:10px; width:min(540px,96vw);
+    border-radius:10px; width:min(640px,96vw);
     display:flex; flex-direction:column; overflow:hidden;
     font-size:12px; color:var(--text);
   }
   .settings-header { padding:16px 20px 0; display:flex; align-items:center; justify-content:space-between; }
   .settings-header h2 { font-size:14px; font-weight:700; margin:0; }
-  .settings-tabs { display:flex; border-bottom:1px solid var(--border); padding:0 20px; margin-top:12px; }
+  .settings-tabs { display:flex; border-bottom:1px solid var(--border); padding:0 20px; margin-top:12px; flex-wrap:wrap; }
   .settings-tab {
     height:36px; padding:0 14px; font-size:12px; cursor:pointer; border:none;
     background:none; color:var(--muted); border-bottom:2px solid transparent;
-    margin-bottom:-1px; font-weight:500;
+    margin-bottom:-1px; font-weight:500; white-space:nowrap;
   }
   .settings-tab.active { color:var(--accent); border-bottom-color:var(--accent); font-weight:600; }
   .settings-body { padding:16px 20px; overflow-y:auto; max-height:65vh; display:flex; flex-direction:column; gap:14px; }

@@ -72,6 +72,18 @@ def get_lang_json():
     return jsonify(state.LANG)
 
 
+@bp.route("/api/audit_log")
+def audit_log_list():
+    """Return recent compliance audit log entries."""
+    try:
+        from gdpr_db import get_db as _get_db
+        limit  = min(int(request.args.get("limit", 200)), 1000)
+        action = request.args.get("action") or None
+        return jsonify(_get_db().get_audit_log(limit=limit, action=action))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @bp.route("/manual")
 def manual():
     """Serve the user manual as a styled, printable HTML page.

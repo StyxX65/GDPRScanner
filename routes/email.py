@@ -5,6 +5,10 @@ from __future__ import annotations
 from flask import Blueprint, jsonify, request
 from routes import state
 from app_config import _load_smtp_config, _save_smtp_config
+try:
+    from gdpr_db import log_audit_event as _audit
+except ImportError:
+    def _audit(*a, **kw): pass  # type: ignore[misc]
 from routes.export import _build_excel_bytes
 
 bp = Blueprint("email", __name__)
@@ -119,6 +123,7 @@ def smtp_config_save():
     if not data.get("password") and existing.get("password"):
         data["password"] = existing["password"]
     _save_smtp_config(data)
+    _audit("smtp_save", f"host={data.get('host','')!r}", ip=request.remote_addr or "")
     return jsonify({"status": "saved"})
 
 

@@ -21,9 +21,13 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 - **`DELETE /api/delete_item` route registration fix** — the `delete_item` handler in `routes/export.py` was missing its `@bp.route` decorator, so the endpoint was never registered in Flask's URL map. The route now works correctly.
 
+- **Compliance audit log** — every significant admin action is now written to an immutable `audit_log` table in the scanner database. Recorded events: profile save/delete, viewer token create/revoke, viewer/interface/admin PIN set/change/clear, file source add/update/delete, scheduler job save/delete, scan start/stop, SMTP config save, single and bulk disposition changes, item delete, and item redact. Each record stores a Unix timestamp, an action key, a human-readable detail string, and the client IP address. Accessible via `GET /api/audit_log` (returns newest-first, max 1000 entries; filterable by `?action=`). Visible in the Settings modal under a new **Audit Log** tab; the table refreshes whenever the tab is opened. The `log_audit_event()` module-level helper in `gdpr_db.py` silently no-ops if the DB is unavailable, so all call sites are safe in test and offline contexts.
+
 ### Fixed
 
 - **Stop button had no effect on Google Workspace scans** — `POST /api/scan/stop` only set `state._scan_abort` (the M365/file abort event) and never touched `state._google_scan_abort`. Separately, `_check_abort()` inside `_run_google_scan` was checking `gdpr_scanner._scan_abort` (the M365 event) instead of the module-level `_scan_abort` alias that points to `state._google_scan_abort`. Both bugs combined meant neither the Stop button nor `POST /api/google/scan/cancel` had any effect on a running Google scan. Fixed by having `scan_stop()` set both events and having `_check_abort()` use the correct module-level alias.
+
+- **Settings tab labels wrapping to two lines** — adding the Audit Log tab pushed the six-tab row past the 540 px modal width, causing "E-mailrapport" (and similar long translations) to break onto a second line. The modal is now 640 px wide and tabs carry `white-space:nowrap`; `.settings-tabs` retains `flex-wrap:wrap` as a safety net on very small screens.
 
 ---
 

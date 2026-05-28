@@ -615,6 +615,7 @@ document.addEventListener('DOMContentLoaded', applyI18n);
       <button class="settings-tab" id="stTabScheduler" onclick="switchSettingsTab('scheduler')" data-i18n="m365_settings_tab_scheduler">Scheduler</button>
       <button class="settings-tab" id="stTabEmail"    onclick="switchSettingsTab('email')"    data-i18n="m365_settings_tab_email">Email report</button>
       <button class="settings-tab" id="stTabDatabase" onclick="switchSettingsTab('database')" data-i18n="m365_settings_tab_database">Database</button>
+      <button class="settings-tab" id="stTabAuditlog" onclick="switchSettingsTab('auditlog')" data-i18n="m365_settings_tab_auditlog">Audit Log</button>
     </div>
     <div class="settings-body">
 
@@ -845,6 +846,28 @@ document.addEventListener('DOMContentLoaded', applyI18n);
               <button onclick="openImportDBModal()" style="background:none;border:none;color:var(--muted);height:26px;padding:0 14px;font-size:12px;cursor:pointer;box-sizing:border-box" data-i18n="m365_db_import">Import</button>
             </div>
             <button onclick="stResetDB()" style="background:none;border:1px solid var(--danger);color:var(--danger);height:26px;padding:0 14px;border-radius:6px;font-size:12px;cursor:pointer;box-sizing:border-box" data-i18n="m365_db_reset">Reset DB</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Audit Log pane ─────────────────────────────────────────────────── -->
+      <div class="settings-pane" id="stPaneAuditlog">
+        <div class="settings-group">
+          <div class="settings-group-title" data-i18n="m365_audit_title">Compliance Audit Log</div>
+          <div style="overflow-x:auto">
+            <table id="stAuditTable" style="width:100%;border-collapse:collapse;font-size:12px">
+              <thead>
+                <tr style="text-align:left">
+                  <th style="padding:4px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:500" data-i18n="m365_audit_col_time">Time</th>
+                  <th style="padding:4px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:500" data-i18n="m365_audit_col_action">Action</th>
+                  <th style="padding:4px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:500" data-i18n="m365_audit_col_detail">Detail</th>
+                  <th style="padding:4px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:500" data-i18n="m365_audit_col_ip">IP</th>
+                </tr>
+              </thead>
+              <tbody id="stAuditTableBody">
+                <tr><td colspan="4" style="padding:8px;color:var(--muted)" data-i18n="m365_audit_loading">Loading…</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

@@ -8,6 +8,10 @@ from pathlib import Path
 from flask import Blueprint, jsonify, request
 from routes import state
 from app_config import _load_file_sources, _save_file_sources, _SFTP_KEYS_DIR
+try:
+    from gdpr_db import log_audit_event as _audit
+except ImportError:
+    def _audit(*a, **kw): pass  # type: ignore[misc]
 
 try:
     from file_scanner import store_smb_password, SMB_OK as _SMB_OK
@@ -62,10 +66,16 @@ def file_sources_save():
         if s.get("id") == uid:
             sources[i] = {**s, **data}
             _save_file_sources(sources)
+            _audit("source_update",
+                   f"name={data.get('name','')!r} type={data.get('source_type','local')!r}",
+                   ip=request.remote_addr or "")
             return jsonify({"ok": True, "source": sources[i]})
     data["id"] = data.get("id") or str(_uuid.uuid4())
     sources.append(data)
     _save_file_sources(sources)
+    _audit("source_add",
+           f"name={data.get('name','')!r} type={data.get('source_type','local')!r}",
+           ip=request.remote_addr or "")
     return jsonify({"ok": True, "source": data})
 
 
@@ -79,6 +89,10 @@ def file_sources_delete():
     deleted = next((s for s in sources if s.get("id") == uid), None)
     sources = [s for s in sources if s.get("id") != uid]
     _save_file_sources(sources)
+    if deleted:
+        _audit("source_delete",
+               f"name={deleted.get('name','')!r} type={deleted.get('source_type','local')!r}",
+               ip=request.remote_addr or "")
 
     # Clean up key file if this was an SFTP key-auth source
     if deleted and deleted.get("sftp_key_path"):

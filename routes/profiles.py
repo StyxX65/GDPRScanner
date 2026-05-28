@@ -4,6 +4,10 @@ Scan profiles
 from __future__ import annotations
 from flask import Blueprint, jsonify, request
 from app_config import _profiles_load, _profile_save, _profile_delete, _profile_get
+try:
+    from gdpr_db import log_audit_event as _audit
+except ImportError:
+    def _audit(*a, **kw): pass  # type: ignore[misc]
 
 bp = Blueprint("profiles", __name__)
 
@@ -21,6 +25,8 @@ def profiles_save():
     if not profile.get("name"):
         return jsonify({"error": "name required"}), 400
     saved = _profile_save(profile)
+    _audit("profile_save", f"name={profile.get('name')!r}",
+           ip=request.remote_addr or "")
     return jsonify({"status": "saved", "profile": saved})
 
 
@@ -32,6 +38,8 @@ def profiles_delete():
     if not key:
         return jsonify({"error": "name or id required"}), 400
     ok = _profile_delete(key)
+    if ok:
+        _audit("profile_delete", f"key={key!r}", ip=request.remote_addr or "")
     return jsonify({"status": "deleted" if ok else "not_found"})
 
 
@@ -43,5 +51,3 @@ def profiles_get():
     if not p:
         return jsonify({"error": "not found"}), 404
     return jsonify({"profile": p})
-
-

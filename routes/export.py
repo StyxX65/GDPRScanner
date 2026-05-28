@@ -9,11 +9,12 @@ from routes import state
 from app_config import _GUID_RE, _resolve_display_name
 
 try:
-    from gdpr_db import get_db as _get_db
+    from gdpr_db import get_db as _get_db, log_audit_event as _audit
     DB_OK = True
 except ImportError:
     DB_OK = False
     def _get_db(*a, **kw): return None  # type: ignore[misc]
+    def _audit(*a, **kw): pass  # type: ignore[misc]
 
 try:
     from m365_connector import M365PermissionError
@@ -1191,6 +1192,9 @@ def delete_item():
                                      reason="manual")
                     _db.delete_item_record(item_id)
                 except Exception: pass
+            _audit("item_delete",
+                   f"id={item_id!r} name={item_meta.get('name','')!r}",
+                   ip=request.remote_addr or "")
             return jsonify({"ok": True})
         return jsonify({"ok": False, "error": "Delete returned unexpected result"})
     except M365PermissionError:
@@ -1285,6 +1289,9 @@ def redact_item():
             except Exception:
                 pass
 
+        _audit("item_redact",
+               f"id={item_id!r} name={item_meta.get('name','')!r} spans={redacted}",
+               ip=request.remote_addr or "")
         logger.info("[redact] %s — %d CPR span(s) redacted", path.name, redacted)
         return jsonify({"ok": True, "redacted": redacted})
 

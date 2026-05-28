@@ -171,6 +171,16 @@ Allows reviewing results from any past scan session without running a new scan. 
 
 **`state.connector` guard** — only the `email` branch and the M365 `else` branch require M365 auth. The `local`/`smb`, `gmail`, and `gdrive` branches must not gate on `state.connector` — they work in Google-only deployments.
 
+## Compliance audit log — gdpr_db.py + routes/
+
+- **`audit_log` table** — created by `_DDL` (`CREATE TABLE IF NOT EXISTS`) so it appears automatically on the next server start for existing databases. No migration needed. Schema: `id, ts (Unix float), action, actor, detail, ip`.
+- **`ScanDB.log_audit(action, detail, actor, ip)`** — inserts one record and commits immediately. `ScanDB.get_audit_log(limit, action)` returns rows newest-first.
+- **`log_audit_event(action, detail, actor, ip)`** — module-level helper in `gdpr_db.py`; silently no-ops on any exception so call sites never raise. Import: `from gdpr_db import log_audit_event as _audit`.
+- **`GET /api/audit_log?limit=200&action=<filter>`** — in `routes/app_routes.py`. No auth gate — same access level as other settings endpoints.
+- **Recorded events** — `profile_save`, `profile_delete` (`routes/profiles.py`); `token_create`, `token_revoke`, `viewer_pin_set/change/clear`, `interface_pin_set/change/clear` (`routes/viewer.py`); `source_add`, `source_update`, `source_delete` (`routes/sources.py`); `scheduler_job_save`, `scheduler_job_delete` (`routes/scheduler.py`); `scan_start`, `scan_stop` (`routes/scan.py`); `smtp_save` (`routes/email.py`); `disposition`, `disposition_bulk`, `admin_pin_set/change` (`routes/database.py`); `item_delete`, `item_redact` (`routes/export.py`).
+- **UI** — "Audit Log" tab (`stTabAuditlog` / `stPaneAuditlog`) in the Settings modal. `stLoadAuditLog()` in `sources.js` fetches and renders the table when the tab is opened; uses `window._escHtml` from `log.js`. Exported as `window.stLoadAuditLog`.
+- **Do not add `actor` values for end-user identity** — the scanner has no per-user login, so `actor` is always empty for now. The field is reserved for future use.
+
 ## SSE teardown — static/js/scan.js
 
 - **Do not close `S.es` in `scan_done` if other scans are still running** — M365 (`scan_done`), Google (`google_scan_done`), and File (`file_scan_done`) each emit their own done event. If M365 finishes first and the SSE is closed, the remaining done events are never received and the UI hangs at 100% indefinitely.

@@ -19,6 +19,11 @@ from checkpoint import (
 bp = Blueprint("scan", __name__)
 _log = logging.getLogger(__name__)
 
+try:
+    from gdpr_db import log_audit_event as _audit
+except ImportError:
+    def _audit(*a, **kw): pass  # type: ignore[misc]
+
 
 def _maybe_send_auto_email():
     """Send the scan report email after a manual scan if auto_email_manual is enabled."""
@@ -108,6 +113,9 @@ def scan_start():
         finally:
             state._scan_lock.release()
     threading.Thread(target=_run, daemon=True).start()
+    _audit("scan_start",
+           f"sources={options.get('sources',[])} profile_id={profile_id!r}",
+           ip=request.remote_addr or "")
     return jsonify({"status": "started"})
 
 
@@ -115,6 +123,7 @@ def scan_start():
 def scan_stop():
     state._scan_abort.set()
     state._google_scan_abort.set()
+    _audit("scan_stop", "", ip=request.remote_addr or "")
     return jsonify({"status": "stopping"})
 
 

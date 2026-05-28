@@ -237,7 +237,7 @@ function closeSettings() {
 }
 
 function switchSettingsTab(tab) {
-  ['general','security','scheduler','email','database'].forEach(function(t) {
+  ['general','security','scheduler','email','database','auditlog'].forEach(function(t) {
     var cap = t.charAt(0).toUpperCase() + t.slice(1);
     var pane = document.getElementById('stPane' + cap);
     var btn  = document.getElementById('stTab'  + cap);
@@ -248,6 +248,32 @@ function switchSettingsTab(tab) {
   if (tab === 'email')     stLoadSmtp();
   if (tab === 'database')  stLoadDbStats();
   if (tab === 'scheduler') schedLoad();
+  if (tab === 'auditlog')  stLoadAuditLog();
+}
+
+async function stLoadAuditLog() {
+  const tbody = document.getElementById('stAuditTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = `<tr><td colspan="4" style="padding:8px;color:var(--muted)">${t('m365_audit_loading')}</td></tr>`;
+  try {
+    const rows = await fetch('/api/audit_log?limit=200').then(r => r.json());
+    if (!Array.isArray(rows) || !rows.length) {
+      tbody.innerHTML = `<tr><td colspan="4" style="padding:8px;color:var(--muted)">${t('m365_audit_empty')}</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = rows.map(function(r) {
+      const d  = new Date(r.ts * 1000);
+      const ts = d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
+      return '<tr style="border-bottom:1px solid var(--border)">'
+        + '<td style="padding:4px 8px;white-space:nowrap;color:var(--muted);font-size:11px">' + window._escHtml(ts) + '</td>'
+        + '<td style="padding:4px 8px"><span style="font-family:monospace;background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:1px 4px;font-size:11px">' + window._escHtml(r.action) + '</span></td>'
+        + '<td style="padding:4px 8px;color:var(--text);font-size:12px">' + window._escHtml(r.detail) + '</td>'
+        + '<td style="padding:4px 8px;color:var(--muted);font-size:11px">' + window._escHtml(r.ip) + '</td>'
+        + '</tr>';
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="4" style="padding:8px;color:var(--danger)">' + window._escHtml(String(e)) + '</td></tr>';
+  }
 }
 
 // ── Window exports (HTML handlers + cross-module calls) ─────────────────────
@@ -266,5 +292,6 @@ window.confirmPinPrompt = confirmPinPrompt;
 window.openSettings = openSettings;
 window.closeSettings = closeSettings;
 window.switchSettingsTab = switchSettingsTab;
+window.stLoadAuditLog = stLoadAuditLog;
 window._M365_SOURCES = _M365_SOURCES;
 window._pinCallback = _pinCallback;

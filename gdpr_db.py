@@ -180,6 +180,17 @@ CREATE INDEX IF NOT EXISTS idx_dellog_time    ON deletion_log(deleted_at);
 CREATE INDEX IF NOT EXISTS idx_dellog_item    ON deletion_log(item_id);
 CREATE INDEX IF NOT EXISTS idx_dellog_reason  ON deletion_log(reason);
 
+CREATE TABLE IF NOT EXISTS audit_log (
+    id     INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts     REAL    NOT NULL,
+    action TEXT    NOT NULL DEFAULT '',
+    actor  TEXT    NOT NULL DEFAULT '',
+    detail TEXT    NOT NULL DEFAULT '',
+    ip     TEXT    NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_audit_ts     ON audit_log(ts);
+CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log(action);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_items_scan    ON flagged_items(scan_id);
 CREATE INDEX IF NOT EXISTS idx_items_source  ON flagged_items(source_type);
@@ -809,6 +820,34 @@ class ScanDB:
         ).fetchone()[0] or 0
         return {"total": total, "by_reason": by_reason, "cpr_hits_deleted": cpr_deleted}
 
+    # ── Compliance audit log ──────────────────────────────────────────────────
+
+    def log_audit(self, action: str, detail: str = "",
+                  actor: str = "", ip: str = "") -> None:
+        """Write an immutable compliance audit record."""
+        c = self._connect()
+        c.execute(
+            "INSERT INTO audit_log (ts, action, actor, detail, ip) VALUES (?,?,?,?,?)",
+            (time.time(), action, actor, detail, ip),
+        )
+        c.commit()
+
+    def get_audit_log(self, limit: int = 200,
+                      action: str | None = None) -> list[dict]:
+        """Return audit records, most recent first."""
+        c = self._connect()
+        if action:
+            rows = c.execute(
+                "SELECT * FROM audit_log WHERE action=? ORDER BY ts DESC LIMIT ?",
+                (action, limit),
+            ).fetchall()
+        else:
+            rows = c.execute(
+                "SELECT * FROM audit_log ORDER BY ts DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
     def delete_item_record(self, item_id: str, scan_id: int | None = None) -> None:
         """Remove a flagged item from the DB (after it has been deleted in M365)."""
         c = self._connect()
@@ -1055,6 +1094,15 @@ class ScanDB:
 
 # ── Module-level singleton ────────────────────────────────────────────────────
 _db: ScanDB | None = None
+
+
+def log_audit_event(action: str, detail: str = "",
+                    actor: str = "", ip: str = "") -> None:
+    """Write an audit record to the shared DB. Silently no-ops if DB unavailable."""
+    try:
+        get_db().log_audit(action, detail, actor=actor, ip=ip)
+    except Exception:
+        pass
 
 
 def get_db(path: Path = DB_PATH) -> ScanDB:

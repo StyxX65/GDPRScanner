@@ -4,6 +4,10 @@ Scheduler API routes — multi-job CRUD, status, history, run-now.
 from __future__ import annotations
 from flask import Blueprint, jsonify, request
 import sys, os, threading
+try:
+    from gdpr_db import log_audit_event as _audit
+except ImportError:
+    def _audit(*a, **kw): pass  # type: ignore[misc]
 
 bp = Blueprint("scheduler", __name__)
 
@@ -52,6 +56,9 @@ def scheduler_jobs_save():
                         _sched().reload()
                     except Exception:
                         pass
+                    _audit("scheduler_job_save",
+                           f"id={job_id!r} name={jobs[i].get('name','')!r}",
+                           ip=request.remote_addr or "")
                     return jsonify({"ok": True, "job": jobs[i]})
         # New job
         job = sm._new_job(data)
@@ -61,6 +68,9 @@ def scheduler_jobs_save():
             _sched().reload()
         except Exception:
             pass
+        _audit("scheduler_job_save",
+               f"id={job.get('id','')!r} name={job.get('name','')!r}",
+               ip=request.remote_addr or "")
         return jsonify({"ok": True, "job": job})
     except Exception as e:
         import traceback
@@ -81,6 +91,7 @@ def scheduler_jobs_delete():
             _sched().reload()
         except Exception:
             pass
+        _audit("scheduler_job_delete", f"id={job_id!r}", ip=request.remote_addr or "")
         return jsonify({"ok": True})
     except Exception as e:
         import traceback
