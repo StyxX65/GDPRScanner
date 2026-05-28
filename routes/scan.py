@@ -114,6 +114,7 @@ def scan_start():
 @bp.route("/api/scan/stop", methods=["POST"])
 def scan_stop():
     state._scan_abort.set()
+    state._google_scan_abort.set()
     return jsonify({"status": "stopping"})
 
 

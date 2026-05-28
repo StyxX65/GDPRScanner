@@ -144,6 +144,7 @@ def _run_google_scan(options: dict):
     scan_emails   = bool(scan_opts.get("scan_emails",  False))
     scan_phones   = bool(scan_opts.get("scan_phones",  False))
     ocr_lang      = str(scan_opts.get("ocr_lang", "dan+eng")) or "dan+eng"
+    cpr_only      = bool(scan_opts.get("cpr_only", False))
 
     from checkpoint import (_load_delta_tokens, _save_delta_tokens,
                             _save_checkpoint, _load_checkpoint, _clear_checkpoint)
@@ -224,8 +225,7 @@ def _run_google_scan(options: dict):
     t_start = _time.monotonic()
 
     def _check_abort():
-        from gdpr_scanner import _scan_abort as _sa
-        if _sa.is_set():
+        if _scan_abort.is_set():
             broadcast("scan_cancelled", {"completed": total_scanned})
             return True
         return False
@@ -324,7 +324,7 @@ def _run_google_scan(options: dict):
                     pii_counts = result.get("pii_counts")
                     _em = list(dict.fromkeys(e["formatted"] for e in result.get("emails", []))) if scan_emails else []
                     _ph = list(dict.fromkeys(p["formatted"] for p in result.get("phones", []))) if scan_phones else []
-                    if cprs or (pii_counts and any(pii_counts.values())) or _em or _ph:
+                    if cprs or (not cpr_only and ((pii_counts and any(pii_counts.values())) or _em or _ph)):
                         meta["_email_count"] = len(_em)
                         meta["_phone_count"] = len(_ph)
                         _broadcast_card(meta, cprs, pii_counts)
@@ -397,7 +397,7 @@ def _run_google_scan(options: dict):
                     pii_counts = result.get("pii_counts")
                     _em = list(dict.fromkeys(e["formatted"] for e in result.get("emails", []))) if scan_emails else []
                     _ph = list(dict.fromkeys(p["formatted"] for p in result.get("phones", []))) if scan_phones else []
-                    if cprs or (pii_counts and any(pii_counts.values())) or _em or _ph:
+                    if cprs or (not cpr_only and ((pii_counts and any(pii_counts.values())) or _em or _ph)):
                         meta["_email_count"] = len(_em)
                         meta["_phone_count"] = len(_ph)
                         _broadcast_card(meta, cprs, pii_counts)
@@ -418,8 +418,7 @@ def _run_google_scan(options: dict):
         except Exception as e:
             logger.warning("[gdrive delta] token save failed: %s", e)
 
-    from gdpr_scanner import _scan_abort as _gsa
-    if not _gsa.is_set():
+    if not _scan_abort.is_set():
         _clear_checkpoint(prefix=_gck_prefix)
 
     elapsed = _time.monotonic() - t_start
