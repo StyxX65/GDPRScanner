@@ -152,6 +152,14 @@ document.addEventListener('DOMContentLoaded', applyI18n);
           </select>
         </div>
 
+        <!-- CPR-only mode -->
+        <div class="toggle-row">
+          <span class="toggle-label" style="flex:1">
+            <span data-i18n="m365_opt_cpr_only">CPR-only mode</span><span class="hint-wrap"><span class="hint-icon" onclick="toggleHint(this)">?</span><span class="hint-bubble" data-i18n="m365_opt_cpr_only_hint">Only flag files that contain CPR numbers. Files with only email addresses, phone numbers, faces, or EXIF metadata are ignored.</span></span>
+          </span>
+          <label class="toggle"><input type="checkbox" id="optCprOnly"><span class="toggle-slider"></span></label>
+        </div>
+
         <!-- Scan for email addresses -->
         <div class="toggle-row">
           <span class="toggle-label" style="flex:1">

@@ -316,7 +316,7 @@ def run_file_scan(source: dict):
                 not skip_gps_images or bool(_exif.get("pii_fields") or _exif.get("author"))
             )
 
-            if not (_cpr_qualifies and cprs) and not _distinct_emails and not _distinct_phones and _face_count == 0 and not _exif_has_pii:
+            if not (_cpr_qualifies and cprs) and (cpr_only or (not _distinct_emails and not _distinct_phones and _face_count == 0 and not _exif_has_pii)):
                 continue
 
             # Build card metadata
@@ -477,6 +477,7 @@ def run_scan(options: dict):
     skip_gps_images= bool(scan_opts.get("skip_gps_images", False))
     min_cpr_count  = max(1, int(scan_opts.get("min_cpr_count", 1)))
     ocr_lang       = str(scan_opts.get("ocr_lang", "dan+eng")) or "dan+eng"
+    cpr_only       = bool(scan_opts.get("cpr_only", False))
     scan_emails    = bool(scan_opts.get("scan_emails",  False))
     scan_phones    = bool(scan_opts.get("scan_phones",  False))
 
@@ -1145,7 +1146,7 @@ def run_scan(options: dict):
 
                 _distinct_emails = list(dict.fromkeys(e["formatted"] for e in all_emails))
                 _distinct_phones = list(dict.fromkeys(p["formatted"] for p in all_phones))
-                if all_cprs or _distinct_emails or _distinct_phones:
+                if all_cprs or (not cpr_only and (_distinct_emails or _distinct_phones)):
                     meta["_thumb"]         = _placeholder_svg(".eml", subject)
                     meta["_thumb_is_jpeg"] = False
                     meta["_attachments"]   = att_results
@@ -1211,7 +1212,7 @@ def run_scan(options: dict):
                 )
 
                 # Flag item if CPRs/emails/phones found, faces detected, or EXIF PII found
-                if (_cpr_qualifies and cprs) or _distinct_emails or _distinct_phones or _face_count > 0 or _exif_has_pii:
+                if (_cpr_qualifies and cprs) or (not cpr_only and (_distinct_emails or _distinct_phones or _face_count > 0 or _exif_has_pii)):
                     # Make thumbnail
                     if ext in {".jpg", ".jpeg", ".png"} and PIL_OK:
                         thumb = _make_thumb(content, name)

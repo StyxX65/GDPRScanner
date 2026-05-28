@@ -577,6 +577,8 @@
   "m365_badge_emails": "email",
   "m365_badge_phones": "phone",
   "m365_opt_min_cpr_hint": "Files with fewer distinct CPR numbers than this threshold are not reported. Set to 2 to avoid false positives when students have their own CPR in documents.",
+  "m365_opt_cpr_only": "CPR-only mode",
+  "m365_opt_cpr_only_hint": "Only flag files that contain CPR numbers. Files with only email addresses, phone numbers, detected faces, or EXIF metadata are skipped.",
   "m365_opt_ocr_lang": "OCR language",
   "m365_opt_ocr_lang_hint": "Tesseract language pack(s) used when scanning scanned PDFs and images. Language packs must be installed on the server (e.g. tesseract-ocr-dan). Multiple packs: dan+eng.",
   "m365_filter_photo_only": "📷 Photos / biometric",

@@ -142,6 +142,11 @@ function _applyProfile(profile) {
     if (el) el.value = opts.ocr_lang;
   }
 
+  if (opts.cpr_only !== undefined) {
+    const el = document.getElementById('optCprOnly');
+    if (el) el.checked = opts.cpr_only;
+  }
+
   if (opts.scan_emails !== undefined) {
     const el = document.getElementById('optScanEmails');
     if (el) el.checked = opts.scan_emails;
@@ -432,6 +437,7 @@ function _openEditorForProfile(profile) {
           <div class="pmgmt-opt-row"><span>${t('m365_opt_scan_photos','Søg efter ansigter i billeder')}</span><label class="toggle"><input type="checkbox" id="peOptPhotos" ${opts.scan_photos ? 'checked' : ''}><span class="toggle-slider"></span></label></div>
           <div class="pmgmt-opt-row"><span>${t('m365_opt_skip_gps','Ignorer GPS i billeder')}</span><label class="toggle"><input type="checkbox" id="peOptSkipGps" ${opts.skip_gps_images ? 'checked' : ''}><span class="toggle-slider"></span></label></div>
           <div class="pmgmt-opt-row"><span style="color:var(--muted)">${t('m365_opt_min_cpr','Min. CPR-antal pr. fil')}</span><input type="number" id="peOptMinCpr" value="${opts.min_cpr_count || 1}" min="1" max="50" style="width:46px;padding:3px 6px;font-size:11px;text-align:right"></div>
+          <div class="pmgmt-opt-row"><span>${t('m365_opt_cpr_only','CPR-only mode')}</span><label class="toggle"><input type="checkbox" id="peOptCprOnly" ${opts.cpr_only ? 'checked' : ''}><span class="toggle-slider"></span></label></div>
           <div class="pmgmt-opt-row"><span style="color:var(--muted)">${t('m365_opt_ocr_lang','OCR-sprog')}</span><select id="peOptOcrLang" style="font-size:11px;padding:2px 4px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:4px"><option value="dan+eng" ${(opts.ocr_lang||'dan+eng')==='dan+eng'?'selected':''}>dan+eng</option><option value="dan" ${opts.ocr_lang==='dan'?'selected':''}>dan</option><option value="eng" ${opts.ocr_lang==='eng'?'selected':''}>eng</option><option value="dan+eng+deu" ${opts.ocr_lang==='dan+eng+deu'?'selected':''}>dan+eng+deu</option><option value="dan+eng+swe" ${opts.ocr_lang==='dan+eng+swe'?'selected':''}>dan+eng+swe</option><option value="dan+eng+fra" ${opts.ocr_lang==='dan+eng+fra'?'selected':''}>dan+eng+fra</option></select></div>
           <div class="pmgmt-opt-row"><span>${t('m365_opt_scan_emails','Søg efter e-mailadresser')}</span><label class="toggle"><input type="checkbox" id="peOptEmails" ${opts.scan_emails ? 'checked' : ''}><span class="toggle-slider"></span></label></div>
           <div class="pmgmt-opt-row"><span>${t('m365_opt_scan_phones','Søg efter telefonnumre')}</span><label class="toggle"><input type="checkbox" id="peOptPhones" ${opts.scan_phones ? 'checked' : ''}><span class="toggle-slider"></span></label></div>
@@ -652,6 +658,7 @@ async function _pmgmtSaveFullEdit() {
       skip_gps_images: document.getElementById('peOptSkipGps')?.checked ?? false,
       min_cpr_count:   parseInt(document.getElementById('peOptMinCpr')?.value) || 1,
       ocr_lang:        document.getElementById('peOptOcrLang')?.value || 'dan+eng',
+      cpr_only:        document.getElementById('peOptCprOnly')?.checked ?? false,
       scan_emails:     document.getElementById('peOptEmails')?.checked ?? false,
       scan_phones:     document.getElementById('peOptPhones')?.checked ?? false,
     },

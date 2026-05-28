@@ -128,6 +128,7 @@ function buildScanPayload() {
     skip_gps_images:  document.getElementById('optSkipGps') ? document.getElementById('optSkipGps').checked : false,
     min_cpr_count:    document.getElementById('optMinCpr') ? (parseInt(document.getElementById('optMinCpr').value) || 1) : 1,
     ocr_lang:         document.getElementById('optOcrLang')?.value || 'dan+eng',
+    cpr_only:         document.getElementById('optCprOnly') ? document.getElementById('optCprOnly').checked : false,
     scan_emails:      document.getElementById('optScanEmails') ? document.getElementById('optScanEmails').checked : false,
     scan_phones:      document.getElementById('optScanPhones') ? document.getElementById('optScanPhones').checked : false,
     retention_enabled: document.getElementById('optRetention') ? document.getElementById('optRetention').checked : false,
