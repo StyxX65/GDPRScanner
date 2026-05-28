@@ -237,7 +237,7 @@ function closeSettings() {
 }
 
 function switchSettingsTab(tab) {
-  ['general','security','scheduler','email','database','auditlog'].forEach(function(t) {
+  ['general','security','scheduler','email','database','auditlog','ai'].forEach(function(t) {
     var cap = t.charAt(0).toUpperCase() + t.slice(1);
     var pane = document.getElementById('stPane' + cap);
     var btn  = document.getElementById('stTab'  + cap);
@@ -249,6 +249,7 @@ function switchSettingsTab(tab) {
   if (tab === 'database')  stLoadDbStats();
   if (tab === 'scheduler') schedLoad();
   if (tab === 'auditlog')  stLoadAuditLog();
+  if (tab === 'ai')        stLoadAiSettings();
 }
 
 async function stLoadAuditLog() {
@@ -276,6 +277,70 @@ async function stLoadAuditLog() {
   }
 }
 
+// ── AI / Claude NER settings ─────────────────────────────────────────────────
+
+async function stLoadAiSettings() {
+  try {
+    const cfg = await fetch('/api/settings/claude').then(r => r.json());
+    const cb = document.getElementById('aiEnabled');
+    if (cb) cb.checked = !!cfg.enabled;
+    const ks = document.getElementById('aiKeyStatus');
+    if (ks) ks.textContent = cfg.api_key_set
+      ? t('m365_ai_key_set', 'API key saved')
+      : t('m365_ai_key_not_set', 'No API key saved');
+  } catch(e) { /* ignore */ }
+}
+
+async function stAiSave() {
+  const enabled = !!(document.getElementById('aiEnabled') || {}).checked;
+  const keyVal  = (document.getElementById('aiApiKey') || {}).value || '';
+  const status  = document.getElementById('aiStatus');
+  const payload = { enabled };
+  if (keyVal) payload.api_key = keyVal;
+  try {
+    await fetch('/api/settings/claude', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    if (status) { status.textContent = t('m365_ai_saved', 'Saved'); status.style.color = 'var(--success)'; }
+    if (keyVal) {
+      const inp = document.getElementById('aiApiKey');
+      if (inp) inp.value = '';
+      const ks = document.getElementById('aiKeyStatus');
+      if (ks) ks.textContent = t('m365_ai_key_set', 'API key saved');
+    }
+    setTimeout(function() { if (status) status.textContent = ''; }, 2000);
+  } catch(e) {
+    if (status) { status.textContent = String(e); status.style.color = 'var(--danger)'; }
+  }
+}
+
+async function stAiTest() {
+  const status = document.getElementById('aiStatus');
+  if (status) { status.textContent = t('m365_ai_testing', 'Testing…'); status.style.color = 'var(--muted)'; }
+  try {
+    const res = await fetch('/api/settings/claude/test', { method: 'POST' }).then(r => r.json());
+    if (status) {
+      status.textContent = res.ok
+        ? t('m365_ai_test_ok', 'API key valid')
+        : (t('m365_ai_test_fail', 'Test failed') + ': ' + (res.error || ''));
+      status.style.color = res.ok ? 'var(--success)' : 'var(--danger)';
+    }
+  } catch(e) {
+    if (status) { status.textContent = String(e); status.style.color = 'var(--danger)'; }
+  }
+}
+
+function stAiToggleKey() {
+  const inp = document.getElementById('aiApiKey');
+  const btn = document.getElementById('aiShowKeyBtn');
+  if (!inp) return;
+  const show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  if (btn) btn.textContent = show ? t('m365_ai_hide_key', 'Hide') : t('m365_ai_show_key', 'Show');
+}
+
 // ── Window exports (HTML handlers + cross-module calls) ─────────────────────
 window.renderSourcesPanel = renderSourcesPanel;
 window._onSourceChange = _onSourceChange;
@@ -293,5 +358,9 @@ window.openSettings = openSettings;
 window.closeSettings = closeSettings;
 window.switchSettingsTab = switchSettingsTab;
 window.stLoadAuditLog = stLoadAuditLog;
+window.stLoadAiSettings = stLoadAiSettings;
+window.stAiSave = stAiSave;
+window.stAiTest = stAiTest;
+window.stAiToggleKey = stAiToggleKey;
 window._M365_SOURCES = _M365_SOURCES;
 window._pinCallback = _pinCallback;

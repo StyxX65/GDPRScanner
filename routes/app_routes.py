@@ -84,6 +84,38 @@ def audit_log_list():
         return jsonify({"error": str(e)}), 500
 
 
+@bp.route("/api/settings/claude", methods=["GET", "POST"])
+def claude_settings():
+    from app_config import get_claude_config, save_claude_config
+    if request.method == "GET":
+        return jsonify(get_claude_config())
+    data = request.get_json(silent=True) or {}
+    api_key = data.get("api_key")  # None = keep existing key
+    if api_key == "":
+        api_key = None              # empty string = don't change
+    save_claude_config(bool(data.get("enabled", False)), api_key)
+    return jsonify({"ok": True})
+
+
+@bp.route("/api/settings/claude/test", methods=["POST"])
+def claude_test():
+    from app_config import _load_config
+    api_key = _load_config().get("claude_api_key", "")
+    if not api_key:
+        return jsonify({"ok": False, "error": "No API key saved"}), 400
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key)
+        client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=8,
+            messages=[{"role": "user", "content": "Hi"}],
+        )
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+
 @bp.route("/manual")
 def manual():
     """Serve the user manual as a styled, printable HTML page.

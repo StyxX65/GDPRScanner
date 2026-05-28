@@ -207,6 +207,20 @@ Allows reviewing results from any past scan session without running a new scan. 
 - **UI — job card badge** — `schedRenderJobs()` in `scheduler.js` adds a blue "Report only" (`m365_sched_report_only`) badge to the job name when `j.report_only` is true.
 - **UI — `schedToggleReportOnly()`** — dims the Profile row (`#schedProfileRow` opacity 0.4), shows/hides `#schedReportOnlyHint`, and forces `#schedAutoEmail` checked. Called from the checkbox `onchange` handler and at the start of `schedAddJob()` / `schedEditJob()`.
 
+## Claude NER — document_scanner.py + app_config.py + routes/app_routes.py
+
+Optional AI-powered Named Entity Recognition replacing spaCy. Activated via `config.json` keys `claude_ner` (bool) and `claude_api_key` (str).
+
+- **`ANTHROPIC_OK`** — module-level flag in `document_scanner.py`; `True` if `anthropic` is importable. Guards all Claude code paths so the scanner works without the package installed.
+- **`_get_claude_ner_config()`** — reads `config.json` via `app_config._load_config()` on each call. File is small and OS-cached — no startup injection needed.
+- **`_ner_claude(text, api_key)`** — calls `claude-haiku-4-5-20251001`, sends text in 8 000-char chunks, parses the JSON response. Returns `[{"text": ..., "type": "NAME"|"ADDRESS"|"ORG"}]`. Thread-safe in-memory cache keyed by `hash(text)`, evicts oldest entry when > 2 000 entries.
+- **Integration points** — `count_pii_types()` and `find_pii_spans_in_text()` both check `_get_claude_ner_config()` before deciding whether to call Claude or spaCy. Claude path uses `re.finditer(re.escape(ent_text), text)` to recover character offsets from Claude's extracted strings.
+- **`GET /POST /api/settings/claude`** — GET returns `{"enabled": bool, "api_key_set": bool}` (never exposes the key). POST accepts `{"enabled": bool, "api_key": "..."}` — `api_key` is optional; omitting or sending `""` leaves the stored key unchanged.
+- **`POST /api/settings/claude/test`** — makes a minimal 8-token API call and returns `{"ok": true}` or `{"ok": false, "error": "..."}`. Used by the Test button in the UI.
+- **`app_config.get_claude_config()` / `save_claude_config(enabled, api_key=None)`** — the two public helpers; `api_key=None` means "keep existing key".
+- **Settings tab `stTabAi` / `stPaneAi`** — `switchSettingsTab('ai')` calls `stLoadAiSettings()` in `sources.js`. Shows enable toggle, masked key input with Show/Hide toggle, Save and Test buttons.
+- **Do not import `anthropic` at module level in any file other than `document_scanner.py`** — the `routes/app_routes.py` test endpoint imports it locally inside the function body so the server starts without the package if needed.
+
 ## Global gotchas
 
 - **Pattern matching in Python** — when using `str.replace()` to patch JS/HTML, whitespace and quote style must match exactly. Use `in` check first and print if not found.

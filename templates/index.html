@@ -616,6 +616,7 @@ document.addEventListener('DOMContentLoaded', applyI18n);
       <button class="settings-tab" id="stTabEmail"    onclick="switchSettingsTab('email')"    data-i18n="m365_settings_tab_email">Email report</button>
       <button class="settings-tab" id="stTabDatabase" onclick="switchSettingsTab('database')" data-i18n="m365_settings_tab_database">Database</button>
       <button class="settings-tab" id="stTabAuditlog" onclick="switchSettingsTab('auditlog')" data-i18n="m365_settings_tab_auditlog">Audit Log</button>
+      <button class="settings-tab" id="stTabAi" onclick="switchSettingsTab('ai')" data-i18n="m365_settings_tab_ai">AI / NER</button>
     </div>
     <div class="settings-body">
 
@@ -876,6 +877,34 @@ document.addEventListener('DOMContentLoaded', applyI18n);
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <div class="settings-pane" id="stPaneAi">
+        <div class="settings-group">
+          <div class="settings-group-title" data-i18n="m365_ai_title">AI-Enhanced NER</div>
+          <p style="margin:0 0 12px;font-size:12px;color:var(--muted)" data-i18n="m365_ai_desc">Use Claude AI instead of spaCy for name, address, and organisation detection. Significantly more accurate on Danish text — especially hyphenated surnames and foreign-origin names. Requires an Anthropic API key; charged per token.</p>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+            <label class="toggle" style="flex-shrink:0">
+              <input type="checkbox" id="aiEnabled">
+              <span class="toggle-track"></span>
+            </label>
+            <span style="font-size:13px" data-i18n="m365_ai_enable">Enable Claude NER</span>
+          </div>
+          <div style="margin-bottom:12px">
+            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px" data-i18n="m365_ai_api_key_label">Anthropic API key</label>
+            <div style="display:flex;gap:6px">
+              <input type="password" id="aiApiKey" placeholder="sk-ant-…" autocomplete="off" style="flex:1;height:26px;padding:0 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:12px;box-sizing:border-box">
+              <button type="button" onclick="stAiToggleKey()" id="aiShowKeyBtn" style="height:26px;padding:0 10px;border:1px solid var(--border);background:none;color:var(--muted);border-radius:6px;font-size:12px;cursor:pointer" data-i18n="m365_ai_show_key">Show</button>
+            </div>
+            <span id="aiKeyStatus" style="font-size:11px;color:var(--muted);margin-top:4px;display:block"></span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button type="button" onclick="stAiSave()" style="height:26px;padding:0 14px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer" data-i18n="btn_save">Save</button>
+            <button type="button" onclick="stAiTest()" style="height:26px;padding:0 14px;background:none;border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:12px;cursor:pointer" data-i18n="m365_ai_test">Test key</button>
+            <span id="aiStatus" style="font-size:12px"></span>
+          </div>
+          <p style="margin:14px 0 0;font-size:11px;color:var(--muted)" data-i18n="m365_ai_model_note">Model: claude-haiku-4-5 · billed at Anthropic token rates · results cached per document.</p>
         </div>
       </div>
 

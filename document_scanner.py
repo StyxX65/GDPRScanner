@@ -118,6 +118,12 @@ except ImportError:
     SPACY_OK = False
 
 try:
+    import anthropic as _anthropic
+    ANTHROPIC_OK = True
+except ImportError:
+    ANTHROPIC_OK = False
+
+try:
     from docx import Document as DocxDocument
     DOCX_OK = True
 except ImportError:
@@ -230,6 +236,91 @@ def load_nlp():
             _face_log(f"[NER] {model_name} failed: {_e} (frozen={_frozen})")
             continue
     return None
+
+
+# ── Claude NER ────────────────────────────────────────────────────────────────
+
+def _get_claude_ner_config() -> "tuple[bool, str]":
+    """Read Claude NER settings from config.json. Small file — OS-cached."""
+    try:
+        from app_config import _load_config
+        cfg = _load_config()
+        return bool(cfg.get("claude_ner")), str(cfg.get("claude_api_key", "") or "")
+    except Exception:
+        return False, ""
+
+
+_CLAUDE_NER_CACHE: "dict[int, list[dict]]" = {}
+_CLAUDE_NER_LOCK = None
+
+
+def _claude_lock():
+    global _CLAUDE_NER_LOCK
+    if _CLAUDE_NER_LOCK is None:
+        import threading as _th
+        _CLAUDE_NER_LOCK = _th.Lock()
+    return _CLAUDE_NER_LOCK
+
+
+def _ner_claude(text: str, api_key: str) -> "list[dict]":
+    """
+    Extract named entities via Claude Haiku. Returns list of
+    {"text": str, "type": "NAME"|"ADDRESS"|"ORG"}.
+    In-memory cache keyed by hash(text); evicts oldest when > 2000 entries.
+    """
+    if not ANTHROPIC_OK or not api_key:
+        return []
+    cache_key = hash(text)
+    lock = _claude_lock()
+    with lock:
+        if cache_key in _CLAUDE_NER_CACHE:
+            return _CLAUDE_NER_CACHE[cache_key]
+
+    try:
+        import json as _json
+        client = _anthropic.Anthropic(api_key=api_key)
+        CHUNK = 8_000
+        entities: "list[dict]" = []
+        for i in range(0, min(len(text), CHUNK * 10), CHUNK):
+            chunk = text[i : i + CHUNK]
+            if not chunk.strip():
+                continue
+            msg = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=512,
+                messages=[{
+                    "role": "user",
+                    "content": (
+                        "Extract personal data from the text. "
+                        "Return ONLY valid JSON: "
+                        "{\"entities\":[{\"text\":\"<exact substring>\","
+                        "\"type\":\"NAME\"|\"ADDRESS\"|\"ORG\"}]}. "
+                        "NAME=person names, ADDRESS=physical addresses, "
+                        "ORG=organisation names. "
+                        "Skip CPR numbers, emails, phones, dates. "
+                        "Return {\"entities\":[]} if none.\n\nTEXT:\n" + chunk
+                    ),
+                }],
+            )
+            raw = msg.content[0].text.strip()
+            if "```" in raw:
+                raw = raw.split("```")[1]
+                if raw.startswith("json\n"):
+                    raw = raw[5:]
+            entities.extend(_json.loads(raw).get("entities", []))
+        result = [e for e in entities
+                  if isinstance(e, dict) and e.get("text") and e.get("type")]
+    except Exception:
+        result = []
+
+    with lock:
+        if len(_CLAUDE_NER_CACHE) >= 2_000:
+            try:
+                del _CLAUDE_NER_CACHE[next(iter(_CLAUDE_NER_CACHE))]
+            except Exception:
+                pass
+        _CLAUDE_NER_CACHE[cache_key] = result
+    return result
 
 
 # ── OCR page cache ───────────────────────────────────────────────────────────
@@ -743,20 +834,27 @@ def count_pii_types(text: str, use_ner: bool = True) -> dict:
         if 1 <= int(reg) <= 9999 and len(acct) >= 6:
             counts["BANK_ACCOUNT"] += 1
 
-    # NER-based counts — only run if model is loaded and text is non-trivial
+    # NER-based counts — Claude (if enabled) else spaCy
     if use_ner and len(text.strip()) > 20:
-        nlp = load_nlp()
-        if nlp:
-            NER_LIMIT = 20_000
-            for chunk_start in range(0, min(len(text), NER_LIMIT * 10), NER_LIMIT):
-                chunk = text[chunk_start:chunk_start + NER_LIMIT]
-                if not chunk.strip():
-                    continue
-                doc = nlp(chunk)
-                for ent in doc.ents:
-                    mapped = NER_REDACT_LABELS.get(ent.label_)
-                    if mapped in counts:
-                        counts[mapped] += 1
+        _claude_on, _claude_key = _get_claude_ner_config()
+        if _claude_on and ANTHROPIC_OK and _claude_key:
+            for ent in _ner_claude(text, _claude_key):
+                _t = ent.get("type")
+                if _t in counts:
+                    counts[_t] += 1
+        else:
+            nlp = load_nlp()
+            if nlp:
+                NER_LIMIT = 20_000
+                for chunk_start in range(0, min(len(text), NER_LIMIT * 10), NER_LIMIT):
+                    chunk = text[chunk_start:chunk_start + NER_LIMIT]
+                    if not chunk.strip():
+                        continue
+                    doc = nlp(chunk)
+                    for ent in doc.ents:
+                        mapped = NER_REDACT_LABELS.get(ent.label_)
+                        if mapped in counts:
+                            counts[mapped] += 1
 
     return counts
 
@@ -902,39 +1000,44 @@ def find_pii_spans_in_text(text: str, use_ner: bool = True) -> list[tuple[int, i
             if _is_name_match(m):
                 spans.append((m.start(), m.end(), "NAME"))
 
-    # NER (names, addresses, orgs)
-    # Cap at 20 000 chars per call — spaCy NER is O(n) but dense tabular text
-    # (e.g. Excel-converted PDFs) can have thousands of tokens per page and stall.
-    #
-    # Context boosting: spaCy needs sentence context to recognise isolated names.
-    # For short text (< 80 chars, e.g. a single cell or line) we prepend a label
-    # so the model sees "Navn: Peter Hansen" instead of bare "Peter Hansen".
-    # Matches are shifted back by the prefix length before being recorded.
+    # NER spans — Claude (if enabled) else spaCy
     if use_ner:
-        nlp = load_nlp()
-        if nlp:
-            NER_LIMIT = 20_000
-            PREFIX = "Navn: "
-            PLEN   = len(PREFIX)
-            # Only inject prefix for short/isolated text
-            if len(text.strip()) < 80:
-                ner_input  = PREFIX + text
-                ner_offset = -PLEN
-            else:
-                ner_input  = text
-                ner_offset = 0
-            for chunk_start in range(0, min(len(ner_input), NER_LIMIT * 10), NER_LIMIT):
-                chunk = ner_input[chunk_start:chunk_start + NER_LIMIT]
-                if not chunk.strip():
+        _claude_on, _claude_key = _get_claude_ner_config()
+        if _claude_on and ANTHROPIC_OK and _claude_key:
+            for ent in _ner_claude(text, _claude_key):
+                _label    = ent.get("type")
+                _ent_text = ent.get("text", "")
+                if not _ent_text or _label not in ("NAME", "ADDRESS", "ORG"):
                     continue
-                doc = nlp(chunk)
-                for ent in doc.ents:
-                    if ent.label_ in NER_REDACT_LABELS:
-                        s = chunk_start + ent.start_char + ner_offset
-                        e = chunk_start + ent.end_char   + ner_offset
-                        if e <= 0:   # entity was entirely within the prefix
-                            continue
-                        spans.append((max(s, 0), e, NER_REDACT_LABELS[ent.label_]))
+                for _m in re.finditer(re.escape(_ent_text), text):
+                    spans.append((_m.start(), _m.end(), _label))
+        else:
+            # spaCy NER — cap at 20 000 chars per call (dense tabular text can stall).
+            # Context boosting: prepend "Navn: " for short/isolated text so spaCy
+            # sees sentence context; shift match positions back by prefix length.
+            nlp = load_nlp()
+            if nlp:
+                NER_LIMIT = 20_000
+                PREFIX = "Navn: "
+                PLEN   = len(PREFIX)
+                if len(text.strip()) < 80:
+                    ner_input  = PREFIX + text
+                    ner_offset = -PLEN
+                else:
+                    ner_input  = text
+                    ner_offset = 0
+                for chunk_start in range(0, min(len(ner_input), NER_LIMIT * 10), NER_LIMIT):
+                    chunk = ner_input[chunk_start:chunk_start + NER_LIMIT]
+                    if not chunk.strip():
+                        continue
+                    doc = nlp(chunk)
+                    for ent in doc.ents:
+                        if ent.label_ in NER_REDACT_LABELS:
+                            s = chunk_start + ent.start_char + ner_offset
+                            e = chunk_start + ent.end_char   + ner_offset
+                            if e <= 0:   # entity was entirely within the prefix
+                                continue
+                            spans.append((max(s, 0), e, NER_REDACT_LABELS[ent.label_]))
 
     # Merge overlapping spans
     spans.sort()

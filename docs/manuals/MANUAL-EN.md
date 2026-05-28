@@ -569,6 +569,23 @@ These options are in the left sidebar under **Indstillinger**:
 
 **OCR language** — selects the Tesseract language pack(s) used when reading scanned PDFs and images. Default: `Danish + English`. Change to a different preset if your documents are in another language (German, Swedish, French presets are available).
 
+### AI / NER tab
+
+Go to **Settings → AI / NER** to configure Claude AI-powered Named Entity Recognition.
+
+By default the scanner uses spaCy (a local machine-learning model) to detect person names, addresses, and organisation names in document text. Enabling Claude NER replaces this with calls to the Claude Haiku API, which is significantly more accurate — especially for Danish hyphenated surnames (e.g. "Hansen-Nielsen"), foreign-origin names, and names that appear without surrounding context (such as isolated cells in a spreadsheet).
+
+**To enable:**
+
+1. Obtain an Anthropic API key from [console.anthropic.com](https://console.anthropic.com).
+2. Paste the key into the **Anthropic API key** field and click **Save**.
+3. Turn on the **Enable Claude NER** toggle and click **Save** again.
+4. Click **Test key** to confirm the key is valid and the API is reachable.
+
+**Cost:** Claude Haiku is charged per token at Anthropic's published rates. A typical document costs less than a fraction of a cent. Scan results are cached per document, so re-scanning the same file never incurs a second charge.
+
+**Fallback:** If the `anthropic` package is not installed or the API key is missing, the scanner automatically falls back to spaCy with no error — the toggle simply has no effect.
+
 **Retention policy** — when enabled, marks items older than the specified number of years as overdue. The fiscal year end setting determines how the cutoff date is calculated:
 
 | Option | Cutoff date calculation |
@@ -625,6 +642,9 @@ Yes. When creating a token link, use the "Items from" and "Items until" date fie
 
 **Where can I see who changed what in the scanner?**  
 Go to **Settings → Audit Log**. Every significant admin action is recorded there with a timestamp, action type, detail, and IP address.
+
+**Will enabling Claude NER increase costs significantly?**  
+For a typical school or municipality scan the cost is negligible — Claude Haiku charges fractions of a cent per document, and results are cached so the same file is never billed twice. A full scan of 10 000 documents typically costs under $1. The biggest gain is on name-dense documents (class lists, case files) where spaCy previously missed many names.
 
 ---
 

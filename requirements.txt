@@ -44,6 +44,9 @@ python-dotenv>=1.0     # .env file fallback for headless SMB credentials
 # ── Scheduler (#19) ──────────────────────────────────────────────────────────
 APScheduler>=3.10      # In-process scheduled scans
 
+# ── AI NER (Claude) ──────────────────────────────────────────────────────────
+anthropic>=0.40.0                  # Claude API client for AI-enhanced NER
+
 # ── Google Workspace scanning (#10) ──────────────────────────────────────────
 google-auth>=2.0                   # Service account + domain-wide delegation
 google-auth-httplib2               # HTTP transport for google-auth

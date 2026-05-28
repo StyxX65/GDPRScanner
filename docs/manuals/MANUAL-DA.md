@@ -569,6 +569,23 @@ Disse indstillinger findes i venstre panel under **Indstillinger**:
 
 **OCR-sprog** — vælger den sprogpakke, Tesseract bruger, når der læses tekst fra scannede PDF-filer og billeder. Standard: `Dansk + Engelsk`. Skift til en anden forudindstilling for dokumenter på tysk, svensk eller fransk.
 
+### Fanen AI / NER
+
+Gå til **Indstillinger → AI / NER** for at konfigurere Claude AI-drevet navnegenkendelse.
+
+Som standard bruger scanneren spaCy (en lokal maskinlæringsmodel) til at genkende personnavne, adresser og organisationsnavne i dokumenttekst. Aktivering af Claude NER erstatter dette med kald til Claude Haiku API, som er betydeligt mere nøjagtig — særligt for danske dobbeltefternavne (f.eks. "Hansen-Nielsen"), fremmedsprogede navne og navne uden omgivende kontekst (f.eks. isolerede celler i et regneark).
+
+**Sådan aktiverer du:**
+
+1. Opret en Anthropic API-nøgle på [console.anthropic.com](https://console.anthropic.com).
+2. Indsæt nøglen i feltet **Anthropic API-nøgle** og klik på **Gem**.
+3. Slå **Aktiver Claude NER**-kontakten til og klik på **Gem** igen.
+4. Klik på **Test nøgle** for at bekræfte, at nøglen er gyldig og API'et er tilgængeligt.
+
+**Pris:** Claude Haiku faktureres pr. token efter Anthropics offentliggjorte priser. Et typisk dokument koster en brøkdel af en øre. Scanningsresultater caches pr. dokument, så genskanning af den samme fil aldrig medfører en ny opkrævning.
+
+**Fallback:** Hvis `anthropic`-pakken ikke er installeret, eller API-nøglen mangler, falder scanneren automatisk tilbage til spaCy uden fejl — kontakten har blot ingen effekt.
+
 **Opbevaringspolitik** — når aktiveret, markeres elementer ældre end det angivne antal år som forældet. Regnskabsårets afslutning bestemmer, hvordan skæringsdatoen beregnes:
 
 | Indstilling | Beregning af skæringsdato |
@@ -625,6 +642,9 @@ Ja. Brug felterne "Elementer fra" og "Elementer til" i delingspanelet, når du o
 
 **Hvor kan jeg se, hvem der har ændret hvad i scanneren?**  
 Gå til **Indstillinger → Revisionslog**. Alle væsentlige administrative handlinger logges med tidsstempel, handlingstype, detaljer og IP-adresse.
+
+**Vil aktivering af Claude NER øge omkostningerne væsentligt?**  
+For en typisk skole- eller kommunescanning er omkostningen ubetydelig — Claude Haiku faktureres i brøkdele af en øre pr. dokument, og resultater caches, så det samme dokument aldrig faktureres to gange. En fuld scanning af 10.000 dokumenter koster typisk under 7 kr. Den største gevinst er i navnetætte dokumenter (klasselister, sagsmapper), hvor spaCy tidligere gik glip af mange navne.
 
 ---
 

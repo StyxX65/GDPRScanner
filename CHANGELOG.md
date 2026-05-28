@@ -7,6 +7,18 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **AI-enhanced NER via Claude** — Named Entity Recognition (names, addresses, organisations) can now be powered by Claude Haiku instead of spaCy. Enable in **Settings → AI / NER**: paste an Anthropic API key, toggle on, click Test to confirm. When enabled, `document_scanner.py` calls the Claude API (`claude-haiku-4-5-20251001`) instead of spaCy for all three scan engines; results are cached in-memory per document (bounded at 2 000 entries) so repeated scans of the same file never re-charge the API. Falls back to spaCy automatically if the key is missing or the `anthropic` package is not installed. API key stored in `config.json` under `claude_api_key`; toggle stored under `claude_ner`. Routes: `GET/POST /api/settings/claude`, `POST /api/settings/claude/test`.
+
+### Fixed
+
+- **Settings modal too narrow for seven tabs** — widened from 640 px to 720 px so all tab labels fit on one line without wrapping.
+
+---
+
 ## [1.6.28] — 2026-05-28
 
 ### Added

@@ -813,9 +813,7 @@
   "role_staff": "Ansat",
   "role_student": "Elev",
   "role_other": "Anden",
-
   "m365_settings_tab_security": "Sikkerhed",
-
   "share_modal_title": "Del resultater",
   "share_modal_desc": "Skrivebeskyttede links lader en DPO eller gennemganger se resultater og tilknytte dispositioner uden adgang til scanningskontroller eller legitimationsoplysninger.",
   "share_new_link": "Nyt link",
@@ -856,7 +854,6 @@
   "share_scope_user_invalid": "Angiv venligst en gyldig e-mailadresse for brugeromfanget.",
   "share_scope_staff": "Ansatte",
   "share_scope_student": "Elever",
-
   "viewer_pin_group_title": "Seerens PIN",
   "viewer_pin_desc": "En numerisk PIN (4–8 cifre), der lader alle åbne <code style=\"font-size:10px\">/view</code> i en browser for skrivebeskyttet adgang til resultater uden et token-link.",
   "viewer_pin_clear": "Ryd PIN",
@@ -867,12 +864,11 @@
   "viewer_pin_saved": "PIN gemt",
   "viewer_pin_clear_confirm": "Fjern seerens PIN? /view vil igen kræve et token-link.",
   "viewer_pin_cleared": "PIN ryddet",
-
   "interface_pin_group_title": "Interface-PIN",
-  "interface_pin_desc": "En numerisk PIN-kode (4\u20138 cifre), der skal indtastes, inden man får adgang til selve scanneren. Seere, der tilgår <code style=\"font-size:10px\">/view</code>, er ikke berørt.",
+  "interface_pin_desc": "En numerisk PIN-kode (4–8 cifre), der skal indtastes, inden man får adgang til selve scanneren. Seere, der tilgår <code style=\"font-size:10px\">/view</code>, er ikke berørt.",
   "interface_pin_clear": "Ryd PIN",
   "interface_pin_is_set": "Interface-PIN er angivet",
-  "interface_pin_not_set_msg": "Ingen PIN angivet \u2014 grænsefladen er åben for alle på netværket",
+  "interface_pin_not_set_msg": "Ingen PIN angivet — grænsefladen er åben for alle på netværket",
   "interface_pin_saved": "PIN gemt",
   "interface_pin_clear_confirm": "Fjern interface-PIN? Scanneren vil herefter være tilgængelig for alle på netværket.",
   "interface_pin_cleared": "PIN ryddet",
@@ -880,5 +876,20 @@
   "interface_pin_login_btn": "Fortsæt",
   "interface_pin_err_incorrect": "Forkert PIN.",
   "interface_pin_err_too_many": "For mange forsøg. Prøv igen om lidt.",
-  "interface_pin_err_network": "Netværksfejl. Prøv igen."
+  "interface_pin_err_network": "Netværksfejl. Prøv igen.",
+  "m365_settings_tab_ai": "AI / NER",
+  "m365_ai_title": "AI-forbedret navnegenkendelse",
+  "m365_ai_desc": "Brug Claude AI i stedet for spaCy til navn-, adresse- og organisationsgenkendelse. Betydeligt mere nøjagtig på dansk tekst — særligt dobbeltefternavne og fremmedsprogede navne. Kræver en Anthropic API-nøgle; faktureres pr. token.",
+  "m365_ai_enable": "Aktiver Claude NER",
+  "m365_ai_api_key_label": "Anthropic API-nøgle",
+  "m365_ai_show_key": "Vis",
+  "m365_ai_hide_key": "Skjul",
+  "m365_ai_key_set": "API-nøgle gemt",
+  "m365_ai_key_not_set": "Ingen API-nøgle gemt",
+  "m365_ai_test": "Test nøgle",
+  "m365_ai_testing": "Tester…",
+  "m365_ai_test_ok": "API-nøgle er gyldig",
+  "m365_ai_test_fail": "Test mislykkedes",
+  "m365_ai_saved": "Gemt",
+  "m365_ai_model_note": "Model: claude-haiku-4-5 · faktureres efter Anthropics token-priser · resultater caches pr. dokument."
 }

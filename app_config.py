@@ -329,6 +329,24 @@ def _save_config(cfg: dict):
         pass
 
 
+# ── Claude NER config ─────────────────────────────────────────────────────────
+
+def get_claude_config() -> dict:
+    cfg = _load_config()
+    return {
+        "enabled":     bool(cfg.get("claude_ner", False)),
+        "api_key_set": bool(cfg.get("claude_api_key", "")),
+    }
+
+
+def save_claude_config(enabled: bool, api_key: "str | None" = None) -> None:
+    cfg = _load_config()
+    cfg["claude_ner"] = bool(enabled)
+    if api_key is not None:
+        cfg["claude_api_key"] = api_key
+    _save_config(cfg)
+
+
 # ── Profile storage (15a) ─────────────────────────────────────────────────────
 _SETTINGS_PATH     = _DATA_DIR / "settings.json"
 _SRC_TOGGLES_PATH  = _DATA_DIR / "src_toggles.json"
