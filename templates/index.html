@@ -757,11 +757,18 @@ document.addEventListener('DOMContentLoaded', applyI18n);
                 <input id="schedMinute" type="number" min="0" max="59" value="0" style="width:50px">
               </div>
             </div>
-            <div class="settings-row">
+            <div class="settings-row" id="schedProfileRow">
               <label data-i18n="m365_sched_profile">Profile</label>
               <select id="schedProfile" style="flex:1;height:26px;padding:0 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);font-size:12px;box-sizing:border-box">
                 <option value="" data-i18n="m365_sched_profile_last">Last saved settings</option>
               </select>
+            </div>
+            <div class="settings-row">
+              <label data-i18n="m365_sched_report_only">Report only</label>
+              <label class="toggle" style="flex:unset"><input type="checkbox" id="schedReportOnly" onchange="schedToggleReportOnly()"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="settings-row" id="schedReportOnlyHint" style="display:none">
+              <span style="font-size:10px;color:var(--muted);line-height:1.4" data-i18n="m365_sched_report_only_hint">Email the latest scan results without running a new scan. Requires scan results in the database.</span>
             </div>
             <div class="settings-row">
               <label data-i18n="m365_sched_auto_email">Email report automatically</label>

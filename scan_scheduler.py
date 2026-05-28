@@ -43,6 +43,7 @@ _DEFAULT_JOB: dict[str, Any] = {
     "profile_id":      "",
     "auto_email":      False,
     "auto_retention":  False,
+    "report_only":     False,
     "retention_years": None,
     "fiscal_year_end": None,
 }
@@ -270,6 +271,35 @@ class ScanScheduler:
             })
 
             from routes import state
+
+            # ── Report-only path: skip scan, email latest DB results ──────────
+            if job_cfg.get("report_only"):
+                if not _m.flagged_items and _m.DB_OK:
+                    try:
+                        _db_inst = _m._get_db()
+                        _db_rows = _db_inst.get_session_items() if _db_inst else []
+                        if _db_rows:
+                            _m.flagged_items[:] = _db_rows
+                    except Exception:
+                        pass
+                if not _m.flagged_items:
+                    raise RuntimeError(
+                        "No scan results available — run a scan first")
+                run["flagged"] = len(_m.flagged_items)
+                run["scanned"] = 0
+                run["status"]  = "completed"
+                try:
+                    self._send_email_report(job_cfg)
+                    run["emailed"] = 1
+                except Exception as _re:
+                    run["status"] = "failed"
+                    run["error"]  = f"Email failed: {_re}"
+                _m.broadcast("scheduler_done", {
+                    "flagged": run["flagged"], "scanned": 0,
+                    "emailed": run["emailed"], "job_name": job_cfg.get("name", ""),
+                })
+                return
+
             # If connector not set, attempt to restore from saved config
             if not state.connector or not state.connector.is_authenticated():
                 try:
@@ -455,11 +485,15 @@ class ScanScheduler:
             raise RuntimeError("No email recipients configured")
         job_name = job_cfg.get("name", "scheduled scan")
         subject  = f"GDPR Scanner — {job_name} {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        if job_cfg.get("report_only"):
+            scan_line = f"Report on latest scan results. {len(_m.flagged_items)} item(s) flagged."
+        else:
+            scan_line = f"Scan completed. {len(_m.flagged_items)} item(s) flagged."
         body = (
             "<html><body style='font-family:Arial,sans-serif;color:#333;padding:24px'>"
             "<h2 style='color:#1F3864'>&#128336; GDPR Scanner — scheduled scan report</h2>"
             f"<p>Job: <strong>{job_name}</strong></p>"
-            f"<p>Scan completed. {len(_m.flagged_items)} item(s) flagged.</p>"
+            f"<p>{scan_line}</p>"
             f"<p>Report attached: {fname}</p></body></html>")
         from routes.email import _send_email_graph
         from routes import state

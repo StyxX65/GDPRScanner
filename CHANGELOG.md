@@ -7,7 +7,7 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
-## [Unreleased]
+## [1.6.28] — 2026-05-28
 
 ### Added
 
@@ -20,6 +20,8 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 - **Built-in file redaction for local files** — a scissor button (`✂`) appears on cards for local DOCX, XLSX, CSV, and TXT files. Clicking it rewrites the file in-place with all detected CPR numbers replaced by `██████-████` (DOCX/XLSX) or `█`-blocks (CSV/TXT), then removes the card from the grid and logs a `"redacted"` disposition. The redaction is atomic: a temp file in the same directory is written first and then moved over the original, so a crash never leaves a half-written file. Implemented in `routes/export.py` (`POST /api/redact_item`) using the existing `document_scanner` redact functions; front-end in `results.js` (`redactItem`) with the button hidden for non-local or unsupported-extension items and for resolved/viewer-mode cards.
 
 - **`DELETE /api/delete_item` route registration fix** — the `delete_item` handler in `routes/export.py` was missing its `@bp.route` decorator, so the endpoint was never registered in Flask's URL map. The route now works correctly.
+
+- **Scheduled report-only email job** — scheduled jobs can now be configured as "report only" (toggle `#schedReportOnly`). When enabled, the job skips the scan entirely and instead emails the latest scan results already in the database. If the in-memory result list is empty (e.g. after a server restart), results are loaded from the DB via `get_session_items()`. M365 authentication is not required for report-only jobs — email is sent Graph-first if authenticated, SMTP otherwise. Jobs fail with a clear error if no scan results are available. The job list card shows a blue "Report only" badge. Setting `report_only=True` in the editor automatically enables "Email report automatically" and dims the Profile field (unused for report-only runs).
 
 - **Compliance audit log** — every significant admin action is now written to an immutable `audit_log` table in the scanner database. Recorded events: profile save/delete, viewer token create/revoke, viewer/interface/admin PIN set/change/clear, file source add/update/delete, scheduler job save/delete, scan start/stop, SMTP config save, single and bulk disposition changes, item delete, and item redact. Each record stores a Unix timestamp, an action key, a human-readable detail string, and the client IP address. Accessible via `GET /api/audit_log` (returns newest-first, max 1000 entries; filterable by `?action=`). Visible in the Settings modal under a new **Audit Log** tab; the table refreshes whenever the tab is opened. The `log_audit_event()` module-level helper in `gdpr_db.py` silently no-ops if the DB is unavailable, so all call sites are safe in test and offline contexts.
 

@@ -51,10 +51,13 @@ function schedRenderJobs() {
     var timeStr = String(j.hour||0).padStart(2,'0') + ':' + String(j.minute||0).padStart(2,'0');
     var desc = freqLabel + ' ' + timeStr;
     var chk = j.enabled ? ' checked' : '';
+    var roBadge = j.report_only
+      ? '<span style="font-size:9px;padding:1px 5px;border-radius:10px;background:#E8F4FD;color:#2980B9;border:1px solid #AED6F1;margin-left:4px">' + t('m365_sched_report_only','Report only') + '</span>'
+      : '';
     return '<div style="display:flex;align-items:center;gap:6px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;background:var(--surface)">'
       + '<label class="toggle" style="flex:unset;margin:0"><input type="checkbox"'+chk+' onchange="schedToggleEnabled(\''+sid+'\',this.checked)"><span class="toggle-slider"></span></label>'
       + '<div style="flex:1;min-width:0">'
-      + '<div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+sname+'</div>'
+      + '<div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+sname+roBadge+'</div>'
       + '<div id="schedDesc_'+sid+'" style="font-size:10px;color:var(--muted)">'+desc+'</div>'
       + '</div>'
       + '<button onclick="schedRunJob(\''+sid+'\')" id="schedRunBtn_'+sid+'" style="background:none;border:1px solid var(--border);color:var(--muted);padding:2px 7px;border-radius:4px;font-size:10px;cursor:pointer" title="Run now">&#9654;</button>'
@@ -89,6 +92,8 @@ function schedAddJob() {
   document.getElementById('schedMinute').value = 0;
   document.getElementById('schedAutoEmail').checked = false;
   document.getElementById('schedAutoRetention').checked = false;
+  document.getElementById('schedReportOnly').checked = false;
+  schedToggleReportOnly();
   var titleEl = document.getElementById('schedEditorTitle');
   if (titleEl) titleEl.textContent = t('m365_sched_editor_new', 'New scheduled scan');
   schedPopulateProfiles('');
@@ -111,6 +116,8 @@ function schedEditJob(id) {
   document.getElementById('schedMinute').value = j.minute != null ? j.minute : 0;
   document.getElementById('schedAutoEmail').checked = !!j.auto_email;
   document.getElementById('schedAutoRetention').checked = !!j.auto_retention;
+  document.getElementById('schedReportOnly').checked = !!j.report_only;
+  schedToggleReportOnly();
   var titleEl = document.getElementById('schedEditorTitle');
   if (titleEl) titleEl.textContent = t('m365_sched_editor_edit', 'Edit scheduled scan');
   schedPopulateProfiles(j.profile_id || '');
@@ -121,6 +128,19 @@ function schedEditJob(id) {
 
 function schedCancelEdit() {
   document.getElementById('schedJobEditor').style.display = 'none';
+}
+
+function schedToggleReportOnly() {
+  var ro = !!(document.getElementById('schedReportOnly') || {}).checked;
+  var profileRow = document.getElementById('schedProfileRow');
+  var hint = document.getElementById('schedReportOnlyHint');
+  if (profileRow) profileRow.style.opacity = ro ? '0.4' : '';
+  if (hint) hint.style.display = ro ? 'block' : 'none';
+  // Enforce auto_email when switching to report-only
+  if (ro) {
+    var ae = document.getElementById('schedAutoEmail');
+    if (ae) ae.checked = true;
+  }
 }
 
 function schedSaveJob() {
@@ -144,6 +164,7 @@ function schedSaveJob() {
     profile_id:     document.getElementById('schedProfile').value,
     auto_email:     document.getElementById('schedAutoEmail').checked,
     auto_retention: document.getElementById('schedAutoRetention').checked,
+    report_only:    document.getElementById('schedReportOnly').checked,
   };
   var st = document.getElementById('schedSaveStatus');
   st.style.color = 'var(--muted)'; st.textContent = 'Saving...';
@@ -437,6 +458,7 @@ window.schedSaveJob = schedSaveJob;
 window.schedDeleteJob = schedDeleteJob;
 window.schedRunJob = schedRunJob;
 window.schedToggleFreqRows = schedToggleFreqRows;
+window.schedToggleReportOnly = schedToggleReportOnly;
 window.schedPopulateProfiles = schedPopulateProfiles;
 window.schedLoadHistory = schedLoadHistory;
 window.schedUpdateSidebarIndicator = schedUpdateSidebarIndicator;

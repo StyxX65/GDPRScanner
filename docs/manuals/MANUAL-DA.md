@@ -1,6 +1,6 @@
 # GDPR Scanner — Brugermanual
 
-Version 1.6.25
+Version 1.6.28
 
 ---
 
@@ -170,6 +170,10 @@ Scan kun elementer ændret efter en bestemt dato. Hurtige forudindstillinger —
 
 **Maks. e-mails pr. bruger** — stop efter at have scannet dette antal e-mails per person (standard 2.000). Øg det, hvis du har brug for fuld dækning.
 
+**Kun CPR-tilstand** — når aktiveret, flagges kun elementer, der indeholder mindst ét kvalificerende CPR-nummer. Elementer, hvis eneste fund er e-mailadresser, telefonnumre, ansigter eller GPS/EXIF-metadata, springes over. Nyttigt, når du ønsker en fokuseret rapport udelukkende om CPR-eksponering.
+
+**OCR-sprog** — vælg den sprogpakke, Tesseract bruger, når der læses tekst fra scannede PDF-filer og billeder. Standard er `Dansk + Engelsk`, som dækker langt de fleste dokumenter. Skift til en anden forudindstilling, hvis dine dokumenter overvejende er på et andet sprog.
+
 ### 4.4 Start scanningen
 
 Klik på den blå **Scan**-knap i topbjælken.
@@ -270,6 +274,7 @@ Forhåndsvisningen viser:
 - Alle fundne CPR-numre og deres kontekst
 - Øvrige personoplysninger registreret (telefon, e-mailadresse, IBAN mv.)
 - Deling og ekstern adgangsinformation
+- **Relaterede dokumenter** — hvis andre elementer i samme scanningssession indeholder ét eller flere af de samme CPR-numre, vises de i et "Relaterede dokumenter"-afsnit. Klik på et element for at åbne dets forhåndsvisning. Det gør det nemmere at spore en persons data på tværs af flere filer eller e-mails.
 
 ### Angiv en disposition
 
@@ -286,6 +291,10 @@ Hvert element har en **Disposition**-rullemenu i forhåndsvisningspanelet. Vælg
 | Slettet | Allerede slettet (angives automatisk ved sletning) |
 
 Klik på **Gem** efter valget. En lille **✓ Gemt**-bekræftelse vises.
+
+### Redigér en lokal fil
+
+For lokale DOCX-, XLSX-, CSV- og TXT-filer vises en **✂**-knap på kortet. Klikker du på den, overskrives filen på stedet, og alle CPR-numre erstattes med `██████-████`-blokke. Kortet fjernes fra gitteret, og handlingen registreres som en `"redacted"`-disposition. Brug denne mulighed, når du ønsker at anonymisere en fil frem for at slette den helt. Knappen er ikke tilgængelig for e-mails, cloud-filer eller SFTP-filer.
 
 ### Massemarkering af flere elementer på én gang
 
@@ -408,9 +417,10 @@ Klik på **🔗**-knappen øverst til højre i topbjælken for at åbne delingsp
    - **Alle roller** — modtageren ser alle fundne elementer.
    - **Ansatte** / **Elever** — modtageren ser kun elementer tilhørende den valgte rollegruppe. Rollefilteret er låst i deres visning.
    - **Bruger** — modtageren ser kun elementer tilhørende en bestemt medarbejder. Vælg personen fra søgefeltet; scanneren matcher automatisk både deres M365- og Google Workspace-e-mailadresser. Brug denne mulighed, når du vil give en enkelt medarbejder adgang til sine egne scanningsresultater.
-3. Vælg en **Udløbsdato** — 7 dage, 30 dage, 90 dage, 1 år eller Aldrig.
-4. Klik på **Opret**. Der genereres et unikt link: `http://host:5100/view?token=…`
-5. Klik på **Kopiér** for at kopiere linket til udklipsholderen, og send det til gennemgangeren.
+3. Angiv eventuelt et **Datointerval** — brug felterne "Elementer fra" og "Elementer til" for at begrænse modtagerens visning til elementer ændret inden for en bestemt periode. Lad begge felter stå tomme for ingen datobegrænsning.
+4. Vælg en **Udløbsdato** — 7 dage, 30 dage, 90 dage, 1 år eller Aldrig.
+5. Klik på **Opret**. Der genereres et unikt link: `http://host:5100/view?token=…`
+6. Klik på **Kopiér** for at kopiere linket til udklipsholderen, og send det til gennemgangeren.
 
 Gennemgangeren åbner linket i en browser. De kan se resultatgitteret (afgrænset til det tilladte rolleomfang) og mærke dispositioner, men kan ikke starte scanninger, ændre indstillinger, se loginoplysninger eller slette elementer.
 
@@ -462,6 +472,7 @@ Gå til **Indstillinger → Planlægger** for at konfigurere automatiske scannin
 7. Aktiver eventuelt:
    - **Send rapport automatisk** — send Excel-rapporten pr. e-mail til dine konfigurerede modtagere efter hver scanning.
    - **Håndhæv opbevaringspolitik** — slet automatisk elementer ældre end din opbevaringspolitik efter hver scanning.
+   - **Kun rapport** — spring scanningen over og send blot de seneste resultater fra databasen som e-mail. Nyttigt til regelmæssige opsummerings-e-mails uden at køre en ny scanning. Når aktiveret, kræves ingen profil, og M365-godkendelse er ikke nødvendig.
 8. Klik på **Gem**.
 
 Planlæggerikatoren i topbjælken viser dato og tidspunkt for den næste planlagte scanning ("Næste: …").
@@ -554,6 +565,10 @@ Disse indstillinger findes i venstre panel under **Indstillinger**:
 
 **Min. CPR-antal pr. fil** — en fil flagges kun, hvis den indeholder mindst dette antal *distinkte* CPR-numre. Standardværdien er 1 (nuværende adfærd). Sæt til 2 for at undgå falske positive ved elevscanninger: en elevs samtykkeerklæring eller indmeldelsesformular indeholder typisk kun elevens eget CPR-nummer, mens en klasselist eller karakteroversigt med flere elevers CPR-numre stadig vil blive rapporteret.
 
+**Kun CPR-tilstand** — når aktiveret, springes elementer uden CPR-numre over (kun e-mailadresser, telefonnumre, ansigter eller GPS/EXIF-data). Brug dette, når du ønsker en rapport, der udelukkende fokuserer på CPR-eksponering.
+
+**OCR-sprog** — vælger den sprogpakke, Tesseract bruger, når der læses tekst fra scannede PDF-filer og billeder. Standard: `Dansk + Engelsk`. Skift til en anden forudindstilling for dokumenter på tysk, svensk eller fransk.
+
 **Opbevaringspolitik** — når aktiveret, markeres elementer ældre end det angivne antal år som forældet. Regnskabsårets afslutning bestemmer, hvordan skæringsdatoen beregnes:
 
 | Indstilling | Beregning af skæringsdato |
@@ -561,6 +576,12 @@ Disse indstillinger findes i venstre panel under **Indstillinger**:
 | Løbende (fra i dag) | I dag minus N år |
 | 31 dec (Bogføringsloven) | Seneste 31. december minus N år |
 | 30 jun / 31 mar | Seneste forekomst af den dato minus N år |
+
+### Fanen Revisionslog
+
+Gå til **Indstillinger → Revisionslog** for at se en uforanderlig log over alle væsentlige administrative handlinger i scanneren. Hver post viser tidspunkt, handlingstype, detaljer og klientens IP-adresse. Registrerede hændelser omfatter: gem/slet profil, opret/tilbagekald viewer-token, PIN-ændringer, tilføj/opdater/slet filkilde, gem/slet planlagt job, start/stop scanning, gem SMTP-konfiguration, dispositionsændringer, slet element og redigér element.
+
+Loggen er skrivebeskyttet og gemmes i scannerdatabasen sammen med scanningsresultaterne. Den er inkluderet i databaseeksporter og kan hjælpe dig med at dokumentere ansvarlighed over for en tilsynsmyndighed.
 
 ---
 
@@ -599,6 +620,12 @@ Ja. Gå til **Indstillinger → Sikkerhed → Interface-PIN** og angiv en 4–8-
 **Kan en gennemganger mærke dispositioner uden adgang til scanningskontrollerne?**  
 Ja. Brug **🔗 Del**-knappen til at oprette et skrivebeskyttet viewer-link eller angiv en Viewer-PIN under Indstillinger → Sikkerhed. Gennemgangeren åbner linket i sin browser og kan gennemse resultater og mærke dispositioner uden at se loginoplysninger, kilder eller scanningsknapper. Se afsnit 10 for detaljer.
 
+**Kan jeg begrænse et delelink til en bestemt tidsperiode?**  
+Ja. Brug felterne "Elementer fra" og "Elementer til" i delingspanelet, når du opretter et token-link. Modtageren vil kun se elementer, hvis ændringsdate falder inden for det angivne interval.
+
+**Hvor kan jeg se, hvem der har ændret hvad i scanneren?**  
+Gå til **Indstillinger → Revisionslog**. Alle væsentlige administrative handlinger logges med tidsstempel, handlingstype, detaljer og IP-adresse.
+
 ---
 
-*GDPR Scanner v1.6.25 — teknisk opsætning og konfiguration: se README.md*
+*GDPR Scanner v1.6.28 — teknisk opsætning og konfiguration: se README.md*

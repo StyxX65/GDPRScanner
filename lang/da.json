@@ -753,6 +753,8 @@
   "m365_sched_after_scan": "Efter scanning",
   "m365_sched_auto_email": "Send rapport automatisk",
   "m365_sched_auto_retention": "Håndhæv opbevaringspolitik",
+  "m365_sched_report_only": "Kun rapport",
+  "m365_sched_report_only_hint": "Send de seneste scanningsresultater uden at køre en ny scanning. Kræver scanningsresultater i databasen.",
   "m365_sched_status": "Status",
   "m365_sched_run_now": "▶ Kør nu",
   "m365_sched_add": "+ Tilføj planlagt scanning",

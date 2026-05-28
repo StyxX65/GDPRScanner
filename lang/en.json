@@ -753,6 +753,8 @@
   "m365_sched_after_scan": "After scan",
   "m365_sched_auto_email": "Email report automatically",
   "m365_sched_auto_retention": "Enforce retention policy",
+  "m365_sched_report_only": "Report only",
+  "m365_sched_report_only_hint": "Email the latest scan results without running a new scan. Requires scan results in the database.",
   "m365_sched_status": "Status",
   "m365_sched_run_now": "▶ Run now",
   "m365_sched_add": "+ Add scheduled scan",

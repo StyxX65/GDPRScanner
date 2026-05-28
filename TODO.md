@@ -111,11 +111,67 @@ Optional session-level authentication gate for the main scanner interface. Set i
 
 ---
 
-### SFTP as a 4th file connector 🔄 In progress
+### OCR language override ✅
+Tesseract language pack(s) used for scanned PDFs and images are now configurable per profile. Option `ocr_lang` (default `dan+eng`). Presets: `dan+eng`, `dan`, `eng`, `dan+eng+deu`, `dan+eng+swe`, `dan+eng+fra`. Threaded through `_scan_bytes`/`_scan_bytes_timeout` → `document_scanner.scan_pdf`/`scan_image` and the spawned PDF-OCR subprocess. OCR result cache keys include `lang` so per-language results are cached independently. Sidebar select `#optOcrLang`; profile editor `#peOptOcrLang`.
+
+---
+
+### CPR-only mode ✅
+New scan option `cpr_only` (default `false`). When enabled, items whose only hits are email addresses, phone numbers, detected faces, or EXIF/GPS metadata are skipped — only items with at least one qualifying CPR number are flagged. Implemented as a compact short-circuit at each engine's flagging gate. Sidebar toggle `#optCprOnly`; profile editor `#peOptCprOnly`.
+
+Also added `min_cpr_count` (default `1`) — minimum number of **distinct** CPR numbers required before a file is flagged. Files with faces or EXIF PII are still flagged regardless of this threshold.
+
+---
+
+### Skip GPS images ✅
+Scan option `skip_gps_images` (default `false`). When enabled, images whose only PII is GPS coordinates are not flagged. GPS data is still stored in the card `exif` field if the item is flagged by another signal. Sidebar toggle `#optSkipGps`; profile editor `#peOptSkipGps`.
+
+---
+
+### CPR cross-referencing (related documents) ✅
+The preview panel now shows a "Related documents" section listing other items in the same scan session that share ≥1 CPR number. Clicking any related item opens its preview. Implemented as a query-time self-join on the existing `cpr_index` table — no new data collection needed. `GET /api/db/related/<item_id>?ref=N` returns rows ordered by shared CPR count descending.
+
+---
+
+### Email preview on checkpoint resume ✅
+A 500-character plain-text body excerpt (`body_excerpt`) is now stored per flagged email at broadcast time and persisted in the DB. When the preview modal opens for an email item, this excerpt is shown immediately without requiring a live Graph/Gmail connection. Enables email preview to work correctly after a server restart and checkpoint resume.
+
+---
+
+### Built-in file redaction ✅
+Local files (`.docx`, `.xlsx`, `.csv`, `.txt`) can be redacted in-place: CPR numbers are replaced by `██████-████` / `█` blocks, the card is removed from the grid, and a `"redacted"` disposition is logged. The ✂ button appears on redactable local file cards (hidden in viewer mode and for resolved items). File is written to a temp path in the same directory before `shutil.move` to avoid cross-device rename failures.
+
+---
+
+### Date-range scoping for viewer tokens ✅
+Viewer tokens can now carry `valid_from` and/or `valid_to` fields (YYYY-MM-DD). `GET /api/db/flagged` filters out items whose `modified` date falls outside the range. All three scope dimensions (role, user, date-range) are independent and combinable. The share modal exposes `#shareValidFrom` / `#shareValidTo` date inputs. Token list shows a green date-range badge when a range is present.
+
+---
+
+### Re-scan diff ✅
+When viewing a history session, items present in the immediately preceding session but absent from the current one are shown below a `.resolved-divider` separator with a green ✓ Resolved badge (opacity dimmed). These resolved items are grid-only — they are not added to `S.flaggedData` and cannot be bulk-selected or exported. The history banner shows a resolved count when applicable.
+
+---
+
+### Tests for Google Workspace scan engine ✅
+19 tests added in `tests/test_google_scan.py` covering: `GET /api/google/scan/users`, `POST /api/google/scan/start`, `POST /api/google/scan/cancel`, and `_run_google_scan` engine internals. Uses synchronous invocation with mocked `broadcast`, `_scan_bytes`, `checkpoint.*`, and `gdpr_db.get_db`. The `clean_google_state` autouse fixture releases `_google_scan_lock` and clears `_google_scan_abort` after each test.
+
+---
+
+### Compliance audit log ✅
+Every significant admin action is written to an immutable `audit_log` table in the scanner database. Recorded events: profile save/delete, viewer token create/revoke, viewer/interface/admin PIN set/change/clear, file source add/update/delete, scheduler job save/delete, scan start/stop, SMTP config save, single and bulk disposition changes, item delete, and item redact. Each record stores a Unix timestamp, action key, human-readable detail, and client IP. `GET /api/audit_log` returns newest-first (max 1000; filterable by `?action=`). Visible in Settings → **Audit Log** tab; refreshes when the tab is opened. `log_audit_event()` helper in `gdpr_db.py` silently no-ops if the DB is unavailable.
+
+---
+
+### Scheduled report-only email job ✅
+Scheduler jobs can now be configured as "report only" (toggle `#schedReportOnly`). The job skips the scan entirely and emails the latest results already in the database. If the in-memory result list is empty (e.g. after a server restart), results are loaded from DB via `get_session_items()`. M365 auth is not required — email is sent Graph-first if authenticated, SMTP otherwise. Jobs fail with a clear error if no scan results are available. The job list card shows a blue "Report only" badge. Enabling report-only automatically checks "Email report automatically" and dims the Profile field (unused for report-only runs).
+
+---
+
+### SFTP as a 4th file connector ✅
 Scan SFTP servers (SSH File Transfer Protocol) alongside local, SMB, and cloud sources. A new `SFTPScanner` class in `sftp_connector.py` implements the same `iter_files()` interface as `FileScanner`, so `run_file_scan()` and everything downstream (SSE, DB, export, scheduling) is unchanged. Auth supports password and SSH private key (+ optional passphrase). Key files stored in `~/.gdprscanner/sftp_keys/`. SFTP sources appear in the file sources panel with a 🔒 icon, are profile-aware, and are included in scheduled scans automatically.
 
-**Files changed:** `sftp_connector.py` (new), `scan_engine.py`, `routes/sources.py`, `app_config.py`, `static/js/sources.js`, `templates/index.html`, `lang/en|da|de.json`, `routes/export.py`, `requirements.txt`  
-**Size:** Medium · **Priority:** Medium
+**Files changed:** `sftp_connector.py` (new), `scan_engine.py`, `routes/sources.py`, `app_config.py`, `static/js/sources.js`, `templates/index.html`, `lang/en|da|de.json`, `routes/export.py`, `requirements.txt`
 
 ---
 

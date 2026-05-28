@@ -753,6 +753,8 @@
   "m365_sched_after_scan": "Nach dem Scan",
   "m365_sched_auto_email": "Bericht automatisch senden",
   "m365_sched_auto_retention": "Aufbewahrungsrichtlinie durchsetzen",
+  "m365_sched_report_only": "Nur Bericht",
+  "m365_sched_report_only_hint": "Letzte Scanergebnisse senden, ohne einen neuen Scan durchzuführen. Erfordert Scanergebnisse in der Datenbank.",
   "m365_sched_status": "Status",
   "m365_sched_run_now": "▶ Jetzt ausführen",
   "m365_sched_add": "+ Geplante Suche hinzufügen",

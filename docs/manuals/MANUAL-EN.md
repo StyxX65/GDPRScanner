@@ -1,6 +1,6 @@
 # GDPR Scanner — User Manual
 
-Version 1.6.25
+Version 1.6.28
 
 ---
 
@@ -170,6 +170,10 @@ Only scan items modified after a certain date. Quick presets — **1 år**, **2 
 
 **Max emails per user** — stop after scanning this many emails per person (default 2,000). Increase if you need complete coverage.
 
+**CPR-only mode** — when enabled, only items containing at least one qualifying CPR number are flagged. Items whose only hits are email addresses, phone numbers, detected faces, or EXIF/GPS metadata are skipped. Useful when you want a focused CPR-only report without noise from other data types.
+
+**OCR language** — choose the language pack(s) Tesseract uses when reading text from scanned PDFs and images. The default `Danish + English` covers the vast majority of documents. Switch to a different preset if your documents are predominantly in another language.
+
 ### 4.4 Start the Scan
 
 Click the blue **Scan** button in the top bar.
@@ -270,6 +274,7 @@ The preview shows:
 - All CPR numbers found and their context
 - Other personal data detected (phone, email address, IBAN, etc.)
 - Sharing and external-access information
+- **Related documents** — if other items in the same scan session share one or more CPR numbers with this item, a "Related documents" section lists them. Click any row to open that item's preview. This helps you track the same person's data across multiple files or emails.
 
 ### Setting a disposition
 
@@ -285,7 +290,11 @@ Every item has a **Disposition** dropdown in the preview panel. Choose one of:
 | Privat brug — uden for scope | Personal item, not in scope for GDPR processing |
 | Slettet | Already deleted (set automatically when you delete an item) |
 
-After choosing, click **Gem**. A small **✓ Gemt** confirmation appears.
+After choosing, click **Save**. A small **✓ Saved** confirmation appears.
+
+### Redacting a local file
+
+For local DOCX, XLSX, CSV, and TXT files a **✂** button appears in the card. Clicking it rewrites the file in-place, replacing all CPR numbers with `██████-████` blocks. The card is removed from the grid and the action is logged as a `"redacted"` disposition. This is useful when you want to sanitise a file rather than delete it entirely. The button is not available for email items, cloud files, or SFTP files.
 
 ### Bulk tagging multiple items at once
 
@@ -408,9 +417,10 @@ Click the **🔗** button in the top-right of the top bar to open the Share pane
    - **All roles** — the recipient sees all flagged items.
    - **Ansatte** / **Elever** — the recipient sees only items belonging to that role group. The role filter is locked in their view.
    - **User** — the recipient sees only the items belonging to a specific employee. Select the person from the search box; the scanner matches both their M365 and Google Workspace email addresses automatically. Use this when you want to give an individual employee access to their own scan results.
-3. Choose an **Expiry** — 7 days, 30 days, 90 days, 1 year, or Never.
-4. Click **Create**. A unique link is generated: `http://host:5100/view?token=…`
-5. Click **Copy** to copy the link to your clipboard, then send it to the reviewer.
+3. Optionally set a **Date range** — use the "Items from" and "Items until" date fields to limit the recipient to items modified within a specific period. This lets you, for example, create a link covering only last year's scan results. Leave both fields blank for no date restriction.
+4. Choose an **Expiry** — 7 days, 30 days, 90 days, 1 year, or Never.
+5. Click **Create**. A unique link is generated: `http://host:5100/view?token=…`
+6. Click **Copy** to copy the link to your clipboard, then send it to the reviewer.
 
 The reviewer opens the link in any browser. They see the results grid (filtered to their permitted scope) and can tag dispositions but cannot start scans, change settings, view credentials, or delete items.
 
@@ -462,6 +472,7 @@ Go to **Settings → Planlægger** to configure automatic scans.
 7. Optionally enable:
    - **Send rapport automatisk** — email the Excel report to your configured recipients after each scan.
    - **Håndhæv opbevaringspolitik** — automatically delete items older than your retention policy after each scan.
+   - **Report only** — skip the scan entirely and just email the latest results already in the database. Useful for sending a regular summary email without running a new scan. When enabled, no profile is needed and M365 authentication is not required.
 8. Click **Gem** (Save).
 
 The scheduler indicator in the top bar shows the date and time of the next scheduled scan ("Next: …").
@@ -554,6 +565,10 @@ These options are in the left sidebar under **Indstillinger**:
 
 **Min. CPR count per file** — only flag a file if it contains at least this many *distinct* CPR numbers. The default is 1 (current behaviour). Setting it to 2 avoids false positives in student scans: a student's own consent form or registration document typically contains only their own CPR number, while a class list or grade sheet containing multiple students' CPRs will still be reported.
 
+**CPR-only mode** — when enabled, items with no CPR numbers (only email addresses, phone numbers, faces, or GPS/EXIF data) are skipped entirely. Use this when you want a lean report focused exclusively on CPR exposure.
+
+**OCR language** — selects the Tesseract language pack(s) used when reading scanned PDFs and images. Default: `Danish + English`. Change to a different preset if your documents are in another language (German, Swedish, French presets are available).
+
 **Retention policy** — when enabled, marks items older than the specified number of years as overdue. The fiscal year end setting determines how the cutoff date is calculated:
 
 | Option | Cutoff date calculation |
@@ -561,6 +576,12 @@ These options are in the left sidebar under **Indstillinger**:
 | Rolling (fra i dag) | Today minus N years |
 | 31 dec (Bogføringsloven) | Last 31 December minus N years |
 | 30 jun / 31 mar | Last occurrence of that date minus N years |
+
+### Audit Log tab
+
+Go to **Settings → Audit Log** to view an immutable log of all significant admin actions performed in the scanner. Each entry shows the time, action type, detail, and client IP address. Recorded events include: profile save/delete, viewer token create/revoke, PIN changes, file source add/update/delete, scheduler job save/delete, scan start/stop, SMTP config save, dispositions, item delete, and item redact.
+
+The log is read-only and is stored in the scanner database alongside scan results. It is included in database exports and can help you demonstrate accountability to a supervisory authority.
 
 ---
 
@@ -599,6 +620,12 @@ Yes. Go to **Settings → Security → Interface PIN** and set a 4–8 digit PIN
 **Can a reviewer tag dispositions without access to the scan controls?**  
 Yes. Use the **🔗 Share** button to create a read-only viewer link or set a Viewer PIN in Settings → Security. The reviewer opens the link in their browser and can browse results and tag dispositions without seeing credentials, sources, or scan buttons. See section 10 for details.
 
+**Can I limit a reviewer's link to a specific time period?**  
+Yes. When creating a token link, use the "Items from" and "Items until" date fields to restrict the link to items modified within that range. The reviewer will only see items whose modification date falls within the window you specified.
+
+**Where can I see who changed what in the scanner?**  
+Go to **Settings → Audit Log**. Every significant admin action is recorded there with a timestamp, action type, detail, and IP address.
+
 ---
 
-*GDPR Scanner v1.6.25 — for technical setup and configuration see README.md*
+*GDPR Scanner v1.6.28 — for technical setup and configuration see README.md*
