@@ -50,16 +50,16 @@ When items are found, you can review them, decide what to do with each one (keep
 When you open the scanner, the screen is divided into three areas:
 
 ```
-┌─────────────────┬──────────────────────────────────────────┐
+┌─────────────────┬───────────────────────────────────────────┐
 │                 │  Top bar: Scan button, profiles, actions  │
-│   Left sidebar  ├──────────────────────────────────────────┤
+│   Left sidebar  ├───────────────────────────────────────────┤
 │                 │                                           │
 │  - Sources      │         Results / scan progress           │
 │  - Options      │                                           │
 │  - Accounts     │                                           │
-│  - Stats        ├──────────────────────────────────────────┤
+│  - Stats        ├───────────────────────────────────────────┤
 │                 │               Activity log                │
-└─────────────────┴──────────────────────────────────────────┘
+└─────────────────┴───────────────────────────────────────────┘
 ```
 
 **Left sidebar** — choose what to scan and how.  

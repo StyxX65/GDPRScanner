@@ -50,16 +50,16 @@ Når der er fundet elementer, kan du gennemgå dem, beslutte hvad der skal ske m
 Når du åbner scanneren, er skærmen inddelt i tre områder:
 
 ```
-┌─────────────────┬──────────────────────────────────────────┐
-│                 │  Topbjælke: Scan-knap, profiler, handlinger│
-│   Venstre panel ├──────────────────────────────────────────┤
-│                 │                                           │
-│  - Kilder       │         Resultater / scanningsforløb      │
-│  - Indstillinger│                                           │
-│  - Konti        │                                           │
-│  - Statistik    ├──────────────────────────────────────────┤
-│                 │               Aktivitetslog               │
-└─────────────────┴──────────────────────────────────────────┘
+┌──────────────────┬──────────────────────────────────────────────┐
+│                  │  Topbjælke: Scan-knap, profiler, handlinger  │
+│   Venstre panel  ├──────────────────────────────────────────────┤
+│                  │                                              │
+│  - Kilder        │         Resultater / scanningsforløb         │
+│  - Indstillinger │                                              │
+│  - Konti         │                                              │
+│  - Statistik     ├──────────────────────────────────────────────┤
+│                  │               Aktivitetslog                  │
+└──────────────────┴──────────────────────────────────────────────┘
 ```
 
 **Venstre panel** — vælg hvad der skal scannes og hvordan.  
