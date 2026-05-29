@@ -226,7 +226,17 @@ def _run_google_scan(options: dict):
 
     def _check_abort():
         if _scan_abort.is_set():
-            broadcast("scan_cancelled", {"completed": total_scanned})
+            # Emit google_scan_done (not scan_cancelled) so that the frontend
+            # google_scan_done handler can decide whether to close the SSE based
+            # on whether other scan types (M365, file) are still running.
+            # scan_cancelled would unconditionally close the SSE connection,
+            # dropping events from a concurrently running new scan.
+            broadcast("google_scan_done", {
+                "flagged_count":   total_flagged,
+                "total_scanned":   total_scanned,
+                "elapsed_seconds": round(_time.monotonic() - t_start, 1),
+                "cancelled":       True,
+            })
             return True
         return False
 
@@ -355,19 +365,23 @@ def _run_google_scan(options: dict):
                     except Exception as delta_err:
                         broadcast("scan_phase", {"phase": f"{user_email} — Google Drive (delta token invalid — full scan)"})
                         logger.warning("[gdrive delta] %s: %s — falling back to full scan", user_email, delta_err)
-                        drive_items = list(conn.iter_drive_files(user_email, max_files=max_files, max_file_mb=max_file_mb))
+                        # Record start token BEFORE iterating so the next delta starts from here
                         try:
                             _new_drive_tokens[delta_key] = conn.get_drive_start_token(user_email)
                         except Exception:
                             pass
+                        # Use a lazy generator (no list()) so _check_abort() fires between items
+                        drive_items = conn.iter_drive_files(user_email, max_files=max_files, max_file_mb=max_file_mb)
                 else:
                     broadcast("scan_phase", {"phase": f"{user_email} — Google Drive"})
-                    drive_items = list(conn.iter_drive_files(user_email, max_files=max_files, max_file_mb=max_file_mb))
+                    # Record start token BEFORE iterating so the next delta starts from here
                     if delta_enabled:
                         try:
                             _new_drive_tokens[delta_key] = conn.get_drive_start_token(user_email)
                         except Exception:
                             pass
+                    # Use a lazy generator (no list()) so _check_abort() fires between items
+                    drive_items = conn.iter_drive_files(user_email, max_files=max_files, max_file_mb=max_file_mb)
 
                 for meta, data in drive_items:
                     if _check_abort():

@@ -579,6 +579,22 @@ function startScan(resume) {
   S._userStartedScan = true;
   _ensureSSE();
 
+  // Revert to idle if every scan type that was supposed to start got rejected.
+  // Called after each 409 so we don't leave the UI stuck in "running" state
+  // while the previous scan's thread finishes winding down.
+  function _onScanConflict(label) {
+    log(label + ' ' + t('scan_already_running_err', 'already running — previous scan still stopping. Please wait and try again.'), 'err');
+    if (label === 'm365')    S._m365ScanRunning    = false;
+    if (label === 'file')    S._fileScanRunning    = false;
+    if (label === 'google')  S._googleScanRunning  = false;
+    if (!S._m365ScanRunning && !S._googleScanRunning && !S._fileScanRunning) {
+      document.getElementById('scanBtn').disabled = false;
+      document.getElementById('stopBtn').style.display = 'none';
+      if (S.es) { S.es.close(); S.es = null; }
+      S._userStartedScan = false;
+    }
+  }
+
   setTimeout(() => {
     // Fire M365 scan if any M365 sources are selected
     if (sources.length > 0) {
@@ -587,7 +603,7 @@ function startScan(resume) {
         body: JSON.stringify({sources, user_ids, options, resume: !!resume,
                               profile_id: S._activeProfileId || null})
       }).then(r => {
-        if (r.status === 409) { log('Scan already running', 'err'); }
+        if (r.status === 409) { _onScanConflict('m365'); }
       }).catch(e => { log('Scan start failed: ' + e, 'err'); });
     }
 
@@ -608,6 +624,8 @@ function startScan(resume) {
           scan_emails:      options.scan_emails      || false,
           scan_phones:      options.scan_phones      || false,
         }))
+      }).then(r => {
+        if (r.status === 409) { _onScanConflict('file'); }
       }).catch(e => { log('File scan error: ' + e, 'err'); });
     });
 
@@ -630,7 +648,7 @@ function startScan(resume) {
           options:     options
         })
       }).then(r => {
-        if (r.status === 409) { log('Google scan already running', 'err'); }
+        if (r.status === 409) { _onScanConflict('google'); }
       }).catch(e => { log('Google scan error: ' + e, 'err'); });
     }
 
