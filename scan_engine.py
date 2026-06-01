@@ -184,6 +184,8 @@ def run_file_scan(source: dict):
     min_cpr_count   = max(1, int(source.get("min_cpr_count", 1)))
     scan_emails     = bool(source.get("scan_emails",  False))
     scan_phones     = bool(source.get("scan_phones",  False))
+    cpr_only        = bool(source.get("cpr_only", False))
+    ocr_lang        = str(source.get("ocr_lang", "dan+eng")) or "dan+eng"
     max_mb          = int(source.get("max_file_mb", 50))
 
     if source_kind == "sftp":

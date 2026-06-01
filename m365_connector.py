@@ -39,9 +39,11 @@ except ImportError:
 GRAPH_BASE = "https://graph.microsoft.com/v1.0"
 
 # Delegated scopes — used when signing in as a specific user (device code flow)
+# Files.ReadWrite.All is a superset of Files.Read.All; required for in-place
+# OneDrive/SharePoint/Teams redaction (PUT /drives/{id}/items/{id}/content).
 SCOPES = [
     "Mail.Read",
-    "Files.Read.All",
+    "Files.ReadWrite.All",
     "Sites.Read.All",
     "Team.ReadBasic.All",
     "ChannelMessage.Read.All",
@@ -82,8 +84,9 @@ class M365PermissionError(M365Error):
             f"to access this resource.\n"
             f"  Path: {path}\n"
             f"  Fix: the signed-in user must be a Global/Exchange Admin, OR an admin must "
-            f"grant Application permissions (Mail.Read, Files.Read.All, Sites.Read.All) "
-            f"in Azure → App registrations → API permissions → Grant admin consent."
+            f"grant Application permissions (Mail.Read, Files.ReadWrite.All, Sites.Read.All) "
+            f"in Azure → App registrations → API permissions → Grant admin consent.\n"
+            f"  Note: Files.ReadWrite.All (not Files.Read.All) is required for file redaction."
         )
 
 

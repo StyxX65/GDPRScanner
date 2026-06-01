@@ -623,6 +623,8 @@ function startScan(resume) {
           min_cpr_count:    options.min_cpr_count   || 1,
           scan_emails:      options.scan_emails      || false,
           scan_phones:      options.scan_phones      || false,
+          cpr_only:         options.cpr_only         || false,
+          ocr_lang:         options.ocr_lang         || 'dan+eng',
         }))
       }).then(r => {
         if (r.status === 409) { _onScanConflict('file'); }

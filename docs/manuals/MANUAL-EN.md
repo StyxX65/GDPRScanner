@@ -310,6 +310,8 @@ The button is **not** available for email items (Exchange/Gmail) or viewer mode.
 
 > **PDF security note:** PDF redaction uses physical removal — the CPR number text is erased from the PDF data stream, not just painted over with a black box. A reader cannot recover the original text by selecting under the redaction or inspecting the file programmatically. Image-based (scanned) PDFs are also supported: the scanner locates the CPR number on the page image via OCR and physically overwrites that region.
 
+> **OneDrive / SharePoint / Teams note:** Redaction writes the modified file back via the Microsoft Graph API and requires the `Files.ReadWrite.All` permission. The scanner now requests this permission automatically during sign-in. If you authenticated before this update, sign out and sign back in (Settings → Microsoft 365 → Sign out) so the scanner obtains a new token with write access. For app-only (service principal) setups, a Global Admin must grant the `Files.ReadWrite.All` application permission in Azure → App registrations → API permissions → Grant admin consent.
+
 > **Google Drive note:** Drive redaction requires the `drive` scope on the service account's domain-wide delegation grant (not just `drive.readonly`). If redaction fails with a permission error, ask your Google Workspace admin to add the `https://www.googleapis.com/auth/drive` scope to the service account delegation in the Admin Console.
 
 > **SFTP note:** SFTP redaction is only available for items found in the current scan session. If you are browsing historical results, re-run the scan first.

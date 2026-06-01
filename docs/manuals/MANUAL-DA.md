@@ -310,6 +310,8 @@ Knappen er **ikke** tilgængelig for e-mail-elementer (Exchange/Gmail) eller i v
 
 > **PDF-sikkerhedsnote:** PDF-redigering sker fysisk — CPR-nummerteksten slettes fra PDF-datastrømmen og er ikke blot dækket over med en sort boks. En læser kan ikke gendanne den oprindelige tekst ved at markere under redigeringen eller ved programmatisk inspektion af filen. Billedbaserede (scannede) PDF-filer understøttes også: scanneren lokaliserer CPR-nummeret på sidebilledet via OCR og overskriver det pågældende område fysisk.
 
+> **OneDrive / SharePoint / Teams-note:** Redigering skriver den ændrede fil tilbage via Microsoft Graph API og kræver tilladelsen `Files.ReadWrite.All`. Scanneren anmoder nu automatisk om denne tilladelse ved login. Hvis du har godkendt før denne opdatering, skal du logge ud og logge ind igen (Indstillinger → Microsoft 365 → Log ud), så scanneren henter et nyt token med skriveadgang. Ved app-only-opsætninger (serviceprincipal) skal en Global Administrator tildele applikationstilladelsen `Files.ReadWrite.All` i Azure → App-registreringer → API-tilladelser → Giv administratorsamtykke.
+
 > **Google Drev-note:** Redigering i Google Drev kræver `drive`-scopet på servicekontoens domain-wide delegation (ikke blot `drive.readonly`). Hvis redigeringen fejler med en rettighedsfejl, bedes du kontakte din Google Workspace-administrator for at tilføje scopet `https://www.googleapis.com/auth/drive` til servicekontoens delegation i Admin Console.
 
 > **SFTP-note:** SFTP-redigering er kun tilgængelig for elementer fundet i den aktuelle scansession. Gennemfør en ny scanning, hvis du gennemser historiske resultater.

@@ -340,6 +340,16 @@ class ScanScheduler:
                 # Fire file scan for each file source in the profile
                 # file_sources may be IDs (strings) or full dicts — resolve either
                 _all_file_sources = {s["id"]: s for s in (_m._load_file_sources() or []) if isinstance(s, dict)}
+                # Merge per-scan options from the profile so the file scan honours
+                # cpr_only/ocr_lang/scan_photos/etc. (the browser does this in
+                # startScan(); the scheduler must mirror it).
+                _profile_opts = options.get("options", {}) or {}
+                _FS_OPT_KEYS = (
+                    "scan_photos", "skip_gps_images", "min_cpr_count",
+                    "scan_emails", "scan_phones", "cpr_only", "ocr_lang",
+                    "max_file_mb",
+                )
+                _fs_extra = {k: _profile_opts[k] for k in _FS_OPT_KEYS if k in _profile_opts}
                 for fs in options.get("file_sources", []):
                     # Resolve string IDs to full source dicts
                     if isinstance(fs, str):
@@ -347,6 +357,7 @@ class ScanScheduler:
                     if not isinstance(fs, dict) or not fs.get("path"):
                         logger.warning("[scheduler] skipping invalid file source: %r", fs)
                         continue
+                    fs = {**fs, **_fs_extra}
                     try:
                         _m.run_file_scan(fs)
                     except Exception as _fse:
