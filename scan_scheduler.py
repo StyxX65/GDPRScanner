@@ -473,7 +473,7 @@ class ScanScheduler:
                 logger.info("[scheduler]   Profile '%s': sources=%s, users=%d",
                             p.get("name", pid), opts["sources"], len(opts.get("user_ids", [])))
                 _m.broadcast("scheduler_debug", {
-                    "msg": f"Using profile '{p.get('name',pid)}': sources={opts['sources']}, users={len(opts.get("user_ids",[]))}"})
+                    "msg": f"Using profile '{p.get('name',pid)}': sources={opts['sources']}, users={len(opts.get('user_ids',[]))}"})
                 return opts
             logger.info("[scheduler]   Profile '%s' not found — using saved settings", pid)
             _m.broadcast("scheduler_debug", {"msg": f"Profile id '{pid}' not found — falling back to saved settings"})
