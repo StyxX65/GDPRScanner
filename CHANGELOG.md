@@ -23,6 +23,8 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ### Fixed
 
+- **Cards not shown after browser refresh** — when the browser reconnected to the SSE stream after a completed scan, the `scan_phase` events in the replay buffer temporarily set `S._m365ScanRunning = true` (all running flags start at `false` after a page reload). The watchdog's `loadHistorySession` call fired in this window and bailed on the stale flag; once `scan_done` cleared the flag, `_initialStatusChecked` was already `true` so `loadHistorySession` was never retried. Fixed by having the `sse_replay_done` handler retry `loadHistorySession(null)` when no scan is running and `S._historyRefScanId` is still `null` after replay.
+
 - **Settings modal too narrow for seven tabs** — widened from 640 px to 720 px so all tab labels fit on one line without wrapping.
 
 ---

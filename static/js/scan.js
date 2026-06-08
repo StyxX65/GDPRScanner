@@ -484,9 +484,15 @@ function _attachScanListeners(source) {
     window.invalidateHistoryCache?.();
   });
   // sse_replay_done marks end of buffer replay — log a note so the user knows
-  // earlier events above were replayed from an already-running scan
+  // earlier events above were replayed from an already-running scan.
+  // Also retry loadHistorySession if it bailed during replay: scan_phase events
+  // from a completed scan's replay temporarily set running flags to true, causing
+  // the watchdog's loadHistorySession call to bail before scan_done clears them.
   source.addEventListener('sse_replay_done', function() {
     log(t('m365_sse_replay_note', 'Live log resumed \u2014 earlier entries replayed from running scan.'));
+    if (!S._m365ScanRunning && !S._googleScanRunning && !S._fileScanRunning && !S._historyRefScanId) {
+      window.loadHistorySession?.(null);
+    }
   });
 }
 
