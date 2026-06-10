@@ -2,18 +2,23 @@
 // Share button → modal to create, copy, and revoke read-only viewer links.
 import { S } from './state.js';
 
+let _shareBaseUrl = null;   // cached so Copy buttons can build the URL synchronously
+
 async function _getShareBaseUrl() {
   // Use the machine's LAN IP so links work for remote users, not just localhost.
+  if (_shareBaseUrl) return _shareBaseUrl;
   try {
     const r = await fetch('/api/local_ip');
     if (r.ok) {
       const d = await r.json();
       if (d.ip && d.ip !== '127.0.0.1') {
-        return 'http://' + d.ip + ':' + window.location.port;
+        _shareBaseUrl = 'http://' + d.ip + ':' + window.location.port;
+        return _shareBaseUrl;
       }
     }
   } catch(e) {}
-  return window.location.origin;
+  _shareBaseUrl = window.location.origin;
+  return _shareBaseUrl;
 }
 
 // ── User autocomplete for Share modal ────────────────────────────────────────
@@ -269,25 +274,35 @@ async function copyTokenLink(token, btn) {
 }
 
 function _copyText(text, btn) {
-  navigator.clipboard.writeText(text).then(() => {
+  const done = () => {
     const orig = btn.textContent;
     btn.textContent = t('share_copied', 'Copied!');
     setTimeout(() => { btn.textContent = orig; }, 1800);
-  }).catch(() => {
-    // Fallback for HTTP contexts
+  };
+  // Fallback for HTTP contexts, where navigator.clipboard is undefined
+  // (the Clipboard API only exists in secure contexts — HTTPS or localhost).
+  const fallback = () => {
+    let ok = false;
     try {
       const ta = document.createElement('textarea');
       ta.value = text;
       ta.style.position = 'fixed'; ta.style.opacity = '0';
+      ta.setAttribute('readonly', '');
       document.body.appendChild(ta);
+      ta.focus();
       ta.select();
-      document.execCommand('copy');
+      ok = document.execCommand('copy');
       document.body.removeChild(ta);
-      const orig = btn.textContent;
-      btn.textContent = t('share_copied', 'Copied!');
-      setTimeout(() => { btn.textContent = orig; }, 1800);
-    } catch(_) {}
-  });
+    } catch(_) { ok = false; }
+    if (ok) done();
+    // Last resort: show the link in a prompt so it can be copied manually.
+    else prompt(t('share_copy_link_prompt', 'Copy link:'), text);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(fallback);
+  } else {
+    fallback();
+  }
 }
 
 async function revokeToken(token, rowEl) {
@@ -475,6 +490,7 @@ window.openShareModal       = openShareModal;
 window.closeShareModal      = closeShareModal;
 window.createShareLink      = createShareLink;
 window.copyShareLink        = copyShareLink;
+window._copyText            = _copyText;
 window.copyTokenLink        = copyTokenLink;
 window.revokeToken          = revokeToken;
 window.stLoadViewerPinStatus  = stLoadViewerPinStatus;

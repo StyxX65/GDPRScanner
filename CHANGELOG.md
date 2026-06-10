@@ -9,6 +9,10 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+### Fixed
+
+- **Copy buttons did nothing over plain HTTP** — the share modal's "Copy" buttons (new link + active links) and the log panel's copy button called `navigator.clipboard.writeText()` directly. The Clipboard API only exists in secure contexts (HTTPS or localhost), so when the scanner is reached at `http://<LAN-IP>:5100` the call threw synchronously and the intended `execCommand` fallback never ran — the button silently did nothing. `_copyText()` in `viewer.js` now feature-detects the API, falls back to `document.execCommand('copy')`, and as a last resort shows the link in a `prompt()` for manual copying; `log.js` reuses the same helper via `window._copyText`. `_getShareBaseUrl()` now caches the LAN-IP lookup so the token-list Copy buttons copy synchronously within the click gesture (required for `execCommand`).
+
 ---
 
 ## [1.7.1] — 2026-06-10

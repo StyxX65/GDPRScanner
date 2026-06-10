@@ -161,10 +161,9 @@ function copyLog() {
   document.querySelectorAll('#logPanel .log-line:not(#logLive)').forEach(function(d) {
     lines.push(d.textContent);
   });
-  navigator.clipboard.writeText(lines.join('\n')).then(function() {
-    const btn = document.querySelector('.log-copy-btn');
-    if (btn) { btn.textContent = '✓ Copied'; setTimeout(function(){ btn.textContent = '⎘ Copy'; }, 1500); }
-  }).catch(function() {});
+  const btn = document.querySelector('.log-copy-btn');
+  // _copyText (viewer.js) handles HTTP contexts where navigator.clipboard is undefined.
+  if (btn) window._copyText(lines.join('\n'), btn);
 }
 
 function _restoreLog() {

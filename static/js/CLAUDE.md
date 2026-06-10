@@ -70,6 +70,8 @@ Never revert to `!!window._googleConnected` / `_fileSources.length > 0` — thos
 
 ## Gotchas
 
+- **`navigator.clipboard` is `undefined` over plain HTTP** — the app is normally reached at `http://<LAN-IP>:5100`, a non-secure context where the Clipboard API does not exist, so calling `navigator.clipboard.writeText(...)` throws synchronously (a `.catch()` on it never runs). Always copy via `window._copyText(text, btn)` (defined in `viewer.js`) — it feature-detects the API and falls back to `document.execCommand('copy')`, then to a `prompt()`. Because `execCommand` needs a user gesture, don't `await` network calls between the click and the copy; `_getShareBaseUrl()` caches its result for this reason.
+
 - **`scheduler.js` strings must use `t()`** — frequency labels, "Next", "Running...", "Disabled", empty-job text, and empty-history text all have translation keys. Do not hard-code English strings in `schedLoad()` or `schedRenderJobs()`.
 - **Scheduler UI — `schedToggleReportOnly()`** — dims the Profile row, shows/hides `#schedReportOnlyHint`, and forces `#schedAutoEmail` checked. Called from the checkbox `onchange` handler and at the start of `schedAddJob()` / `schedEditJob()`.
 - **Profile editor accounts** — default to unchecked. Only explicitly saved `user_ids` are checked.
