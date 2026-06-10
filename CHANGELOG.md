@@ -9,6 +9,10 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+### Fixed
+
+- **Share links now respect a reverse proxy** — `_getShareBaseUrl()` rewrote every copied share link to `http://<LAN-IP>:5100` (via `/api/local_ip`), which would bypass TLS when the scanner sits behind a reverse proxy (Zoraxy, Caddy, nginx, …): a DPO opening the link would silently fall back to plain HTTP. The LAN-IP rewrite now only applies in the case it was built for — browsing the app at `localhost` over HTTP, where `window.location.origin` would produce links unusable from other machines. Any HTTPS or non-localhost origin is used as-is.
+
 ---
 
 ## [1.7.2] — 2026-06-10

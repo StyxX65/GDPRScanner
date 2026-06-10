@@ -5,8 +5,17 @@ import { S } from './state.js';
 let _shareBaseUrl = null;   // cached so Copy buttons can build the URL synchronously
 
 async function _getShareBaseUrl() {
-  // Use the machine's LAN IP so links work for remote users, not just localhost.
   if (_shareBaseUrl) return _shareBaseUrl;
+  // The LAN-IP probe exists only to fix links when the operator browses the
+  // app at localhost — those would be unusable for remote users. Any other
+  // origin (LAN IP, or a reverse-proxied HTTPS hostname) is already routable,
+  // and rewriting it to http://<LAN-IP> would bypass the proxy's TLS.
+  const host = window.location.hostname;
+  if (window.location.protocol === 'https:' ||
+      (host !== 'localhost' && host !== '127.0.0.1' && host !== '[::1]')) {
+    _shareBaseUrl = window.location.origin;
+    return _shareBaseUrl;
+  }
   try {
     const r = await fetch('/api/local_ip');
     if (r.ok) {
