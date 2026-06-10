@@ -9,6 +9,10 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+---
+
+## [1.7.4] — 2026-06-10
+
 ### Fixed
 
 - **Share modal kept stale input after creating a link** — clicking "Create" only cleared the label field; scope type, user email, date range, and expiry kept their values, so the next link silently inherited the previous link's scope settings. The form-reset logic from `openShareModal()` is now a shared `_resetShareForm()` helper called after every successful create (the generated link row stays visible for copying).
