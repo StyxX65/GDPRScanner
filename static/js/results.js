@@ -399,10 +399,13 @@ async function deleteSubjectItems() {
     document.getElementById("dsubDeleteBtn").style.display = "none";
     document.getElementById("dsubResults").innerHTML = "";
     _dsubItems = [];
-    // Refresh grid
-    S.flaggedData = S.flaggedData.filter(f => !ids.includes(f.id));
-    S.filteredData = S.filteredData.filter(f => !ids.includes(f.id));
-    renderGrid();
+    // Keep the deleted items in the grid (marked, greyed, buttons hidden)
+    // until the next scan run — only those the server actually deleted.
+    const deletedSet = new Set(d.deleted_ids || ids);
+    const _mark = (x) => { if (deletedSet.has(x.id)) x._deleted = true; };
+    S.flaggedData.forEach(_mark);
+    S.filteredData.forEach(_mark);
+    renderGrid(S.filteredData.length ? S.filteredData : S.flaggedData);
     updateStats();
   } catch(e) {
     statusEl.textContent = "Delete failed: " + e.message;
