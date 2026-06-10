@@ -1,6 +1,6 @@
 # GDPR Scanner — User Manual
 
-Version 1.6.28
+Version 1.7.0
 
 ---
 
@@ -294,7 +294,7 @@ After choosing, click **Save**. A small **✓ Saved** confirmation appears.
 
 ### Redacting a file in-place
 
-A **✂** button appears on result cards where the scanner can overwrite the file directly. Clicking it replaces all CPR numbers with `██████-████` blocks, removes the card from the grid, and logs the action as a `"redacted"` disposition. This is useful when you want to sanitise a file rather than delete it entirely.
+A **✂** button appears on result cards where the scanner can overwrite the file directly. Clicking it replaces all CPR numbers with `██████-████` blocks and logs the action as a `"redacted"` disposition. The card is **kept in the grid until your next scan** — it is greyed out, shows a green **✏ Redacted** badge, and its action buttons are hidden so it cannot be processed again. This lets you see at a glance what you handled during the session; the grid is rebuilt the next time you scan. This is useful when you want to sanitise a file rather than delete it entirely.
 
 The button is available for the following source types and formats:
 
@@ -361,6 +361,8 @@ Click the **Delete** button in the filter bar to open the bulk delete modal.
 3. Click the red **Delete matching items** button to proceed.
 
 4. A progress bar shows deletions as they happen. Emails go to **Deleted Items**; files go to the **recycle bin**.
+
+Deleted items (whether from a single delete, a bulk delete, or a data-subject erasure) are **kept in the grid until your next scan** — greyed out with a red **🗑 Deleted** badge and their action buttons hidden — so you can see what was removed during the session. When a bulk delete partially fails, only the items the server actually deleted are marked; any that failed stay active so you can retry them. The grid is rebuilt the next time you scan.
 
 A full audit log of every deletion (what was deleted, when, and why) is included in the Article 30 report.
 
@@ -668,4 +670,4 @@ For a typical school or municipality scan the cost is negligible — Claude Haik
 
 ---
 
-*GDPR Scanner v1.6.28 — for technical setup and configuration see README.md*
+*GDPR Scanner v1.7.0 — for technical setup and configuration see README.md*

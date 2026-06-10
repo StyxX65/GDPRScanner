@@ -1,6 +1,6 @@
 # GDPR Scanner — Brugermanual
 
-Version 1.6.28
+Version 1.7.0
 
 ---
 
@@ -294,7 +294,7 @@ Klik på **Gem** efter valget. En lille **✓ Gemt**-bekræftelse vises.
 
 ### Redigér en fil på stedet
 
-En **✂**-knap vises på resultatkort, hvor scanneren kan overskrive filen direkte. Klikker du på den, erstattes alle CPR-numre med `██████-████`-blokke, kortet fjernes fra gitteret, og handlingen registreres som en `"redacted"`-disposition. Brug denne mulighed, når du ønsker at anonymisere en fil frem for at slette den helt.
+En **✂**-knap vises på resultatkort, hvor scanneren kan overskrive filen direkte. Klikker du på den, erstattes alle CPR-numre med `██████-████`-blokke, og handlingen registreres som en `"redacted"`-disposition. Kortet **bevares i gitteret indtil din næste scanning** — det vises nedtonet med et grønt **✏ Redigeret**-mærke, og dets handlingsknapper skjules, så det ikke kan behandles igen. På den måde kan du let se, hvad du har håndteret i sessionen; gitteret genopbygges, næste gang du scanner. Brug denne mulighed, når du ønsker at anonymisere en fil frem for at slette den helt.
 
 Knappen er tilgængelig for følgende kildetyper og formater:
 
@@ -361,6 +361,8 @@ Klik på **Slet**-knappen i filterbjælken for at åbne massesletningsvinduet.
 3. Klik på den røde **Slet matchende elementer**-knap for at fortsætte.
 
 4. En statuslinje viser sletningerne i realtid. E-mails flyttes til **Slettet post**; filer flyttes til **papirkurven**.
+
+Slettede elementer (uanset om det er en enkelt sletning, en massesletning eller en sletning efter anmodning fra en registreret) **bevares i gitteret indtil din næste scanning** — nedtonet med et rødt **🗑 Slettet**-mærke og med skjulte handlingsknapper — så du kan se, hvad der blev fjernet i sessionen. Hvis en massesletning delvist mislykkes, markeres kun de elementer, serveren faktisk slettede; de, der fejlede, forbliver aktive, så du kan forsøge igen. Gitteret genopbygges, næste gang du scanner.
 
 En fuldstændig revisionslog over alle sletninger (hvad der er slettet, hvornår og hvorfor) medtages i artikel 30-rapporten.
 
@@ -668,4 +670,4 @@ For en typisk skole- eller kommunescanning er omkostningen ubetydelig — Claude
 
 ---
 
-*GDPR Scanner v1.6.28 — teknisk opsætning og konfiguration: se README.md*
+*GDPR Scanner v1.7.0 — teknisk opsætning og konfiguration: se README.md*

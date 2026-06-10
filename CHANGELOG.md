@@ -9,6 +9,10 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+---
+
+## [1.7.0] — 2026-06-10
+
 ### Added
 
 - **PDF redaction for local files** — the ✂ redact button now works on local PDF files in addition to DOCX, XLSX, CSV, and TXT. Text-based PDFs are redacted using PyMuPDF's physical redaction (`page.apply_redactions()`), which removes the underlying text data from the PDF stream — not just paints over it. Scanned/image-based PDFs go through the OCR bbox path: CPR positions are found via Tesseract then physically painted and sanitised. Falls back to a reportlab overlay if PyMuPDF is not installed; raises a clear error if both libraries are absent.
