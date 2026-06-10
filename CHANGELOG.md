@@ -21,6 +21,10 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 - **AI-enhanced NER via Claude** — Named Entity Recognition (names, addresses, organisations) can now be powered by Claude Haiku instead of spaCy. Enable in **Settings → AI / NER**: paste an Anthropic API key, toggle on, click Test to confirm. When enabled, `document_scanner.py` calls the Claude API (`claude-haiku-4-5-20251001`) instead of spaCy for all three scan engines; results are cached in-memory per document (bounded at 2 000 entries) so repeated scans of the same file never re-charge the API. Falls back to spaCy automatically if the key is missing or the `anthropic` package is not installed. API key stored in `config.json` under `claude_api_key`; toggle stored under `claude_ner`. Routes: `GET/POST /api/settings/claude`, `POST /api/settings/claude/test`.
 
+### Changed
+
+- **Redacted cards stay in the grid until the next scan** — previously redacting a card (✏) removed it from the grid and from `S.flaggedData`/`S.filteredData` immediately. Now the item is kept and marked redacted: the card is greyed (`card-resolved` styling), shows a `✏ Redacted` badge, and its delete/redact action buttons are hidden so it can't be re-processed. The operator can see what was handled during the session; the grid is rebuilt on the next scan run, which clears the redacted markers. Implemented with a `_redacted` flag in `results.js` (`appendCard` + `redactItem`); no server change.
+
 ### Fixed
 
 - **Cards not shown after browser refresh** — when the browser reconnected to the SSE stream after a completed scan, the `scan_phase` events in the replay buffer temporarily set `S._m365ScanRunning = true` (all running flags start at `false` after a page reload). The watchdog's `loadHistorySession` call fired in this window and bailed on the stale flag; once `scan_done` cleared the flag, `_initialStatusChecked` was already `true` so `loadHistorySession` was never retried. Fixed by having the `sse_replay_done` handler retry `loadHistorySession(null)` when no scan is running and `S._historyRefScanId` is still `null` after replay.

@@ -38,7 +38,7 @@ function appendCard(f) {
     : '/api/thumb?name=' + encodeURIComponent(f.name) + '&type=' + encodeURIComponent(f.source_type);
 
   const card = document.createElement('div');
-  card.className = 'card' + (S.isListView ? ' list-view' : '') + (S._selectedIds.has(f.id) ? ' card-selected-bulk' : '') + (f._resolved ? ' card-resolved' : '');
+  card.className = 'card' + (S.isListView ? ' list-view' : '') + (S._selectedIds.has(f.id) ? ' card-selected-bulk' : '') + ((f._resolved || f._redacted) ? ' card-resolved' : '');
   card.dataset.id = f.id;
   card.onclick = (e) => { if (S._selectMode) { toggleCardSelect(f.id, e); } else { openPreview(f); } };
 
@@ -49,12 +49,12 @@ function appendCard(f) {
   cb.onclick = (e) => { e.stopPropagation(); toggleCardSelect(f.id, e); };
   card.appendChild(cb);
 
-  const delBtn = (window.VIEWER_MODE || f._resolved) ? '' : `<button class="card-delete-btn" title="${t('m365_delete_confirm','Delete')}" onclick="event.stopPropagation();deleteItem(${JSON.stringify(f).replace(/"/g,'&quot;')},this.closest('.card'))">🗑</button>`;
+  const delBtn = (window.VIEWER_MODE || f._resolved || f._redacted) ? '' : `<button class="card-delete-btn" title="${t('m365_delete_confirm','Delete')}" onclick="event.stopPropagation();deleteItem(${JSON.stringify(f).replace(/"/g,'&quot;')},this.closest('.card'))">🗑</button>`;
   const _redactExts = new Set(['.docx', '.xlsx', '.txt', '.csv', '.pdf']);
   const _cloudRedactExts = new Set(['.docx', '.xlsx', '.pdf']);
   const _m365Types = new Set(['onedrive', 'sharepoint', 'teams']);
   const _fileExt = (f.name || '').substring((f.name || '').lastIndexOf('.')).toLowerCase();
-  const _redactable = !window.VIEWER_MODE && !f._resolved && f.cpr_count > 0 && (
+  const _redactable = !window.VIEWER_MODE && !f._resolved && !f._redacted && f.cpr_count > 0 && (
     f.source_type === 'local' ? _redactExts.has(_fileExt) :
     _m365Types.has(f.source_type) ? _cloudRedactExts.has(_fileExt) :
     f.source_type === 'gdrive' ? _cloudRedactExts.has(_fileExt) :
@@ -75,7 +75,7 @@ function appendCard(f) {
       ${f.phone_count > 0 ? '<span class="phone-badge">' + f.phone_count + ' ' + t('m365_badge_phones', 'tlf.') + '</span> ' : ''}
       ${f.face_count > 0 ? '<span class="photo-face-badge">' + f.face_count + ' ' + t('m365_badge_faces', f.face_count === 1 ? 'face' : 'faces') + '</span> ' : ''}
       ${f.exif && f.exif.gps ? '<span class="photo-face-badge" style="background:#0a3a5a;color:#7ec8d0">🌍 GPS</span> ' : ''}
-      ${f.special_category && f.special_category.length ? '<span class="special-cat-badge">⚠ Art.9 — ' + f.special_category.filter(function(s){return s !== 'gps_location' && s !== 'exif_pii';}).join(', ') + '</span> ' : ''}${f._resolved ? '<span class="resolved-badge">✓ ' + t('history_resolved_badge', 'Resolved') + '</span> ' : ''}${f.overdue ? '<span class="overdue-badge">🗓 Overdue</span>' : ''}
+      ${f.special_category && f.special_category.length ? '<span class="special-cat-badge">⚠ Art.9 — ' + f.special_category.filter(function(s){return s !== 'gps_location' && s !== 'exif_pii';}).join(', ') + '</span> ' : ''}${f._redacted ? '<span class="resolved-badge">✏ ' + t('redact_badge', 'Redacted') + '</span> ' : ''}${f._resolved ? '<span class="resolved-badge">✓ ' + t('history_resolved_badge', 'Resolved') + '</span> ' : ''}${f.overdue ? '<span class="overdue-badge">🗓 Overdue</span>' : ''}
       ${delBtn}${redactBtn}`;
   } else {
     card.innerHTML = `
@@ -85,7 +85,7 @@ function appendCard(f) {
         <div class="card-meta">${f.size_kb} KB · ${esc(f.modified || '')}</div>
         ${f.folder ? `<div class="card-meta" style="font-size:10px" title="${esc(f.folder)}">📂 ${esc(f.folder)}</div>` : ''}
         <div class="card-source"><span class="source-badge ${badgeCls}">${esc(label)}</span>${f.account_name ? ' <span class="account-pill" title="' + esc(f.account_name) + '">' + (f.user_role === "student" ? '<span class="role-badge">' + t("role_student","Elev") + "</span>" : f.user_role === "staff" ? '<span class="role-badge">' + t("role_staff","Ansat") + "</span>" : "") + esc(f.account_name) + '</span>' : ''}${f.transfer_risk === "external-recipient" ? ' <span class="role-pill" style="background:#7B2D00;color:#FFD0B0">⚠ Ext.</span>' : f.transfer_risk ? ' <span class="role-pill" style="background:#003D7B;color:#B0D4FF">🔗</span>' : ''}</div>
-        <span class="cpr-badge">${f.cpr_count} CPR</span>${f.email_count > 0 ? ' <span class="email-badge">' + f.email_count + ' ' + t('m365_badge_emails', 'e-mail') + '</span>' : ''}${f.phone_count > 0 ? ' <span class="phone-badge">' + f.phone_count + ' ' + t('m365_badge_phones', 'tlf.') + '</span>' : ''}${f.face_count > 0 ? ' <span class="photo-face-badge">' + f.face_count + ' ' + t('m365_badge_faces', f.face_count === 1 ? 'face' : 'faces') + '</span>' : ''}${f.exif && f.exif.gps ? ' <span class="photo-face-badge" style="background:#0a3a5a;color:#7ec8d0">🌍 GPS</span>' : ''}${f._resolved ? ' <span class="resolved-badge">✓ ' + t('history_resolved_badge', 'Resolved') + '</span>' : ''}${f.overdue ? ' <span class="overdue-badge">🗓 Overdue</span>' : ''}
+        <span class="cpr-badge">${f.cpr_count} CPR</span>${f.email_count > 0 ? ' <span class="email-badge">' + f.email_count + ' ' + t('m365_badge_emails', 'e-mail') + '</span>' : ''}${f.phone_count > 0 ? ' <span class="phone-badge">' + f.phone_count + ' ' + t('m365_badge_phones', 'tlf.') + '</span>' : ''}${f.face_count > 0 ? ' <span class="photo-face-badge">' + f.face_count + ' ' + t('m365_badge_faces', f.face_count === 1 ? 'face' : 'faces') + '</span>' : ''}${f.exif && f.exif.gps ? ' <span class="photo-face-badge" style="background:#0a3a5a;color:#7ec8d0">🌍 GPS</span>' : ''}${f._redacted ? ' <span class="resolved-badge">✏ ' + t('redact_badge', 'Redacted') + '</span>' : ''}${f._resolved ? ' <span class="resolved-badge">✓ ' + t('history_resolved_badge', 'Resolved') + '</span>' : ''}${f.overdue ? ' <span class="overdue-badge">🗓 Overdue</span>' : ''}
       </div>
       ${delBtn}${redactBtn}`;
   }
@@ -629,9 +629,13 @@ async function redactItem(f, cardEl) {
     });
     const d = await r.json();
     if (d.ok) {
-      S.flaggedData  = S.flaggedData.filter(x => x.id !== f.id);
-      S.filteredData = S.filteredData.filter(x => x.id !== f.id);
-      if (cardEl) cardEl.remove();
+      // Keep the redacted item in the grid (marked, greyed, action buttons
+      // hidden) until the next scan run, so the operator can see what was
+      // handled. The grid is rebuilt on the next scan, clearing these.
+      const _mark = (x) => { if (x.id === f.id) x._redacted = true; };
+      S.flaggedData.forEach(_mark);
+      S.filteredData.forEach(_mark);
+      renderGrid(S.filteredData.length ? S.filteredData : S.flaggedData);
       updateStats();
       log(t('redact_done', 'Redacted') + ' ' + f.name + ' (' + (d.redacted || 0) + ' ' + t('redact_spans', 'CPR spans') + ')', 'ok');
       if (_previewItemId === f.id) closePreview();
