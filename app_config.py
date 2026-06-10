@@ -343,8 +343,15 @@ def save_claude_config(enabled: bool, api_key: "str | None" = None) -> None:
     cfg = _load_config()
     cfg["claude_ner"] = bool(enabled)
     if api_key is not None:
-        cfg["claude_api_key"] = api_key
+        # Encrypt at rest with the machine-keyed Fernet (same as the SMTP
+        # password). Falls back to plaintext only if cryptography is missing.
+        cfg["claude_api_key"] = _encrypt_password(api_key) if api_key else ""
     _save_config(cfg)
+
+
+def get_claude_api_key() -> str:
+    """Return the decrypted Claude API key (handles legacy plaintext)."""
+    return _decrypt_password(_load_config().get("claude_api_key", ""))
 
 
 # ── Profile storage (15a) ─────────────────────────────────────────────────────

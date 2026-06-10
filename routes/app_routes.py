@@ -99,8 +99,8 @@ def claude_settings():
 
 @bp.route("/api/settings/claude/test", methods=["POST"])
 def claude_test():
-    from app_config import _load_config
-    api_key = _load_config().get("claude_api_key", "")
+    from app_config import get_claude_api_key
+    api_key = get_claude_api_key()
     if not api_key:
         return jsonify({"ok": False, "error": "No API key saved"}), 400
     try:

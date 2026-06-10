@@ -1,4 +1,18 @@
 import { S } from './state.js';
+
+// Escape untrusted strings (filenames, account/display names, folders) before
+// embedding them in innerHTML / title attributes. Scan-derived values can come
+// from attacker-controlled content (e.g. a OneDrive file named with markup),
+// so every such field must pass through esc() to prevent stored XSS.
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ── Cards ─────────────────────────────────────────────────────────────────────
 const SOURCE_BADGES = {
   email:      ['📧', 'badge-email',      'Outlook'],
@@ -52,9 +66,9 @@ function appendCard(f) {
     card.innerHTML = `
       <div style="font-size:24px; flex-shrink:0">${icon}</div>
       <div class="card-info list-info">
-        <div class="card-name" title="${f.name}">${f.name}</div>
-        <div class="card-meta">${f.size_kb} KB · ${f.modified || ''}${f.folder ? ' · 📂 ' + f.folder : ''}</div>
-        <div class="card-source"><span class="source-badge ${badgeCls}">${label}</span> ${f.source || ''}${f.account_name ? ' · <span class="account-pill" title="' + f.account_name + '">' + (f.user_role === 'student' ? '<span class="role-badge">' + t('role_student','Elev') + '</span>' : f.user_role === 'staff' ? '<span class="role-badge">' + t('role_staff','Ansat') + '</span>' : '') + f.account_name + '</span>' : ''}${f.transfer_risk === 'external-recipient' ? ' <span class="role-pill" style="background:#7B2D00;color:#FFD0B0">⚠ Ext.</span>' : f.transfer_risk ? ' <span class="role-pill" style="background:#003D7B;color:#B0D4FF">🔗</span>' : ''}</div>
+        <div class="card-name" title="${esc(f.name)}">${esc(f.name)}</div>
+        <div class="card-meta">${f.size_kb} KB · ${esc(f.modified || '')}${f.folder ? ' · 📂 ' + esc(f.folder) : ''}</div>
+        <div class="card-source"><span class="source-badge ${badgeCls}">${esc(label)}</span> ${esc(f.source || '')}${f.account_name ? ' · <span class="account-pill" title="' + esc(f.account_name) + '">' + (f.user_role === 'student' ? '<span class="role-badge">' + t('role_student','Elev') + '</span>' : f.user_role === 'staff' ? '<span class="role-badge">' + t('role_staff','Ansat') + '</span>' : '') + esc(f.account_name) + '</span>' : ''}${f.transfer_risk === 'external-recipient' ? ' <span class="role-pill" style="background:#7B2D00;color:#FFD0B0">⚠ Ext.</span>' : f.transfer_risk ? ' <span class="role-pill" style="background:#003D7B;color:#B0D4FF">🔗</span>' : ''}</div>
       </div>
       <span class="cpr-badge">${f.cpr_count} CPR</span>
       ${f.email_count > 0 ? '<span class="email-badge">' + f.email_count + ' ' + t('m365_badge_emails', 'e-mail') + '</span> ' : ''}
@@ -65,12 +79,12 @@ function appendCard(f) {
       ${delBtn}${redactBtn}`;
   } else {
     card.innerHTML = `
-      <div class="thumb-wrap"><img src="${src}" alt="${f.name}" loading="lazy"></div>
+      <div class="thumb-wrap"><img src="${src}" alt="${esc(f.name)}" loading="lazy"></div>
       <div class="card-info">
-        <div class="card-name" title="${f.name}">${f.name}</div>
-        <div class="card-meta">${f.size_kb} KB · ${f.modified || ''}</div>
-        ${f.folder ? `<div class="card-meta" style="font-size:10px" title="${f.folder}">📂 ${f.folder}</div>` : ''}
-        <div class="card-source"><span class="source-badge ${badgeCls}">${label}</span>${f.account_name ? ' <span class="account-pill" title="' + f.account_name + '">' + (f.user_role === "student" ? '<span class="role-badge">' + t("role_student","Elev") + "</span>" : f.user_role === "staff" ? '<span class="role-badge">' + t("role_staff","Ansat") + "</span>" : "") + f.account_name + '</span>' : ''}${f.transfer_risk === "external-recipient" ? ' <span class="role-pill" style="background:#7B2D00;color:#FFD0B0">⚠ Ext.</span>' : f.transfer_risk ? ' <span class="role-pill" style="background:#003D7B;color:#B0D4FF">🔗</span>' : ''}</div>
+        <div class="card-name" title="${esc(f.name)}">${esc(f.name)}</div>
+        <div class="card-meta">${f.size_kb} KB · ${esc(f.modified || '')}</div>
+        ${f.folder ? `<div class="card-meta" style="font-size:10px" title="${esc(f.folder)}">📂 ${esc(f.folder)}</div>` : ''}
+        <div class="card-source"><span class="source-badge ${badgeCls}">${esc(label)}</span>${f.account_name ? ' <span class="account-pill" title="' + esc(f.account_name) + '">' + (f.user_role === "student" ? '<span class="role-badge">' + t("role_student","Elev") + "</span>" : f.user_role === "staff" ? '<span class="role-badge">' + t("role_staff","Ansat") + "</span>" : "") + esc(f.account_name) + '</span>' : ''}${f.transfer_risk === "external-recipient" ? ' <span class="role-pill" style="background:#7B2D00;color:#FFD0B0">⚠ Ext.</span>' : f.transfer_risk ? ' <span class="role-pill" style="background:#003D7B;color:#B0D4FF">🔗</span>' : ''}</div>
         <span class="cpr-badge">${f.cpr_count} CPR</span>${f.email_count > 0 ? ' <span class="email-badge">' + f.email_count + ' ' + t('m365_badge_emails', 'e-mail') + '</span>' : ''}${f.phone_count > 0 ? ' <span class="phone-badge">' + f.phone_count + ' ' + t('m365_badge_phones', 'tlf.') + '</span>' : ''}${f.face_count > 0 ? ' <span class="photo-face-badge">' + f.face_count + ' ' + t('m365_badge_faces', f.face_count === 1 ? 'face' : 'faces') + '</span>' : ''}${f.exif && f.exif.gps ? ' <span class="photo-face-badge" style="background:#0a3a5a;color:#7ec8d0">🌍 GPS</span>' : ''}${f._resolved ? ' <span class="resolved-badge">✓ ' + t('history_resolved_badge', 'Resolved') + '</span>' : ''}${f.overdue ? ' <span class="overdue-badge">🗓 Overdue</span>' : ''}
       </div>
       ${delBtn}${redactBtn}`;
@@ -111,10 +125,10 @@ async function openPreview(f) {
   loading.textContent = 'Loading preview…';
 
   meta.innerHTML = [
-    f.account_name ? `<span style="font-weight:500">👤 ${f.account_name}</span>` : '',
-    f.source   ? `<span>${f.source}</span>` : '',
+    f.account_name ? `<span style="font-weight:500">👤 ${esc(f.account_name)}</span>` : '',
+    f.source   ? `<span>${esc(f.source)}</span>` : '',
     f.size_kb  ? `<span>${f.size_kb} KB</span>` : '',
-    f.modified ? `<span>${f.modified}</span>` : '',
+    f.modified ? `<span>${esc(f.modified)}</span>` : '',
     f.cpr_count   ? `<span style="color:var(--danger)">${f.cpr_count} CPR</span>` : '',
     f.email_count ? `<span style="color:#7ec8f0">${f.email_count} ${t('m365_badge_emails','e-mail')}</span>` : '',
     f.phone_count ? `<span style="color:#7eeac0">${f.phone_count} ${t('m365_badge_phones','tlf.')}</span>` : '',
@@ -206,11 +220,11 @@ async function _loadRelated(f) {
     const rows = items.map(item => {
       const shared = item.shared_cprs ?? '';
       const badge  = shared ? `<span style="font-size:9px;padding:1px 5px;border-radius:10px;background:var(--danger);color:#fff;font-weight:500;flex-shrink:0">${shared} CPR</span>` : '';
-      const src    = item.source ? `<span style="color:var(--muted);font-size:10px;flex-shrink:0">${item.source}</span>` : '';
-      return `<div onclick="window._openRelated('${item.id.replace(/'/g,"\\'")}',${JSON.stringify(item)})"
+      const src    = item.source ? `<span style="color:var(--muted);font-size:10px;flex-shrink:0">${esc(item.source)}</span>` : '';
+      return `<div onclick="window._openRelated('${item.id.replace(/'/g,"\\'")}',${JSON.stringify(item).replace(/"/g,'&quot;')})"
                    style="display:flex;align-items:center;gap:6px;padding:4px 0;cursor:pointer;border-radius:4px"
                    onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''">
-        <span style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${item.name}">${item.name}</span>
+        <span style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(item.name)}">${esc(item.name)}</span>
         ${src}${badge}
       </div>`;
     }).join('');
@@ -351,9 +365,9 @@ async function runSubjectLookup() {
     _dsubItems = d.items;
     resultsEl.innerHTML = d.items.map(item => `
       <div class="dsub-result-row">
-        <div class="dsub-result-name" title="${item.name}">${item.name}</div>
-        <div class="dsub-result-meta">${item.source_type || ""}</div>
-        <div class="dsub-result-meta">${item.modified || ""}</div>
+        <div class="dsub-result-name" title="${esc(item.name)}">${esc(item.name)}</div>
+        <div class="dsub-result-meta">${esc(item.source_type || "")}</div>
+        <div class="dsub-result-meta">${esc(item.modified || "")}</div>
         <div class="dsub-result-meta" style="color:var(--danger)">${item.cpr_count} CPR</div>
       </div>
     `).join("");

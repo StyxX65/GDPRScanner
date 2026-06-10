@@ -420,49 +420,6 @@ def _extract_audio_metadata(content: bytes, filename: str) -> dict:
     return result
 
 
-    """Detect faces in an image file using OpenCV Haar cascades.
-
-    Returns the number of faces detected, or 0 if cv2 is unavailable,
-    the file is not a supported image format, or decoding fails.
-    Face detection is intentionally strict (minNeighbors=8, min_size=80px) to
-    reduce false positives on background textures, labels, and artwork.
-    Haar cascades are tuned for compliance flagging, not exhaustive detection.  (#9)
-    """
-    if not SCANNER_OK:
-        return 0
-    try:
-        cv2_mod = getattr(ds, "_get_cv2", None)
-        if cv2_mod is None:
-            return 0
-        cv2, np = ds._get_cv2()
-        if cv2 is None or np is None:
-            return 0
-    except Exception:
-        return 0
-
-    try:
-        # Decode image bytes → cv2 BGR array
-        arr = np.frombuffer(content, dtype=np.uint8)
-        img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
-        if img is None:
-            # imdecode failed (e.g. HEIC without codec) — try PIL fallback
-            if PIL_OK:
-                try:
-                    from PIL import Image as _PILImg
-                    import io as _io
-                    pil_img = _PILImg.open(_io.BytesIO(content)).convert("RGB")
-                    pil_arr = np.array(pil_img)
-                    img = cv2.cvtColor(pil_arr, cv2.COLOR_RGB2BGR)
-                except Exception:
-                    return 0
-            else:
-                return 0
-
-        faces = ds.detect_faces_cv2(img, min_size=80, neighbors=8)
-        return len(faces)
-    except Exception:
-        return 0
-
 def _detect_photo_faces(content: bytes, filename: str) -> int:
     """Detect faces in an image file using OpenCV Haar cascades.
 
@@ -749,6 +706,11 @@ def _placeholder_svg(ext: str, name: str) -> str:
     }
     bg, label = colors.get(ext, ("#9CA3AF", ext.upper().lstrip(".")))
     short = name[:22] + "…" if len(name) > 22 else name
+    # Escape label/name before embedding — served as image/svg+xml, so an
+    # unescaped value (from the ?name= query param via /api/thumb) would be a
+    # reflected-XSS vector when the URL is opened directly.
+    label = _html_esc(label)
+    short = _html_esc(short)
     svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="280" height="360">
   <rect width="280" height="360" fill="{bg}"/>
   <rect x="20" y="20" width="240" height="280" rx="8" fill="rgba(255,255,255,0.12)"/>

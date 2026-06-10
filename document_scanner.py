@@ -243,9 +243,9 @@ def load_nlp():
 def _get_claude_ner_config() -> "tuple[bool, str]":
     """Read Claude NER settings from config.json. Small file — OS-cached."""
     try:
-        from app_config import _load_config
+        from app_config import _load_config, get_claude_api_key
         cfg = _load_config()
-        return bool(cfg.get("claude_ner")), str(cfg.get("claude_api_key", "") or "")
+        return bool(cfg.get("claude_ner")), get_claude_api_key()
     except Exception:
         return False, ""
 
