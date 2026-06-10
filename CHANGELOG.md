@@ -27,6 +27,14 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 - **Settings modal too narrow for seven tabs** — widened from 640 px to 720 px so all tab labels fit on one line without wrapping.
 
+### Security
+
+- **Stored XSS in the results grid** — scan-derived strings (file name, account/display name, folder, source label, modified date, image `alt`) were interpolated straight into `innerHTML` and `title=` attributes across the card, list, preview, data-subject lookup, and related-documents views. Because these values come from scanned content (e.g. a OneDrive file deliberately named with markup), a crafted filename could execute script in a reviewer's session — including a shared read-only viewer/DPO session. A new `esc()` helper in `static/js/results.js` (escapes `& < > " '`) is now applied to every untrusted field before embedding. The related-documents `onclick` JSON is also escaped with `.replace(/"/g,'&quot;')` to match the delete/redact button pattern, closing an attribute-injection hole where a filename containing `"` could break out of the handler.
+
+- **Reflected XSS in `/api/thumb`** — the `?name=` query parameter was embedded unescaped into the placeholder SVG served as `image/svg+xml`, so opening a crafted `/api/thumb?name=<script>…` URL directly executed script in the app origin. `cpr_detector._placeholder_svg` now HTML-escapes both the type label and the filename before embedding them in the SVG.
+
+- **Claude API key now encrypted at rest** — the Anthropic API key was stored in plaintext in `config.json` while the SMTP password was already Fernet-encrypted. `save_claude_config()` now encrypts the key with the same machine-keyed Fernet (`_encrypt_password`); a new `get_claude_api_key()` decrypts it for use. Legacy plaintext keys are still read transparently and re-encrypted on the next save. Readers in `document_scanner.py` and `routes/app_routes.py` updated accordingly.
+
 ---
 
 ## [1.6.28] — 2026-05-28

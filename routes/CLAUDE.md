@@ -80,10 +80,11 @@ Exception hierarchy (all inherit `M365Error(Exception)`):
 
 ## Claude NER — document_scanner.py + app_config.py + routes/app_routes.py
 
-Optional AI-powered NER replacing spaCy. Activated via `config.json` keys `claude_ner` (bool) and `claude_api_key` (str).
+Optional AI-powered NER replacing spaCy. Activated via `config.json` keys `claude_ner` (bool) and `claude_api_key` (str, **Fernet-encrypted at rest** with an `enc:` prefix — same scheme as the SMTP password).
 
 - **`ANTHROPIC_OK`** — module-level flag in `document_scanner.py`; `True` if `anthropic` is importable. Guards all Claude code paths.
 - **`_ner_claude(text, api_key)`** — calls `claude-haiku-4-5-20251001` in 8 000-char chunks. Thread-safe cache keyed by `hash(text)`, evicts oldest when > 2 000 entries.
+- **Always read the key via `app_config.get_claude_api_key()`** — it decrypts and transparently handles legacy plaintext. Never read `config.json["claude_api_key"]` directly; `save_claude_config()` writes it encrypted.
 - **`GET/POST /api/settings/claude`** — GET returns `{"enabled": bool, "api_key_set": bool}` (never exposes key). POST accepts `{"enabled": bool, "api_key": "..."}` — omitting `api_key` leaves stored key unchanged.
 - **`POST /api/settings/claude/test`** — minimal 8-token API call; returns `{"ok": true}` or `{"ok": false, "error": "..."}`.
 - **Do not import `anthropic` at module level outside `document_scanner.py`** — `routes/app_routes.py` imports it locally inside the function body so the server starts without the package.

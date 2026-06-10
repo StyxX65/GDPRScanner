@@ -93,7 +93,9 @@ All options live in the profile `options` dict and apply to **all three scan eng
 
 - **Pattern matching in Python** — when using `str.replace()` to patch JS/HTML, whitespace and quote style must match exactly. Use `in` check first and print if not found.
 - **`__getattr__` on modules** — only resolves `module.name` access from outside, not bare name lookups inside function bodies. Always import directly.
-- **`JSON.stringify` inside `onclick="…"` attributes** — produces double-quoted strings that terminate the HTML attribute early. Use single-quoted JS string literals instead, or `data-*` attributes read from the handler.
+- **`JSON.stringify` inside `onclick="…"` attributes** — produces double-quoted strings that terminate the HTML attribute early. Use single-quoted JS string literals instead, or `data-*` attributes read from the handler. When the object is embedded as an `onclick` payload, also `.replace(/"/g,'&quot;')` it (matches the delete/redact button pattern) so a `"` in a filename can't break out.
+- **Escape scan-derived strings before `innerHTML`** — file names, account/display names, folders, and source labels come from scanned content and may contain markup. Pass them through `esc()` (in `results.js`) before embedding in `innerHTML` or `title=`/`alt=` attributes. Server-side SVG/HTML built from request params (e.g. `_placeholder_svg` for `/api/thumb`) must use `_html_esc`. Skipping either re-introduces stored/reflected XSS.
+- **Secrets at rest use the machine-keyed Fernet** — the SMTP password and Claude API key are encrypted via `app_config._encrypt_password` / `_decrypt_password`. New secret-bearing config fields must follow the same pattern; read them through a decrypting accessor (e.g. `get_claude_api_key()`), never `_load_config().get(...)` directly.
 
 ## Directory-scoped rules
 
