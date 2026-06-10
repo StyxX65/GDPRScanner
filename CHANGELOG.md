@@ -27,7 +27,7 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 - **Settings modal too narrow for seven tabs** — widened from 640 px to 720 px so all tab labels fit on one line without wrapping.
 
-- **Redact (✏) button invisible in grid view** — `.card-redact-btn` had `opacity:0` at rest and only became visible on `.card:hover`, so in the default grid/thumbnail view the redact button appeared to be missing from every document; it only showed in list view (which forces `opacity:1`). The button was always rendered in the DOM — this was purely a CSS visibility bug. Given it the same `0.35` baseline opacity as the delete button so it's discoverable at rest and brightens on hover.
+- **Card action buttons invisible in grid view** — `.card` was missing `position: relative`, so the `position:absolute` delete (🗑), redact (✏), and bulk-select checkbox elements anchored to the viewport instead of the card and were then clipped away by the card's `overflow:hidden`. They only appeared in list view, where those elements are `position:static` and flow inline. Added `position: relative` to `.card` so all three position correctly within each card. Also gave `.card-redact-btn` the same `0.35` baseline opacity as the delete button (it was `opacity:0` at rest) so it's discoverable without hovering.
 
 ### Security
 
