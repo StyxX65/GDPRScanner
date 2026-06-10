@@ -52,6 +52,7 @@ an IDE with intelligent completion. The result is the author's work.
 - **Read-only viewer mode** — share scan results with a DPO or manager via a secure token URL (`/view?token=…`) or a numeric PIN; viewers see the full results grid and disposition panel but cannot scan, delete, or change settings. Tokens can be **role-scoped** (Ansatte / Elever) so a recipient only sees items for their group, or **user-scoped** so an individual employee only sees their own flagged files (supports dual M365 + Google Workspace identity)
 - **Article 30 report** — one-click export of a structured Word document (`.docx`) satisfying the GDPR Article 30 register of processing activities obligation
 - **SQLite results database** — scan results, CPR index, PII breakdown, disposition decisions, and scan history are persisted to `~/.gdprscanner/scanner.db` alongside the JSON cache, enabling cross-scan queries and trend tracking
+- **Software updates from the UI** — check for and install new versions from **Settings → General → Software update**, or enable automatic daily updates; the app restarts itself in place (see [Software updates](#software-updates) below)
 - **Built-in user manual** — click the **?** button in the top bar to open the manual in a dedicated window. Available in Danish and English. Printable via the browser's print function. Served from `MANUAL-DA.md` / `MANUAL-EN.md` at `/manual?lang=da|en` — always in sync with the installed version, no internet required. In the packaged desktop app the manual opens as a native pywebview window; in the browser it opens as a popup.
 
 ---
@@ -498,6 +499,41 @@ python gdpr_scanner.py --import-db ~/compliance/gdpr_export_2026.zip --import-mo
 
 ---
 
+### Software updates
+
+When the app runs from a git checkout (the normal server install), it can update itself. The **Settings → General → Software update** group offers:
+
+- **Check for updates** — fetches the upstream repository and shows either "You are running the latest version" or the list of pending commits
+- **Install update** — fast-forwards the checkout, reinstalls dependencies if `requirements.txt` changed, and restarts the app in place; the browser waits for the server to come back and reloads automatically
+- **Install updates automatically** — optional toggle; a background thread checks once a day and installs unattended
+
+Safety guarantees:
+
+- Updating is **refused while any scan is running** — manual attempts get a clear message, and the auto-updater simply retries on its next hourly tick, so a scheduled scan is never killed mid-run
+- Local edits on the server are **auto-stashed** (kept, never discarded) before the merge; the merge is fast-forward-only, so a diverged checkout stops the update instead of creating a merge mess
+- Every applied update is recorded in the **compliance audit log** (`app_update`, old → new commit)
+- The restart re-execs the process with the same PID, so it works identically under systemd and when launched via `start_gdpr.sh`
+
+The Settings group is hidden in the packaged desktop app (no git checkout to update) — desktop users update by installing a new build.
+
+**CLI / cron equivalent** — `update_gdpr.sh` performs the same update from a shell:
+
+```bash
+./update_gdpr.sh            # update if upstream has new commits, restart service
+./update_gdpr.sh --check    # report pending commits, change nothing
+```
+
+It restarts a `gdprscanner.service` systemd unit if one exists (override the name with `GDPR_SERVICE=…`) and is quiet when already up to date, so it is safe to run from cron:
+
+```bash
+# /etc/cron.d/gdprscanner-update — nightly at 04:00
+0 4 * * * root /opt/gdprscanner/update_gdpr.sh >> /var/log/gdpr_update.log 2>&1
+```
+
+API endpoints: `GET /api/update/check`, `POST /api/update/apply`, `GET/POST /api/update/settings`.
+
+---
+
 ### Article 30 report
 
 The **Art.30** button in the filter bar generates a GDPR **Article 30 Register of Processing Activities** as a Word document (`.docx`).
@@ -607,15 +643,18 @@ pip install pytest
 pytest tests/
 ```
 
-**182 tests across 5 modules — all expected to pass.**
+**212 tests across 8 modules — all expected to pass.**
 
 | Module | Tests | Covers |
 |---|---|---|
-| `tests/test_document_scanner.py` | 36 | `is_valid_cpr`, `extract_matches`, `scan_docx`, `scan_xlsx`, `_scan_bytes` — CPR detection, false-positive suppression, binary crash safety |
+| `tests/test_document_scanner.py` | 37 | `is_valid_cpr`, `extract_matches`, `scan_docx`, `scan_xlsx`, `_scan_bytes` — CPR detection, false-positive suppression, binary crash safety |
 | `tests/test_app_config.py` | 34 | i18n loading, Article 9 keyword detection, config round-trip, admin PIN, profiles CRUD, Fernet encryption |
 | `tests/test_checkpoint.py` | 18 | Checkpoint key stability, save/load/clear, wrong-key isolation, delta token round-trip |
-| `tests/test_db.py` | 24 | Scan lifecycle, CPR hash-only storage, data subject lookup, dispositions, export/import cycle |
+| `tests/test_db.py` | 23 | Scan lifecycle, CPR hash-only storage, data subject lookup, dispositions, export/import cycle |
+| `tests/test_routes.py` | 16 | Core route behaviour — scan status/start/stop, DB stats, dispositions, Excel and Article 30 export |
 | `tests/test_route_integration.py` | 54 | Viewer token CRUD, role/user scope enforcement, bulk disposition isolation, viewer PIN, interface PIN gate, scan lock release on failure, session history ordering, profile routes CRUD and rename |
+| `tests/test_google_scan.py` | 19 | Google scan routes (users/start/cancel) and `_run_google_scan` engine with mocked connector, checkpoints, and DB |
+| `tests/test_updates.py` | 11 | Software-update routes — check/apply with mocked git, scan-running refusal, dirty-tree auto-stash, requirements reinstall, settings round-trip |
 
 Each unit-test module (`cpr_detector.py`, `app_config.py`, `checkpoint.py`, `gdpr_db.py`) is importable in isolation without Flask or MSAL — tests run without any cloud credentials or a running server.
 
@@ -692,6 +731,8 @@ See [SUGGESTIONS.md](SUGGESTIONS.md) for the full feature roadmap with implement
 | `routes/export.py` | `/api/export_excel`, `/api/export_article30`, `/api/delete_bulk` |
 | `routes/viewer.py` | `/view`, `/api/viewer/tokens`, `/api/viewer/pin` — read-only viewer mode: token + PIN auth, share-link management, role-scoped and user-scoped tokens |
 | `routes/app_routes.py` | `/api/about`, `/api/langs`, `/api/lang`, `/manual` |
+| `routes/updates.py` | `/api/update/*` — software update check/apply, auto-update background thread |
+| `update_gdpr.sh` | CLI/cron self-update script — fetch, fast-forward merge, dependency reinstall, service restart |
 | `docs/manuals/MANUAL-EN.md` | End-user manual in English (15 sections) — served at `/manual?lang=en` |
 | `docs/manuals/MANUAL-DA.md` | End-user manual in Danish (15 sections) — served at `/manual?lang=da` |
 | `docs/setup/M365_SETUP.md` | Step-by-step Microsoft 365 setup guide |
