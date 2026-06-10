@@ -2261,14 +2261,33 @@ Example --settings file with SMTP:
 
         # Find a free port — auto-increment from the requested port if in use.
         import socket as _socket
+
+        def _can_bind(p: int, host: str) -> bool:
+            with _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM) as s:
+                # Probe with SO_REUSEADDR, matching how Werkzeug binds.
+                # Without it, connections left in TIME_WAIT by a previous
+                # instance (e.g. the in-app update restart) make the port
+                # look occupied and the app silently moves to the next one.
+                s.setsockopt(_socket.SOL_SOCKET, _socket.SO_REUSEADDR, 1)
+                try:
+                    s.bind((host, p))
+                    return True
+                except OSError:
+                    return False
+
         def _find_free_port(start: int, host: str) -> int:
-            for p in range(start, start + 100):
-                with _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM) as s:
-                    try:
-                        s.bind((host, p))
-                        return p
-                    except OSError:
-                        continue
+            # Give the requested port a grace period — after a self-restart
+            # the previous process may not have released it yet.
+            deadline = time.time() + 10
+            while True:
+                if _can_bind(start, host):
+                    return start
+                if time.time() >= deadline:
+                    break
+                time.sleep(0.5)
+            for p in range(start + 1, start + 100):
+                if _can_bind(p, host):
+                    return p
             raise RuntimeError(f"No free port found in range {start}–{start + 99}")
 
         actual_port = _find_free_port(args.port, args.host)

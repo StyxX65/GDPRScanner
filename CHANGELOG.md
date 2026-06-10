@@ -11,6 +11,8 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ### Fixed
 
+- **App restart no longer hops to a new port** — the in-app update restart (and any quick stop/start) left connections from the previous instance in TIME_WAIT, and the startup port probe did a plain `bind()` that treats TIME_WAIT as occupied — so the restarted app silently came up on 5101 and the browser's reload poll never found it. The probe now sets `SO_REUSEADDR` (matching how Werkzeug actually binds, so an actively listening port is still detected as occupied), and the requested port gets a 10-second grace period before the auto-increment fallback kicks in, covering the brief window where the old process hasn't fully released the socket.
+
 - **Share links now respect a reverse proxy** — `_getShareBaseUrl()` rewrote every copied share link to `http://<LAN-IP>:5100` (via `/api/local_ip`), which would bypass TLS when the scanner sits behind a reverse proxy (Zoraxy, Caddy, nginx, …): a DPO opening the link would silently fall back to plain HTTP. The LAN-IP rewrite now only applies in the case it was built for — browsing the app at `localhost` over HTTP, where `window.location.origin` would produce links unusable from other machines. Any HTTPS or non-localhost origin is used as-is.
 
 ---
