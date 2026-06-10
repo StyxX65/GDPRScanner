@@ -227,7 +227,7 @@ Configure email delivery in **Settings → Email report**. Click **Save** to sto
 | SMTP host | e.g. `smtp.office365.com`, `smtp.gmail.com` |
 | Port | `587` for STARTTLS (default), `465` for SMTPS/SSL |
 | Username | SMTP login — usually your sender email address |
-| Password | Saved to `~/.gdpr_scanner_smtp.json` (permissions 600). Encrypted at rest using Fernet — key in `~/.gdpr_scanner_machine_id` (chmod 0o600, never share) |
+| Password | Saved to `~/.gdprscanner/smtp.json` (permissions 600). Encrypted at rest using Fernet — key in `~/.gdprscanner/machine_id` (chmod 0o600, never share) |
 | Graph API | When connected to M365, email is sent via `/me/sendMail` (delegated) or `/users/{sender}/sendMail` (app mode) — no SMTP password needed. Requires `Mail.Send` Graph permission with admin consent. |
 | From address | Sender address (defaults to username if blank) |
 | STARTTLS | Enable STARTTLS on port 587 (recommended) |
@@ -273,7 +273,7 @@ Delta scan uses the Microsoft Graph `/delta` API (M365) and the Google Drive **C
 
 1. Run one **full scan** first (Delta checkbox off) — this establishes baseline delta tokens
 2. Tick **Δ Delta scan** and run again — only items added, modified, or deleted since the previous scan are fetched and CPR-scanned
-3. Delta tokens are saved automatically to `~/.gdpr_scanner_delta.json` after each successful scan
+3. Delta tokens are saved automatically to `~/.gdprscanner/delta.json` after each successful scan
 4. To force a full rescan, click **Clear tokens** under the checkbox (or delete the file)
 
 Delta tokens are stored **per-source**:

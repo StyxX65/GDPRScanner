@@ -188,8 +188,7 @@ async function checkDeltaStatus() {
     const row = document.getElementById('deltaStatusRow');
     const txt = document.getElementById('deltaStatusText');
     if (d.exists) {
-      const src = d.count === 1 ? '1 source' : `${d.count} sources`;
-      txt.textContent = t('m365_delta_tokens_saved', `Tokens saved for ${src}`);
+      txt.textContent = t('m365_delta_tokens_saved', 'Tokens saved for {n} source(s)').replace('{n}', d.count);
       row.style.display = 'flex';
       row.style.alignItems = 'center';
     } else {

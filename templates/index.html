@@ -110,6 +110,7 @@ document.addEventListener('DOMContentLoaded', applyI18n);
         <div id="deltaStatusRow" style="display:none;font-size:10px;padding:3px 0 2px;color:var(--muted)">
           <span id="deltaStatusText"></span>
           <button onclick="clearDeltaTokens()" style="background:none;border:none;color:var(--danger);font-size:10px;cursor:pointer;padding:0 0 0 6px" data-i18n="m365_delta_clear">Clear tokens</button>
+          <span class="hint-wrap"><span class="hint-icon" onclick="toggleHint(this)">?</span><span class="hint-bubble" data-i18n="m365_delta_tokens_hint">Saved change-tokens let delta scans fetch only items modified since the last scan. Clear tokens forces the next scan to be a full scan.</span></span>
         </div>
 
         <!-- Photo / biometric scan (#9) -->

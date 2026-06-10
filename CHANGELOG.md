@@ -15,6 +15,12 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 - **`update_gdpr.sh`** — standalone CLI/cron equivalent of the GUI update: fetch + fast-forward-only merge with auto-stash of local hotfixes, dependency reinstall only when `requirements.txt` changed, and a `systemctl restart` if a `gdprscanner.service` unit exists (override with `GDPR_SERVICE`). `./update_gdpr.sh --check` reports pending commits without changing anything; safe to run from cron (quiet no-op when already up to date).
 
+### Fixed
+
+- **Delta token status hid the source count** — the "Tokens saved" line under the Δ Delta scan toggle always showed the bare translation ("Tokens gemt") because the source count only existed in the JS fallback string, which is ignored whenever the lang key exists. The translations now carry a `{n}` placeholder ("Tokens gemt for {n} kilde(r)") substituted in `checkDeltaStatus()`, and the row gained a "?" hint bubble explaining what the saved change-tokens do and that "Clear tokens" forces the next scan to be a full scan.
+
+- **Stale data-file paths in README** — delta tokens were documented as `~/.gdpr_scanner_delta.json` and the SMTP password/Fernet key as `~/.gdpr_scanner_smtp.json` / `~/.gdpr_scanner_machine_id`; the actual locations have long been `~/.gdprscanner/delta.json`, `~/.gdprscanner/smtp.json`, and `~/.gdprscanner/machine_id`.
+
 ---
 
 ## [1.7.0] — 2026-06-10
