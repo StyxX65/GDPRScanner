@@ -9,6 +9,10 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+---
+
+## [1.7.1] — 2026-06-10
+
 ### Added
 
 - **Software update from the GUI** — a new **Settings → General → Software update** group lets the operator check for and install updates without touching the server shell. "Check for updates" fetches origin and shows either "You are running the latest version" or the list of pending commits; "Install update" fast-forwards the git checkout to `origin/<branch>`, reinstalls dependencies only if `requirements.txt` changed, writes an `app_update` audit-log entry, and restarts the app in place by re-exec'ing the process (`os.execv` — same PID, so it works both under systemd and when launched via `start_gdpr.sh`). The page polls until the server is back and reloads itself. Local server-side edits are auto-stashed (kept, never discarded) before the merge. Updating is refused with a clear message while any scan is running. An **"Install updates automatically"** toggle (stored in `config.json` under `auto_update`) enables a background thread that checks once a day and installs unattended, skipping (and retrying hourly) while a scan runs. The group is only shown when the app runs from a git checkout — the frozen desktop build hides it. New blueprint `routes/updates.py` with `GET /api/update/check`, `POST /api/update/apply`, `GET/POST /api/update/settings`; 11 new tests in `tests/test_updates.py` with fully mocked git.

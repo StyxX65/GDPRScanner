@@ -1,6 +1,6 @@
 # GDPR Scanner — User Manual
 
-Version 1.7.0
+Version 1.7.1
 
 ---
 
@@ -566,6 +566,7 @@ Click **Reset DB** to wipe all scan data, dispositions, and deletion log. This i
 | Setting | Description |
 |---------|-------------|
 | Theme | Dark or light mode |
+| Software update | Check for and install new versions of the scanner directly from the browser, or enable automatic daily updates. Only shown on server installations running from a git checkout (not in the desktop app). The app restarts itself after installing; updating is refused while a scan is running, and the next scan after an update continues normally. |
 
 ### Security tab
 
@@ -670,4 +671,4 @@ For a typical school or municipality scan the cost is negligible — Claude Haik
 
 ---
 
-*GDPR Scanner v1.7.0 — for technical setup and configuration see README.md*
+*GDPR Scanner v1.7.1 — for technical setup and configuration see README.md*

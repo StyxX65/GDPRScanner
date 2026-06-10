@@ -1,6 +1,6 @@
 # GDPR Scanner — Brugermanual
 
-Version 1.7.0
+Version 1.7.1
 
 ---
 
@@ -566,6 +566,7 @@ Klik på **Nulstil database** for at slette alle scanningsdata, dispositioner og
 | Indstilling | Beskrivelse |
 |-------------|-------------|
 | Tema | Mørkt eller lyst |
+| Softwareopdatering | Søg efter og installér nye versioner af scanneren direkte fra browseren, eller slå automatisk daglig opdatering til. Vises kun på serverinstallationer, der kører fra et git-checkout (ikke i skrivebordsappen). Programmet genstarter selv efter installation; opdatering afvises, mens en scanning kører, og næste scanning efter en opdatering fortsætter normalt. |
 
 ### Fanen Sikkerhed
 
@@ -670,4 +671,4 @@ For en typisk skole- eller kommunescanning er omkostningen ubetydelig — Claude
 
 ---
 
-*GDPR Scanner v1.7.0 — teknisk opsætning og konfiguration: se README.md*
+*GDPR Scanner v1.7.1 — teknisk opsætning og konfiguration: se README.md*
