@@ -54,9 +54,9 @@ Out of scope:
 ## Data Handling Notes for Security Researchers
 
 - CPR numbers are stored in the SQLite database as **SHA-256 hashes only** — never in plaintext
-- SMTP passwords are stored in `~/.gdpr_scanner_smtp.json` with chmod 600
+- SMTP passwords are stored in `~/.gdprscanner/smtp.json` with chmod 600
 - Microsoft OAuth tokens are stored in the MSAL token cache in `~/.gdpr_scanner_config.json`
-- Scan results are stored locally in `~/.gdpr_scanner.db` — never transmitted externally
+- Scan results are stored locally in `~/.gdprscanner/scanner.db` — never transmitted externally
 - The web UI binds to `127.0.0.1` by default — it is not designed to be exposed to the internet
 
 ---

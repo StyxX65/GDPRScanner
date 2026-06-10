@@ -102,7 +102,7 @@ tests/                 pytest test suite — 112 tests, all should pass.
 **Settings stats show 0 (Scanned / Flagged / Scans)**
 → `routes/database.py` → `db_stats()` — queries `flagged_items` and `scans` directly
 → Stats populate from existing DB on app start — no re-scan needed
-→ If still 0 after a completed scan: check `~/.gdpr_scanner.db` exists and is not empty
+→ If still 0 after a completed scan: check `~/.gdprscanner/scanner.db` exists and is not empty
 
 **File scan results not persisting to DB**
 → `scan_engine.py` → `run_file_scan()` — must call `_db.begin_scan()` not `start_scan()`

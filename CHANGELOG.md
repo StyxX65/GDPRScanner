@@ -19,7 +19,7 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 - **Delta token status hid the source count** — the "Tokens saved" line under the Δ Delta scan toggle always showed the bare translation ("Tokens gemt") because the source count only existed in the JS fallback string, which is ignored whenever the lang key exists. The translations now carry a `{n}` placeholder ("Tokens gemt for {n} kilde(r)") substituted in `checkDeltaStatus()`, and the row gained a "?" hint bubble explaining what the saved change-tokens do and that "Clear tokens" forces the next scan to be a full scan.
 
-- **Stale data-file paths in README** — delta tokens were documented as `~/.gdpr_scanner_delta.json` and the SMTP password/Fernet key as `~/.gdpr_scanner_smtp.json` / `~/.gdpr_scanner_machine_id`; the actual locations have long been `~/.gdprscanner/delta.json`, `~/.gdprscanner/smtp.json`, and `~/.gdprscanner/machine_id`.
+- **Stale data-file paths in docs and UI text** — README, SECURITY.md, MAINTAINER.md, the `--headless` argparse help (`--settings`, `--reset-db`, epilog), the DB-import replace warning/confirm strings (all three languages), and two code comments still referenced the pre-1.x flat dotfile layout (`~/.gdpr_scanner_delta.json`, `~/.gdpr_scanner_smtp.json`, `~/.gdpr_scanner_machine_id`, `~/.gdpr_scanner.db`). All now point to the actual locations under `~/.gdprscanner/` (`delta.json`, `smtp.json`, `machine_id`, `scanner.db`). The legacy-migration rename tables in `gdpr_scanner.py` intentionally keep the old names.
 
 ---
 

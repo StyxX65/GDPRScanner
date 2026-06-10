@@ -1593,10 +1593,10 @@ Headless (scheduled) usage:
     environment variables:  M365_CLIENT_ID, M365_TENANT_ID, M365_CLIENT_SECRET
     or a settings JSON:     --settings /path/to/settings.json
 
-  Scan options are loaded from ~/.gdpr_scanner_settings.json (saved automatically
+  Scan options are loaded from ~/.gdprscanner/settings.json (saved automatically
   after any interactive scan), or overridden in the --settings file.
 
-  SMTP config is loaded from ~/.gdpr_scanner_smtp.json (saved in the UI) or from
+  SMTP config is loaded from ~/.gdprscanner/smtp.json (saved in the UI) or from
   an 'smtp' key in the --settings file.
 
 Example cron (weekly, Mondays at 06:00):
@@ -1631,7 +1631,7 @@ Example --settings file with SMTP:
     parser.add_argument("--output",   default=".",
                         help="Output directory for Excel export in headless mode (default: .)")
     parser.add_argument("--settings", default=None,
-                        help="Path to a JSON settings file (overrides ~/.gdpr_scanner_settings.json)")
+                        help="Path to a JSON settings file (overrides ~/.gdprscanner/settings.json)")
     parser.add_argument("--email-to", default=None,
                         help="Comma-separated recipient addresses — send Excel report by email (headless only)")
     parser.add_argument("--retention-years", type=int, default=None,
@@ -1639,7 +1639,7 @@ Example --settings file with SMTP:
     parser.add_argument("--fiscal-year-end", default=None,
                         help="Fiscal year end as MM-DD for retention cutoff (e.g. 12-31 for Bogforingsloven). Omit for rolling window.")
     parser.add_argument("--reset-db", action="store_true",
-                        help="Reset the results database (~/.gdpr_scanner.db) — permanently deletes all scan history, "
+                        help="Reset the results database (~/.gdprscanner/scanner.db) — permanently deletes all scan history, "
                              "dispositions, and deletion log. Prompts for confirmation unless --yes is also passed.")
     parser.add_argument("--yes", action="store_true",
                         help="Skip confirmation prompts (use with --reset-db for scripted resets)")
@@ -2144,7 +2144,7 @@ Example --settings file with SMTP:
         email_to = getattr(args, "email_to", None)
         if email_to:
             recipients = [r.strip() for r in email_to.replace(";", ",").split(",") if r.strip()]
-            # SMTP config: --settings file takes priority, then saved ~/.gdpr_scanner_smtp.json
+            # SMTP config: --settings file takes priority, then saved ~/.gdprscanner/smtp.json
             smtp_cfg = _load_smtp_config()
             if cfg.get("smtp"):
                 smtp_cfg = {**smtp_cfg, **cfg["smtp"]}

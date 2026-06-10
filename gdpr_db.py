@@ -6,7 +6,7 @@ Stores scan results alongside the existing JSON cache.  Neither replaces the
 other: JSON is fast and portable, SQLite enables querying, trending, and the
 data-subject index.
 
-Database location: ~/.gdpr_scanner.db  (configurable via DB_PATH)
+Database location: ~/.gdprscanner/scanner.db  (configurable via DB_PATH)
 
 Schema
 ------

@@ -813,7 +813,7 @@ def clear_viewer_pin() -> None:
 # ── SMTP password encryption ─────────────────────────────────────────────────
 # The SMTP password is encrypted at rest using Fernet symmetric encryption.
 # The encryption key is derived from a stable machine-specific UUID stored in
-# ~/.gdpr_scanner_machine_id.  This key is only usable on the same machine —
+# ~/.gdprscanner/machine_id.  This key is only usable on the same machine —
 # the encrypted password cannot be decrypted if the config file is copied to
 # another host.
 

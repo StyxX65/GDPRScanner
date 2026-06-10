@@ -67,7 +67,7 @@ async function doImportDB() {
   }
   if (mode === 'replace') {
     if (!confirm(t('m365_db_import_replace_confirm',
-      'Replace mode will erase ALL existing scan data and restore from the archive.\n\nMake sure you have a manual backup of ~/.gdpr_scanner.db.\n\nProceed?'))) return;
+      'Replace mode will erase ALL existing scan data and restore from the archive.\n\nMake sure you have a manual backup of ~/.gdprscanner/scanner.db.\n\nProceed?'))) return;
   }
   btn.disabled = true;
   stat.style.color = 'var(--muted)';
