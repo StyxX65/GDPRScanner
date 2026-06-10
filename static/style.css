@@ -253,7 +253,7 @@
   .card-delete-btn { position:absolute; top:6px; right:6px; background:rgba(0,0,0,0.45); color:#fff; border:none; border-radius:50%; width:22px; height:22px; font-size:13px; line-height:22px; text-align:center; cursor:pointer; opacity:0.35; transition:opacity .15s; padding:0; z-index:1; }
   .card:hover .card-delete-btn { opacity:1; }
   .card.list-view .card-delete-btn { position:static; opacity:1; background:transparent; color:var(--muted); flex-shrink:0; }
-  .card-redact-btn { position:absolute; top:6px; right:32px; background:rgba(0,80,40,0.55); color:#7effc0; border:none; border-radius:50%; width:22px; height:22px; font-size:12px; line-height:22px; text-align:center; cursor:pointer; opacity:0; transition:opacity .15s; padding:0; z-index:1; }
+  .card-redact-btn { position:absolute; top:6px; right:32px; background:rgba(0,80,40,0.55); color:#7effc0; border:none; border-radius:50%; width:22px; height:22px; font-size:12px; line-height:22px; text-align:center; cursor:pointer; opacity:0.35; transition:opacity .15s; padding:0; z-index:1; }
   .card:hover .card-redact-btn { opacity:1; }
   .card.list-view .card-redact-btn { position:static; opacity:1; background:transparent; color:#7effc0; flex-shrink:0; }
 
