@@ -138,9 +138,7 @@ function _shareScopeTypeChanged() {
   if (type === 'user') _initUserAutocomplete();
 }
 
-function openShareModal() {
-  document.getElementById('shareBackdrop').classList.add('open');
-  document.getElementById('shareNewLinkRow').style.display = 'none';
+function _resetShareForm() {
   document.getElementById('shareLabel').value = '';
   document.getElementById('shareExpiry').value = '30';
   const scopeType = document.getElementById('shareScopeType');
@@ -152,6 +150,12 @@ function openShareModal() {
   if (scopeDrop) scopeDrop.style.display = 'none';
   const vf = document.getElementById('shareValidFrom'); if (vf) vf.value = '';
   const vt = document.getElementById('shareValidTo');   if (vt) vt.value = '';
+}
+
+function openShareModal() {
+  document.getElementById('shareBackdrop').classList.add('open');
+  document.getElementById('shareNewLinkRow').style.display = 'none';
+  _resetShareForm();
   _renderTokenList();
   fetch('/api/viewer/pin').then(function(r){ return r.json(); }).then(function(d) {
     const el = document.getElementById('sharePinStatus');
@@ -265,7 +269,7 @@ async function createShareLink() {
     urlInput.value = url;
     document.getElementById('shareNewLinkRow').style.display = 'block';
     document.getElementById('shareCopyBtn').textContent = t('log_copy', 'Copy');
-    document.getElementById('shareLabel').value = '';
+    _resetShareForm();
     _renderTokenList();
   } catch(e) {
     alert(t('share_create_error', 'Failed to create link:') + ' ' + e.message);
