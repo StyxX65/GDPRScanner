@@ -1758,10 +1758,11 @@ def delete_bulk():
             except Exception: pass
 
     return jsonify({
-        "ok":      True,
-        "deleted": len(deleted_ids),
-        "failed":  len(failed_items),
-        "errors":  failed_items[:10],  # cap error list
+        "ok":          True,
+        "deleted":     len(deleted_ids),
+        "deleted_ids": deleted_ids,    # so the grid can mark exactly these
+        "failed":      len(failed_items),
+        "errors":      failed_items[:10],  # cap error list
     })
 
 

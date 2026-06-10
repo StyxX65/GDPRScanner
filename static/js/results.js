@@ -680,6 +680,7 @@ function _bdFilters() {
 function _bdMatches() {
   const f = _bdFilters();
   return S.flaggedData.filter(x => {
+    if (x._deleted || x._redacted) return false;  // already handled this session
     if (f.source_type && x.source_type !== f.source_type) return false;
     if (x.cpr_count < f.min_cpr) return false;
     if (f.older_than_date && x.modified > f.older_than_date) return false;
@@ -885,9 +886,12 @@ async function executeBulkDelete() {
     });
     const d = await r.json();
     if (d.ok) {
-      const deletedSet = new Set(matches.map(x => x.id));
-      S.flaggedData  = S.flaggedData.filter(x => !deletedSet.has(x.id));
-      S.filteredData = S.filteredData.filter(x => !deletedSet.has(x.id));
+      // Keep the deleted items in the grid (marked, greyed, buttons hidden)
+      // until the next scan run — only those the server actually deleted.
+      const deletedSet = new Set(d.deleted_ids || matches.map(x => x.id));
+      const _mark = (x) => { if (deletedSet.has(x.id)) x._deleted = true; };
+      S.flaggedData.forEach(_mark);
+      S.filteredData.forEach(_mark);
       renderGrid(S.filteredData.length ? S.filteredData : S.flaggedData);
       updateStats();
       prog.innerHTML = `<span style="color:var(--ok,#4c4)">✓ ${d.deleted} ${t('m365_bulk_deleted', 'deleted')}</span>` +

@@ -23,7 +23,7 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ### Changed
 
-- **Redacted and deleted cards stay in the grid until the next scan** — previously redacting (✏) or deleting (🗑) a card removed it from the grid and from `S.flaggedData`/`S.filteredData` immediately. Now the item is kept and marked: the card is greyed (`card-resolved` styling), shows a `✏ Redacted` (green) or `🗑 Deleted` (red) badge, and its action buttons are hidden so it can't be re-processed. The operator can see what was handled during the session; the grid is rebuilt on the next scan run, which clears the markers. Implemented with `_redacted` / `_deleted` flags in `results.js` (`appendCard` + `redactItem` / `deleteItem`); no server change.
+- **Redacted and deleted cards stay in the grid until the next scan** — previously redacting (✏) or deleting (🗑) a card — or running a bulk delete — removed the affected cards from the grid and from `S.flaggedData`/`S.filteredData` immediately. Now each item is kept and marked: the card is greyed (`card-resolved` styling), shows a `✏ Redacted` (green) or `🗑 Deleted` (red) badge, and its action buttons are hidden so it can't be re-processed. The operator can see what was handled during the session; the grid is rebuilt on the next scan run, which clears the markers. Implemented with `_redacted` / `_deleted` flags in `results.js` (`appendCard`, `redactItem`, `deleteItem`, `executeBulkDelete`); handled items are also excluded from the bulk-delete match set. `POST /api/delete_bulk` now returns `deleted_ids` so the grid marks exactly the items the server actually deleted (partial failures stay active).
 
 ### Fixed
 
