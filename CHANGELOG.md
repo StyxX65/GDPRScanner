@@ -27,6 +27,8 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 - **Settings modal too narrow for seven tabs** — widened from 640 px to 720 px so all tab labels fit on one line without wrapping.
 
+- **Redact (✏) button invisible in grid view** — `.card-redact-btn` had `opacity:0` at rest and only became visible on `.card:hover`, so in the default grid/thumbnail view the redact button appeared to be missing from every document; it only showed in list view (which forces `opacity:1`). The button was always rendered in the DOM — this was purely a CSS visibility bug. Given it the same `0.35` baseline opacity as the delete button so it's discoverable at rest and brightens on hover.
+
 ### Security
 
 - **Stored XSS in the results grid** — scan-derived strings (file name, account/display name, folder, source label, modified date, image `alt`) were interpolated straight into `innerHTML` and `title=` attributes across the card, list, preview, data-subject lookup, and related-documents views. Because these values come from scanned content (e.g. a OneDrive file deliberately named with markup), a crafted filename could execute script in a reviewer's session — including a shared read-only viewer/DPO session. A new `esc()` helper in `static/js/results.js` (escapes `& < > " '`) is now applied to every untrusted field before embedding. The related-documents `onclick` JSON is also escaped with `.replace(/"/g,'&quot;')` to match the delete/redact button pattern, closing an attribute-injection hole where a filename containing `"` could break out of the handler.
