@@ -891,5 +891,16 @@
   "m365_ai_test_ok": "API-nøgle er gyldig",
   "m365_ai_test_fail": "Test mislykkedes",
   "m365_ai_saved": "Gemt",
-  "m365_ai_model_note": "Model: claude-haiku-4-5 · faktureres efter Anthropics token-priser · resultater caches pr. dokument."
+  "m365_ai_model_note": "Model: claude-haiku-4-5 · faktureres efter Anthropics token-priser · resultater caches pr. dokument.",
+  "m365_settings_updates": "Softwareopdatering",
+  "m365_update_idle": "Tjek om der findes en nyere version.",
+  "m365_update_auto": "Installér opdateringer automatisk (tjekkes dagligt — programmet genstarter selv)",
+  "m365_update_check": "Søg efter opdateringer",
+  "m365_update_install": "Installér opdatering",
+  "m365_update_checking": "Tjekker…",
+  "m365_update_uptodate": "Du kører den nyeste version.",
+  "m365_update_available": "Opdatering tilgængelig",
+  "m365_update_installing": "Installerer opdatering — programmet genstarter…",
+  "m365_update_failed": "Opdateringstjek mislykkedes",
+  "m365_update_scan_running": "Kan ikke opdatere, mens en scanning kører."
 }

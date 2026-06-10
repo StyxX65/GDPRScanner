@@ -354,6 +354,18 @@ def get_claude_api_key() -> str:
     return _decrypt_password(_load_config().get("claude_api_key", ""))
 
 
+# ── Software update config ────────────────────────────────────────────────────
+
+def get_update_config() -> dict:
+    return {"auto_update": bool(_load_config().get("auto_update", False))}
+
+
+def save_update_config(auto_update: bool) -> None:
+    cfg = _load_config()
+    cfg["auto_update"] = bool(auto_update)
+    _save_config(cfg)
+
+
 # ── Profile storage (15a) ─────────────────────────────────────────────────────
 _SETTINGS_PATH     = _DATA_DIR / "settings.json"
 _SRC_TOGGLES_PATH  = _DATA_DIR / "src_toggles.json"

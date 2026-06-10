@@ -1572,10 +1572,11 @@ from routes.scheduler import bp as scheduler_bp
 from routes.google_auth import bp as google_auth_bp
 from routes.google_scan import bp as google_scan_bp
 from routes.viewer      import bp as viewer_bp
+from routes.updates     import bp as updates_bp
 
 for _bp in [auth_bp, users_bp, scan_bp, sources_bp, profiles_bp,
             email_bp, database_bp, export_bp, app_routes_bp, scheduler_bp,
-            google_auth_bp, google_scan_bp, viewer_bp]:
+            google_auth_bp, google_scan_bp, viewer_bp, updates_bp]:
     app.register_blueprint(_bp)
 
 # ── Entry point ───────────────────────────────────────────────────────────────
@@ -2295,6 +2296,15 @@ Example --settings file with SMTP:
                 print("  Scheduler: unavailable (pip install apscheduler)")
         except Exception as _sched_err:
             print(f"  Scheduler: failed to start ({_sched_err})")
+
+        # Auto-update background thread (Settings → General → Software update)
+        try:
+            from routes.updates import start_auto_update_thread
+            from app_config import get_update_config as _get_upd_cfg
+            if start_auto_update_thread() and _get_upd_cfg().get("auto_update"):
+                print("  Auto-update: enabled (checked daily)")
+        except Exception as _upd_err:
+            print(f"  Auto-update: failed to start ({_upd_err})")
 
         print(f"  Press Ctrl+C to stop\n")
         app.run(host=args.host, port=args.port, debug=False, threaded=True)

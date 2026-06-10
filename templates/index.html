@@ -641,6 +641,19 @@ document.addEventListener('DOMContentLoaded', applyI18n);
           <div class="settings-about-row"><span>Requests</span><span id="st-about-requests" style="color:var(--muted)">—</span></div>
           <div class="settings-about-row"><span>openpyxl</span><span id="st-about-openpyxl" style="color:var(--muted)">—</span></div>
         </div>
+        <div class="settings-group" id="stUpdateGroup" style="display:none">
+          <div class="settings-group-title" data-i18n="m365_settings_updates">Software update</div>
+          <div id="stUpdateStatus" style="font-size:11px;color:var(--muted);margin-bottom:8px" data-i18n="m365_update_idle">Check whether a newer version is available.</div>
+          <div id="stUpdateCommits" style="display:none;font-size:11px;color:var(--muted);font-family:monospace;line-height:1.6;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;margin-bottom:8px;max-height:120px;overflow-y:auto"></div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <label class="toggle" style="flex:unset"><input type="checkbox" id="stAutoUpdate" onchange="stSaveAutoUpdate()"><span class="toggle-slider"></span></label>
+            <span style="font-size:12px" data-i18n="m365_update_auto">Install updates automatically (checked daily — the app restarts itself)</span>
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:8px">
+            <button type="button" onclick="stCheckUpdate()" id="stCheckUpdateBtn" style="height:26px;padding:0 14px;background:none;border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:12px;cursor:pointer;box-sizing:border-box" data-i18n="m365_update_check">Check for updates</button>
+            <button type="button" onclick="stApplyUpdate()" id="stApplyUpdateBtn" style="display:none;height:26px;padding:0 14px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;box-sizing:border-box" data-i18n="m365_update_install">Install update</button>
+          </div>
+        </div>
       </div>
 
       <!-- ── Security pane ─────────────────────────────────────────────────── -->

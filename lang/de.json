@@ -891,5 +891,16 @@
   "m365_ai_test_ok": "API-Schlüssel gültig",
   "m365_ai_test_fail": "Test fehlgeschlagen",
   "m365_ai_saved": "Gespeichert",
-  "m365_ai_model_note": "Modell: claude-haiku-4-5 · Abrechnung nach Anthropic-Token-Tarifen · Ergebnisse werden pro Dokument gecacht."
+  "m365_ai_model_note": "Modell: claude-haiku-4-5 · Abrechnung nach Anthropic-Token-Tarifen · Ergebnisse werden pro Dokument gecacht.",
+  "m365_settings_updates": "Softwareaktualisierung",
+  "m365_update_idle": "Prüfen, ob eine neuere Version verfügbar ist.",
+  "m365_update_auto": "Updates automatisch installieren (tägliche Prüfung — die App startet sich selbst neu)",
+  "m365_update_check": "Nach Updates suchen",
+  "m365_update_install": "Update installieren",
+  "m365_update_checking": "Wird geprüft…",
+  "m365_update_uptodate": "Sie verwenden die neueste Version.",
+  "m365_update_available": "Update verfügbar",
+  "m365_update_installing": "Update wird installiert — die App startet neu…",
+  "m365_update_failed": "Updateprüfung fehlgeschlagen",
+  "m365_update_scan_running": "Update nicht möglich, während ein Scan läuft."
 }

@@ -244,6 +244,7 @@ function switchSettingsTab(tab) {
     if (pane) pane.classList.toggle('active', t === tab);
     if (btn)  btn.classList.toggle('active', t === tab);
   });
+  if (tab === 'general')   stLoadUpdateSettings();
   if (tab === 'security')  { stLoadPinStatus(); if (typeof stLoadViewerPinStatus === 'function') stLoadViewerPinStatus(); if (typeof stLoadInterfacePinStatus === 'function') stLoadInterfacePinStatus(); }
   if (tab === 'email')     stLoadSmtp();
   if (tab === 'database')  stLoadDbStats();
@@ -332,6 +333,106 @@ async function stAiTest() {
   }
 }
 
+// ── Software updates ─────────────────────────────────────────────────────────
+
+async function stLoadUpdateSettings() {
+  try {
+    const cfg = await fetch('/api/update/settings').then(r => r.json());
+    const grp = document.getElementById('stUpdateGroup');
+    if (grp) grp.style.display = cfg.supported ? '' : 'none';
+    const cb = document.getElementById('stAutoUpdate');
+    if (cb) cb.checked = !!cfg.auto_update;
+  } catch(e) { /* ignore */ }
+}
+
+async function stSaveAutoUpdate() {
+  const cb = document.getElementById('stAutoUpdate');
+  try {
+    await fetch('/api/update/settings', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ auto_update: !!(cb && cb.checked) }),
+    });
+  } catch(e) { /* ignore */ }
+}
+
+async function stCheckUpdate() {
+  const status  = document.getElementById('stUpdateStatus');
+  const commits = document.getElementById('stUpdateCommits');
+  const applyBtn = document.getElementById('stApplyUpdateBtn');
+  if (status) { status.textContent = t('m365_update_checking', 'Checking…'); status.style.color = 'var(--muted)'; }
+  if (commits) commits.style.display = 'none';
+  if (applyBtn) applyBtn.style.display = 'none';
+  try {
+    const res = await fetch('/api/update/check').then(r => r.json());
+    if (!status) return;
+    if (res.error) {
+      status.textContent = t('m365_update_failed', 'Update check failed') + ': ' + res.error;
+      status.style.color = 'var(--danger)';
+    } else if (res.up_to_date) {
+      status.textContent = t('m365_update_uptodate', 'You are running the latest version.') + ' (' + res.current + ')';
+      status.style.color = 'var(--success)';
+    } else {
+      status.textContent = t('m365_update_available', 'Update available') + ': ' + res.current + ' → ' + res.latest;
+      status.style.color = 'var(--accent)';
+      if (commits && res.commits && res.commits.length) {
+        commits.innerHTML = res.commits.map(function(c) { return window._escHtml(c); }).join('<br>');
+        commits.style.display = '';
+      }
+      if (applyBtn) applyBtn.style.display = '';
+    }
+  } catch(e) {
+    if (status) { status.textContent = String(e); status.style.color = 'var(--danger)'; }
+  }
+}
+
+async function stApplyUpdate() {
+  const status   = document.getElementById('stUpdateStatus');
+  const applyBtn = document.getElementById('stApplyUpdateBtn');
+  const checkBtn = document.getElementById('stCheckUpdateBtn');
+  if (applyBtn) applyBtn.disabled = true;
+  if (checkBtn) checkBtn.disabled = true;
+  if (status) { status.textContent = t('m365_update_installing', 'Installing update — the app will restart…'); status.style.color = 'var(--muted)'; }
+  try {
+    const res = await fetch('/api/update/apply', { method: 'POST' }).then(r => r.json());
+    if (!res.ok) {
+      const msg = res.code === 'scan_running'
+        ? t('m365_update_scan_running', 'Cannot update while a scan is running.')
+        : (res.error || 'Update failed');
+      if (status) { status.textContent = msg; status.style.color = 'var(--danger)'; }
+      if (applyBtn) applyBtn.disabled = false;
+      if (checkBtn) checkBtn.disabled = false;
+      return;
+    }
+    if (!res.updated) {   // already up to date
+      if (status) { status.textContent = t('m365_update_uptodate', 'You are running the latest version.'); status.style.color = 'var(--success)'; }
+      if (applyBtn) { applyBtn.disabled = false; applyBtn.style.display = 'none'; }
+      if (checkBtn) checkBtn.disabled = false;
+      return;
+    }
+    _stWaitForRestart();
+  } catch(e) {
+    if (status) { status.textContent = String(e); status.style.color = 'var(--danger)'; }
+    if (applyBtn) applyBtn.disabled = false;
+    if (checkBtn) checkBtn.disabled = false;
+  }
+}
+
+// Poll until the server has gone down and come back, then reload the page.
+function _stWaitForRestart() {
+  let tries = 0, sawDown = false;
+  const iv = setInterval(async function() {
+    tries++;
+    try {
+      await fetch('/api/about', { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(); });
+      if (sawDown || tries >= 5) { clearInterval(iv); location.reload(); }
+    } catch(e) {
+      sawDown = true;
+    }
+    if (tries > 90) clearInterval(iv);   // give up after ~3 minutes
+  }, 2000);
+}
+
 function stAiToggleKey() {
   const inp = document.getElementById('aiApiKey');
   const btn = document.getElementById('aiShowKeyBtn');
@@ -362,5 +463,9 @@ window.stLoadAiSettings = stLoadAiSettings;
 window.stAiSave = stAiSave;
 window.stAiTest = stAiTest;
 window.stAiToggleKey = stAiToggleKey;
+window.stLoadUpdateSettings = stLoadUpdateSettings;
+window.stSaveAutoUpdate = stSaveAutoUpdate;
+window.stCheckUpdate = stCheckUpdate;
+window.stApplyUpdate = stApplyUpdate;
 window._M365_SOURCES = _M365_SOURCES;
 window._pinCallback = _pinCallback;

@@ -59,7 +59,7 @@ Exception hierarchy (all inherit `M365Error(Exception)`):
 - **`audit_log` table** — created by `_DDL` (`CREATE TABLE IF NOT EXISTS`), auto-appears on next server start. Schema: `id, ts (Unix float), action, actor, detail, ip`.
 - **`log_audit_event(action, detail, actor, ip)`** — module-level helper; silently no-ops on any exception. Import: `from gdpr_db import log_audit_event as _audit`.
 - **`GET /api/audit_log?limit=200&action=<filter>`** — in `routes/app_routes.py`. No auth gate.
-- **Recorded events** — `profile_save/delete`, `token_create/revoke`, `viewer_pin_set/change/clear`, `interface_pin_set/change/clear`, `source_add/update/delete`, `scheduler_job_save/delete`, `scan_start/stop`, `smtp_save`, `disposition`, `disposition_bulk`, `admin_pin_set/change`, `item_delete`, `item_redact`.
+- **Recorded events** — `profile_save/delete`, `token_create/revoke`, `viewer_pin_set/change/clear`, `interface_pin_set/change/clear`, `source_add/update/delete`, `scheduler_job_save/delete`, `scan_start/stop`, `smtp_save`, `disposition`, `disposition_bulk`, `admin_pin_set/change`, `item_delete`, `item_redact`, `app_update`.
 - **`actor` always empty** — no per-user login; field reserved for future use.
 
 ## Email sending — routes/email.py + m365_connector.py
@@ -88,6 +88,14 @@ Optional AI-powered NER replacing spaCy. Activated via `config.json` keys `claud
 - **`GET/POST /api/settings/claude`** — GET returns `{"enabled": bool, "api_key_set": bool}` (never exposes key). POST accepts `{"enabled": bool, "api_key": "..."}` — omitting `api_key` leaves stored key unchanged.
 - **`POST /api/settings/claude/test`** — minimal 8-token API call; returns `{"ok": true}` or `{"ok": false, "error": "..."}`.
 - **Do not import `anthropic` at module level outside `document_scanner.py`** — `routes/app_routes.py` imports it locally inside the function body so the server starts without the package.
+
+## Software update — routes/updates.py
+
+- **Git-checkout only** — `_supported()` requires a `.git` dir and not `sys.frozen`. The frozen desktop build gets `{"supported": false}` and the UI hides the Settings group.
+- **`POST /api/update/apply`** — stash-if-dirty → `merge --ff-only origin/<branch>` → pip install only if `requirements.txt` changed → audit `app_update` → `_schedule_restart()` re-execs the process via `os.execv` (same PID; works under systemd and `start_gdpr.sh`). Refuses with `code: "scan_running"` (409) while `state._scan_lock` or `state._google_scan_lock` is held.
+- **`apply_update()` never restarts itself** — callers decide. Tests patch `_schedule_restart`; the auto-update thread calls `_restart_self()` directly.
+- **Auto-update thread** — `start_auto_update_thread()` called from `gdpr_scanner.py` `__main__`. Hourly tick, applies at most once per 24 h when `config.json["auto_update"]` is true; skips (and retries next tick) while a scan runs.
+- **`update_gdpr.sh`** — standalone CLI/cron equivalent of the same logic; keep stash/ff-only/requirements behaviour in sync.
 
 ## Viewer mode — routes/viewer.py
 

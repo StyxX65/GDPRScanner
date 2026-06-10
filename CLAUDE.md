@@ -50,7 +50,9 @@ python -m pytest tests/ -q
 
 ## Tests
 
-201 tests in `tests/`. No integration tests for live M365/Google connections.
+212 tests in `tests/`. No integration tests for live M365/Google connections.
+
+**`tests/test_updates.py`** — 11 tests for the software-update routes (`routes/updates.py`). All git interaction goes through a mocked `_git()`; `_schedule_restart` is patched so no test re-execs the process, and `gdpr_db.log_audit_event` is patched so no test writes the real database.
 
 **`tests/test_google_scan.py`** — 19 tests for the Google Workspace scan module. Route tests for `GET /api/google/scan/users`, `POST /api/google/scan/start`, `POST /api/google/scan/cancel`. Engine tests for `_run_google_scan` using synchronous invocation with mocked `broadcast`, `_scan_bytes`, `checkpoint.*`, `scan_engine._with_disposition`, and `gdpr_db.get_db`. The `clean_google_state` autouse fixture releases `_google_scan_lock` and clears `_google_scan_abort` after each test.
 

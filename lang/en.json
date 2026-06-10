@@ -891,5 +891,16 @@
   "m365_ai_test_ok": "API key valid",
   "m365_ai_test_fail": "Test failed",
   "m365_ai_saved": "Saved",
-  "m365_ai_model_note": "Model: claude-haiku-4-5 · billed at Anthropic token rates · results cached per document."
+  "m365_ai_model_note": "Model: claude-haiku-4-5 · billed at Anthropic token rates · results cached per document.",
+  "m365_settings_updates": "Software update",
+  "m365_update_idle": "Check whether a newer version is available.",
+  "m365_update_auto": "Install updates automatically (checked daily — the app restarts itself)",
+  "m365_update_check": "Check for updates",
+  "m365_update_install": "Install update",
+  "m365_update_checking": "Checking…",
+  "m365_update_uptodate": "You are running the latest version.",
+  "m365_update_available": "Update available",
+  "m365_update_installing": "Installing update — the app will restart…",
+  "m365_update_failed": "Update check failed",
+  "m365_update_scan_running": "Cannot update while a scan is running."
 }
