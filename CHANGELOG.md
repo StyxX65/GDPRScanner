@@ -9,6 +9,10 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+---
+
+## [1.7.3] — 2026-06-10
+
 ### Fixed
 
 - **App restart no longer hops to a new port** — the in-app update restart (and any quick stop/start) left connections from the previous instance in TIME_WAIT, and the startup port probe did a plain `bind()` that treats TIME_WAIT as occupied — so the restarted app silently came up on 5101 and the browser's reload poll never found it. The probe now sets `SO_REUSEADDR` (matching how Werkzeug actually binds, so an actively listening port is still detected as occupied), and the requested port gets a 10-second grace period before the auto-increment fallback kicks in, covering the brief window where the old process hasn't fully released the socket.
