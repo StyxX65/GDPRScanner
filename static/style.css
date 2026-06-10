@@ -197,7 +197,7 @@
   .filter-clear:hover { border-color: var(--danger); color: var(--danger); }
 
   /* Grid */
-  .grid-area { flex: 1; overflow-y: auto; padding: 24px; min-width: 0; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+  .grid-area { flex: 1; overflow-y: auto; overflow-anchor: none; padding: 24px; min-width: 0; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
   .grid-area::-webkit-scrollbar { width: 4px; }
   .grid-area::-webkit-scrollbar-track { background: transparent; }
   .grid-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }

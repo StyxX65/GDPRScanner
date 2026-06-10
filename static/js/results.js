@@ -118,7 +118,11 @@ async function openPreview(f) {
   panel.classList.remove('hidden');
   const _savedW = sessionStorage.getItem('gdpr_preview_width');
   if (_savedW) panel.style.width = _savedW + 'px';
-  if (cardEl) requestAnimationFrame(() => cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
+  // Opening the panel narrows .grid-area and reflows the grid to fewer columns,
+  // moving the selected card to a new row. Defer the scroll by two frames so it
+  // runs against the settled layout, and centre the card so it stays visible.
+  if (cardEl) requestAnimationFrame(() => requestAnimationFrame(() =>
+    cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' })));
   title.textContent = f.name;
   frame.style.display = 'none';
   loading.style.display = 'flex';

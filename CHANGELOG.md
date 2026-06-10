@@ -27,6 +27,8 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ### Fixed
 
+- **Selected card scrolled out of view when opening the preview** — opening the preview panel narrows `.grid-area`, which reflows the `auto-fill` grid to fewer columns and moves every card to a new row. The single-frame `scrollIntoView` ran while the browser's scroll-anchoring re-adjusted `scrollTop` mid-reflow, fighting the scroll so the clicked card ended up off-screen. Fixed by disabling scroll anchoring on `.grid-area` (`overflow-anchor: none`) and deferring the scroll by two animation frames so it runs against the settled layout; the card is now centred (`block: 'center'`) instead of `'nearest'` so it stays clearly visible.
+
 - **Cards not shown after browser refresh** — when the browser reconnected to the SSE stream after a completed scan, the `scan_phase` events in the replay buffer temporarily set `S._m365ScanRunning = true` (all running flags start at `false` after a page reload). The watchdog's `loadHistorySession` call fired in this window and bailed on the stale flag; once `scan_done` cleared the flag, `_initialStatusChecked` was already `true` so `loadHistorySession` was never retried. Fixed by having the `sse_replay_done` handler retry `loadHistorySession(null)` when no scan is running and `S._historyRefScanId` is still `null` after replay.
 
 - **Settings modal too narrow for seven tabs** — widened from 640 px to 720 px so all tab labels fit on one line without wrapping.
