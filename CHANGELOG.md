@@ -23,7 +23,7 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ### Changed
 
-- **Redacted cards stay in the grid until the next scan** — previously redacting a card (✏) removed it from the grid and from `S.flaggedData`/`S.filteredData` immediately. Now the item is kept and marked redacted: the card is greyed (`card-resolved` styling), shows a `✏ Redacted` badge, and its delete/redact action buttons are hidden so it can't be re-processed. The operator can see what was handled during the session; the grid is rebuilt on the next scan run, which clears the redacted markers. Implemented with a `_redacted` flag in `results.js` (`appendCard` + `redactItem`); no server change.
+- **Redacted and deleted cards stay in the grid until the next scan** — previously redacting (✏) or deleting (🗑) a card removed it from the grid and from `S.flaggedData`/`S.filteredData` immediately. Now the item is kept and marked: the card is greyed (`card-resolved` styling), shows a `✏ Redacted` (green) or `🗑 Deleted` (red) badge, and its action buttons are hidden so it can't be re-processed. The operator can see what was handled during the session; the grid is rebuilt on the next scan run, which clears the markers. Implemented with `_redacted` / `_deleted` flags in `results.js` (`appendCard` + `redactItem` / `deleteItem`); no server change.
 
 ### Fixed
 
