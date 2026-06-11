@@ -317,6 +317,11 @@ app = Flask(__name__,
             template_folder=_os.path.join(_BASE_DIR, "templates"),
             static_folder=_os.path.join(_BASE_DIR, "static"))
 
+# Static files must revalidate on every load (cheap 304s via ETag). Without
+# this there is no Cache-Control header and browsers cache JS/CSS heuristically
+# for days — after a self-update the backend is new but the UI stays stale.
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+
 # Session secret — derived from machine_id so it survives restarts without a separate file.
 # machine_id is also the Fernet key (base64-encoded 32 bytes); we use its raw bytes as the secret.
 try:
