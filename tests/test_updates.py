@@ -188,6 +188,23 @@ def test_apply_installs_requirements_when_changed(client, monkeypatch):
     assert "pip" in pip_calls[0] and "-r" in pip_calls[0]
 
 
+# ── Restart fd hygiene ────────────────────────────────────────────────────────
+
+def test_mark_fds_cloexec_unmarks_inheritable_socket():
+    """Werkzeug sets the listening socket inheritable; the restart must undo
+    that or the socket leaks through execv and squats on the port."""
+    import socket
+    import routes.updates as upd
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        s.set_inheritable(True)
+        assert s.get_inheritable() is True
+        upd._mark_fds_cloexec()
+        assert s.get_inheritable() is False
+    finally:
+        s.close()
+
+
 # ── /api/update/settings ──────────────────────────────────────────────────────
 
 def test_settings_roundtrip(client, monkeypatch):

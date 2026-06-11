@@ -9,6 +9,10 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+### Fixed
+
+- **Update restart leaked the listening socket and hopped to port 5101** — Werkzeug marks its server socket inheritable (`srv.socket.set_inheritable(True)`, unconditionally, for its debug reloader), so the in-app update's `os.execv` restart carried the old listening socket into the new process as a zombie listener: same PID listening on both 5100 (never accepted — clients hang) and 5101 (the actual server). The 1.7.3 `SO_REUSEADDR`/grace-period fix couldn't help because the port genuinely was occupied — by the restarting process itself. `_restart_self()` now marks every fd above stderr close-on-exec before the exec (`_mark_fds_cloexec()`, enumerating `/proc/self/fd` on Linux), so the old socket dies with the exec and the new server rebinds 5100 immediately.
+
 ---
 
 ## [1.7.5] — 2026-06-11

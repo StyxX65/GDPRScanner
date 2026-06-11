@@ -118,13 +118,34 @@ def apply_update() -> dict:
             "from": chk["current"], "to": chk["latest"]}
 
 
+def _mark_fds_cloexec() -> None:
+    """Mark every fd above stderr close-on-exec.
+
+    Werkzeug calls ``srv.socket.set_inheritable(True)`` unconditionally
+    (for its debug reloader), so without this the listening socket leaks
+    into the exec'd process: it sits on the port as a zombie listener no
+    one accepts from, the port probe sees the port as busy, and the new
+    server hops to port+1 while clients hang against the dead socket.
+    """
+    try:
+        fds = [int(f) for f in os.listdir("/proc/self/fd")]   # Linux
+    except (OSError, ValueError):
+        fds = list(range(3, 4096))
+    for fd in fds:
+        if fd > 2:
+            try:
+                os.set_inheritable(fd, False)
+            except OSError:
+                pass
+
+
 def _restart_self() -> None:
     """Re-exec the current process so the updated code is loaded.
 
     Keeps the same PID, so it works both under systemd and when launched
-    manually via start_gdpr.sh. Listening sockets are close-on-exec, so
-    the new process can rebind the port.
+    manually via start_gdpr.sh.
     """
+    _mark_fds_cloexec()
     try:
         os.execv(sys.executable, [sys.executable] + sys.argv)
     except OSError:
