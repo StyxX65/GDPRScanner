@@ -55,9 +55,9 @@ Out of scope:
 
 - CPR numbers are stored in the SQLite database as **SHA-256 hashes only** — never in plaintext
 - SMTP passwords are stored in `~/.gdprscanner/smtp.json` with chmod 600
-- Microsoft OAuth tokens are stored in the MSAL token cache in `~/.gdpr_scanner_config.json`
+- Microsoft OAuth tokens are stored in the MSAL token cache in `~/.gdprscanner/token.json`
 - Scan results are stored locally in `~/.gdprscanner/scanner.db` — never transmitted externally
-- The web UI binds to `127.0.0.1` by default — it is not designed to be exposed to the internet
+- The web UI binds to `0.0.0.0` by default so reviewers on the LAN can reach it — it is not designed to be exposed to the internet. For encrypted transport, put it behind a TLS-terminating reverse proxy and bind the app to loopback with `--host 127.0.0.1` — see [docs/setup/ZORAXY_SETUP.md](docs/setup/ZORAXY_SETUP.md)
 
 ---
 

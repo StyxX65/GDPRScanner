@@ -534,6 +534,14 @@ API endpoints: `GET /api/update/check`, `POST /api/update/apply`, `GET/POST /api
 
 ---
 
+### HTTPS / reverse proxy
+
+The scanner itself serves plain HTTP. For encrypted transport on a LAN — recommended, since scan results contain CPR numbers — put it behind a TLS-terminating reverse proxy and bind the app to loopback (`--host 127.0.0.1`) so the proxy is the only way in. Share links automatically follow the HTTPS hostname, and the browser Clipboard API (Copy buttons) works natively in a secure context.
+
+See [ZORAXY_SETUP.md](docs/setup/ZORAXY_SETUP.md) for a complete walkthrough: Zoraxy, Let's Encrypt via DNS-01 challenge (required when the hostname resolves to a private IP), proxy rule, and the scanner-specific verification steps.
+
+---
+
 ### Article 30 report
 
 The **Art.30** button in the filter bar generates a GDPR **Article 30 Register of Processing Activities** as a Word document (`.docx`).
@@ -737,6 +745,7 @@ See [SUGGESTIONS.md](SUGGESTIONS.md) for the full feature roadmap with implement
 | `docs/manuals/MANUAL-DA.md` | End-user manual in Danish (15 sections) — served at `/manual?lang=da` |
 | `docs/setup/M365_SETUP.md` | Step-by-step Microsoft 365 setup guide |
 | `docs/setup/GOOGLE_SETUP.md` | Step-by-step Google Workspace setup guide |
+| `docs/setup/ZORAXY_SETUP.md` | HTTPS via Zoraxy reverse proxy — LAN-only deployment with Let's Encrypt DNS-01 |
 | `build_gdpr.py` | PyInstaller build script — generates `m365_launcher.py`, packages desktop app |
 | `lang/en.json` | English translations (source of truth) |
 | `lang/da.json` | Danish translations (primary language) |

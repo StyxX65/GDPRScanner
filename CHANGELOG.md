@@ -9,6 +9,14 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+### Added
+
+- **Reverse-proxy / HTTPS setup guide** — new `docs/setup/ZORAXY_SETUP.md` walks through putting the scanner behind Zoraxy with a Let's Encrypt certificate on a LAN-only deployment: DNS A-record to a private IP, ACME via DNS-01 challenge (HTTP-01 cannot reach a LAN-only host), proxy rule to `127.0.0.1:5100`, binding the app to loopback with `--host 127.0.0.1`, and scanner-specific verification (SSE streaming, HTTPS share links, self-update). Linked from the README (new "HTTPS / reverse proxy" section) and SECURITY.md.
+
+### Fixed
+
+- **SECURITY.md corrections** — the web UI binds to `0.0.0.0` by default, not `127.0.0.1` as claimed; the MSAL token cache path was still the pre-1.x `~/.gdpr_scanner_config.json` (actual: `~/.gdprscanner/token.json`).
+
 ---
 
 ## [1.7.6] — 2026-06-11
