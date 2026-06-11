@@ -1,6 +1,6 @@
 # GDPR Scanner — Brugermanual
 
-Version 1.7.4
+Version 1.7.5
 
 ---
 
@@ -671,4 +671,4 @@ For en typisk skole- eller kommunescanning er omkostningen ubetydelig — Claude
 
 ---
 
-*GDPR Scanner v1.7.4 — teknisk opsætning og konfiguration: se README.md*
+*GDPR Scanner v1.7.5 — teknisk opsætning og konfiguration: se README.md*

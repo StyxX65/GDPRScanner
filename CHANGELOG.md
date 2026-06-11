@@ -9,6 +9,10 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+---
+
+## [1.7.5] — 2026-06-11
+
 ### Fixed
 
 - **Stale UI after updating the server** — Flask served `/static/` files with no `Cache-Control` header, so browsers cached JS/CSS heuristically (often for days). After a server update — including the new in-app self-update, whose post-install reload hit the cache — the backend was new but the frontend stayed old, and fixes appeared "not to work" until a hard refresh. `SEND_FILE_MAX_AGE_DEFAULT = 0` now makes every static file revalidate via ETag: unchanged files answer with a cheap 304, changed files are re-fetched immediately on the next normal page load.
