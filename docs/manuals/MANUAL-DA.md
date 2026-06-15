@@ -441,8 +441,8 @@ Klik på **🔗**-knappen øverst til højre i topbjælken for at åbne delingsp
    - **Bruger** — modtageren ser kun elementer tilhørende en bestemt medarbejder. Vælg personen fra søgefeltet; scanneren matcher automatisk både deres M365- og Google Workspace-e-mailadresser. Brug denne mulighed, når du vil give en enkelt medarbejder adgang til sine egne scanningsresultater.
 3. Angiv eventuelt et **Datointerval** — brug felterne "Elementer fra" og "Elementer til" for at begrænse modtagerens visning til elementer ændret inden for en bestemt periode. Lad begge felter stå tomme for ingen datobegrænsning.
 4. Vælg en **Udløbsdato** — 7 dage, 30 dage, 90 dage, 1 år eller Aldrig.
-5. Klik på **Opret**. Der genereres et unikt link: `http://host:5100/view?token=…`
-6. Klik på **Kopiér** for at kopiere linket til udklipsholderen, og send det til gennemgangeren.
+5. Klik på **Opret**. Formularen ryddes, og det nye link vises øverst i listen **Aktive links** nedenfor, kortvarigt fremhævet.
+6. Klik på **Kopiér** i linkets række for at kopiere det til udklipsholderen, og send det til gennemgangeren.
 
 Gennemgangeren åbner linket i en browser. De kan se resultatgitteret (afgrænset til det tilladte rolleomfang) og mærke dispositioner, men kan ikke starte scanninger, ændre indstillinger, se loginoplysninger eller slette elementer.
 

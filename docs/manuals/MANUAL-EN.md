@@ -441,8 +441,8 @@ Click the **🔗** button in the top-right of the top bar to open the Share pane
    - **User** — the recipient sees only the items belonging to a specific employee. Select the person from the search box; the scanner matches both their M365 and Google Workspace email addresses automatically. Use this when you want to give an individual employee access to their own scan results.
 3. Optionally set a **Date range** — use the "Items from" and "Items until" date fields to limit the recipient to items modified within a specific period. This lets you, for example, create a link covering only last year's scan results. Leave both fields blank for no date restriction.
 4. Choose an **Expiry** — 7 days, 30 days, 90 days, 1 year, or Never.
-5. Click **Create**. A unique link is generated: `http://host:5100/view?token=…`
-6. Click **Copy** to copy the link to your clipboard, then send it to the reviewer.
+5. Click **Create**. The form clears and the new link appears at the top of the **Active links** list below, briefly highlighted.
+6. Click **Copy** on that link's row to copy it to your clipboard, then send it to the reviewer.
 
 The reviewer opens the link in any browser. They see the results grid (filtered to their permitted scope) and can tag dispositions but cannot start scans, change settings, view credentials, or delete items.
 
