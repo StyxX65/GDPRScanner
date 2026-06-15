@@ -9,6 +9,10 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+---
+
+## [1.7.7] — 2026-06-15
+
 ### Changed
 
 - **Share modal no longer leaves a stale link in the create box** — after clicking "Create", the generated-link preview row ("Copy link:") stayed visible at the top of the modal even though the new link was already listed under Active links with its own Copy button — so it looked like the form hadn't cleared. The redundant preview row is removed; creating a link now resets the form and briefly highlights the new entry in the Active links list, where it can be copied. (The 1.7.4 fix cleared the input fields but not this preview row.)
