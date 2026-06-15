@@ -9,6 +9,10 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+### Changed
+
+- **Share modal no longer leaves a stale link in the create box** — after clicking "Create", the generated-link preview row ("Copy link:") stayed visible at the top of the modal even though the new link was already listed under Active links with its own Copy button — so it looked like the form hadn't cleared. The redundant preview row is removed; creating a link now resets the form and briefly highlights the new entry in the Active links list, where it can be copied. (The 1.7.4 fix cleared the input fields but not this preview row.)
+
 ### Added
 
 - **Reverse-proxy / HTTPS setup guide** — new `docs/setup/ZORAXY_SETUP.md` walks through putting the scanner behind Zoraxy with a Let's Encrypt certificate on a LAN-only deployment: DNS A-record to a private IP, ACME via DNS-01 challenge (HTTP-01 cannot reach a LAN-only host), proxy rule to `127.0.0.1:5100`, binding the app to loopback with `--host 127.0.0.1`, and scanner-specific verification (SSE streaming, HTTPS share links, self-update). Linked from the README (new "HTTPS / reverse proxy" section) and SECURITY.md.

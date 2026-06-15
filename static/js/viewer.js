@@ -154,7 +154,6 @@ function _resetShareForm() {
 
 function openShareModal() {
   document.getElementById('shareBackdrop').classList.add('open');
-  document.getElementById('shareNewLinkRow').style.display = 'none';
   _resetShareForm();
   _renderTokenList();
   fetch('/api/viewer/pin').then(function(r){ return r.json(); }).then(function(d) {
@@ -167,7 +166,7 @@ function closeShareModal() {
   document.getElementById('shareBackdrop').classList.remove('open');
 }
 
-async function _renderTokenList() {
+async function _renderTokenList(highlightToken) {
   const list = document.getElementById('shareTokenList');
   list.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:4px 0">' + t('lbl_loading', 'Loading…') + '</div>';
   try {
@@ -222,6 +221,17 @@ async function _renderTokenList() {
         '<button title="' + t('share_revoke', 'Revoke') + '" onclick="revokeToken(\'' + tok.token + '\',this.closest(\'div[style]\'))" ' +
           'style="height:24px;padding:0 8px;background:none;border:1px solid var(--danger);color:var(--danger);border-radius:4px;font-size:11px;cursor:pointer;flex-shrink:0">' + t('share_revoke', 'Revoke') + '</button>';
       list.appendChild(row);
+      // Briefly highlight a freshly created link so it is easy to find and copy.
+      if (highlightToken && tok.token === highlightToken) {
+        row.style.transition = 'border-color .3s, background .3s';
+        row.style.borderColor = 'var(--accent)';
+        row.style.background = 'rgba(80,160,80,.18)';
+        setTimeout(function() { row.scrollIntoView({block: 'nearest'}); }, 0);
+        setTimeout(function() {
+          row.style.borderColor = 'var(--border)';
+          row.style.background = 'var(--bg)';
+        }, 2500);
+      }
     });
   } catch(e) {
     list.innerHTML = '<div style="font-size:12px;color:var(--danger);padding:4px 0">' + t('share_load_error', 'Failed to load links.') + '</div>';
@@ -264,21 +274,14 @@ async function createShareLink() {
     });
     if (!r.ok) throw new Error('Server error ' + r.status);
     const entry = await r.json();
-    const url = (await _getShareBaseUrl()) + '/view?token=' + encodeURIComponent(entry.token);
-    const urlInput = document.getElementById('shareNewLinkUrl');
-    urlInput.value = url;
-    document.getElementById('shareNewLinkRow').style.display = 'block';
-    document.getElementById('shareCopyBtn').textContent = t('log_copy', 'Copy');
+    // The new link appears in the active-links list below (each row has its
+    // own Copy button) — reset the form and highlight the just-created row
+    // rather than leaving a stale link preview in the create box.
     _resetShareForm();
-    _renderTokenList();
+    _renderTokenList(entry.token);
   } catch(e) {
     alert(t('share_create_error', 'Failed to create link:') + ' ' + e.message);
   }
-}
-
-function copyShareLink() {
-  const url = document.getElementById('shareNewLinkUrl').value;
-  _copyText(url, document.getElementById('shareCopyBtn'));
 }
 
 async function copyTokenLink(token, btn) {
@@ -327,12 +330,6 @@ async function revokeToken(token, rowEl) {
     const list = document.getElementById('shareTokenList');
     if (!list.children.length) {
       list.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:4px 0">' + t('share_no_links', 'No active links.') + '</div>';
-    }
-    // Hide the copy row if the just-revoked token was the last created
-    const newRow = document.getElementById('shareNewLinkRow');
-    if (newRow) {
-      const shownUrl = document.getElementById('shareNewLinkUrl')?.value || '';
-      if (shownUrl.includes(token)) newRow.style.display = 'none';
     }
   } catch(e) {
     alert(t('share_revoke_error', 'Failed to revoke:') + ' ' + e.message);
@@ -502,7 +499,6 @@ window._shareScopeTypeChanged = _shareScopeTypeChanged;
 window.openShareModal       = openShareModal;
 window.closeShareModal      = closeShareModal;
 window.createShareLink      = createShareLink;
-window.copyShareLink        = copyShareLink;
 window._copyText            = _copyText;
 window.copyTokenLink        = copyTokenLink;
 window.revokeToken          = revokeToken;
