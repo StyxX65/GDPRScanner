@@ -28,13 +28,15 @@ python -m pytest tests/ -q
 
 **`_scan_bytes` injection pattern** — `scan_engine.py` defines no-op stubs at module level (avoids circular import). `gdpr_scanner.py` overwrites them at startup. `routes/google_scan.py` resolves them lazily via `gdpr_scanner.__getattr__`. Do not import them directly in those modules.
 
-**Blueprints** in `routes/` — see `routes/CLAUDE.md` for SSE constraints, export, preview, scheduler, NER, audit log, viewer, and other route-specific rules.
+**Blueprints** in `routes/` — see `routes/CLAUDE.md` for SSE constraints, export, preview, scheduler, NER, audit log, viewer, software update, and other route-specific rules.
+
+**Self-update (server only)** — `routes/updates.py` powers **Settings → General → Software update**: git fetch → ff-only merge → conditional `pip install` → `os.execv` restart (same PID; marks fds close-on-exec first so Werkzeug's inheritable listening socket doesn't leak and squat the port). Only enabled for git checkouts (`_supported()` is false for frozen desktop builds). `update_gdpr.sh` is the CLI/cron equivalent. Refused while a scan runs; optional daily auto-update thread (`config.json["auto_update"]`). Restart keeps port 5100 (the port probe uses `SO_REUSEADDR` + a 10s grace). See `routes/CLAUDE.md` → "Software update".
 
 **Frontend:** `templates/index.html` (SPA), `static/style.css` (all styles), `static/js/*.js` (11 ES modules + `state.js`). `static/app.js` is an archived monolith — no longer loaded.
 
 **Checkpoint / resume** — all three scan engines save progress to `~/.gdprscanner/checkpoint_{prefix}.json` every 25 items. Prefixes: `m365`, `google`, `file_{source_id}`. Use `_cp_path(prefix)` — do not hard-code filenames. The Scan button calls `checkCheckpoint(() => startScan(false))` so a resume banner is offered before any grid clearing. `POST /api/scan/clear_checkpoint` globs and deletes all `checkpoint_*.json` files.
 
-**Data dir** `~/.gdprscanner/`: `scanner.db`, `config.json`, `settings.json`, `schedule.json`, `token.json`, `delta.json`, `checkpoint_m365.json`, `checkpoint_google.json`, `checkpoint_file_*.json`, `smtp.json`, `machine_id` (**never delete** — Fernet key), `role_overrides.json`, `google_sa.json`, `google.json`, `src_toggles.json`, `app.lock`, `viewer_tokens.json`
+**Data dir** `~/.gdprscanner/`: `scanner.db`, `config.json` (also holds `claude_api_key`/`claude_ner` and the `auto_update` flag), `settings.json`, `schedule.json`, `token.json`, `delta.json`, `checkpoint_m365.json`, `checkpoint_google.json`, `checkpoint_file_*.json`, `smtp.json`, `machine_id` (**never delete** — Fernet key), `role_overrides.json`, `google_sa.json`, `google.json`, `src_toggles.json`, `app.lock`, `viewer_tokens.json`. Static files are served with `SEND_FILE_MAX_AGE_DEFAULT=0` (ETag revalidation) so the UI is fresh after a self-update — do not re-add long static caching.
 
 ## Non-obvious files
 
@@ -44,15 +46,18 @@ python -m pytest tests/ -q
 | `routes/state.py` | Shared mutable state + scan locks (not a typical Flask state file) |
 | `routes/google_scan.py` | Google scan execution lives here, not in `google_connector.py` |
 | `routes/viewer.py` | Viewer token + PIN API; also owns brute-force rate-limit state |
-| `static/js/viewer.js` | Share modal, token CRUD, viewer PIN settings UI |
+| `static/js/viewer.js` | Share modal, token CRUD, viewer PIN settings UI. Also defines `window._copyText` (HTTP-safe clipboard helper reused by `log.js`) |
 | `lang/da.json` | Primary language — source of truth is `en.json` |
 | `build_gdpr.py` | Desktop app builder; contains embedded `LAUNCHER_CODE` for PyInstaller |
+| `routes/updates.py` | Self-update routes + `os.execv` restart with fd-cleanup; git-checkout only |
+| `update_gdpr.sh` | CLI/cron self-update (fetch, ff-merge, deps, service restart) |
+| `docs/setup/ZORAXY_SETUP.md` | HTTPS via Zoraxy reverse proxy (LAN-only, Let's Encrypt DNS-01) |
 
 ## Tests
 
-212 tests in `tests/`. No integration tests for live M365/Google connections.
+215 tests in `tests/`. No integration tests for live M365/Google connections.
 
-**`tests/test_updates.py`** — 11 tests for the software-update routes (`routes/updates.py`). All git interaction goes through a mocked `_git()`; `_schedule_restart` is patched so no test re-execs the process, and `gdpr_db.log_audit_event` is patched so no test writes the real database.
+**`tests/test_updates.py`** — 12 tests for the software-update routes (`routes/updates.py`). All git interaction goes through a mocked `_git()`; `_schedule_restart` is patched so no test re-execs the process, and `gdpr_db.log_audit_event` is patched so no test writes the real database. Includes `_mark_fds_cloexec` (the socket-leak guard for the restart).
 
 **`tests/test_google_scan.py`** — 19 tests for the Google Workspace scan module. Route tests for `GET /api/google/scan/users`, `POST /api/google/scan/start`, `POST /api/google/scan/cancel`. Engine tests for `_run_google_scan` using synchronous invocation with mocked `broadcast`, `_scan_bytes`, `checkpoint.*`, `scan_engine._with_disposition`, and `gdpr_db.get_db`. The `clean_google_state` autouse fixture releases `_google_scan_lock` and clears `_google_scan_abort` after each test.
 
