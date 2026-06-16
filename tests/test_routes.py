@@ -97,6 +97,22 @@ class TestScanStatus:
         assert "scan_id" in data
         assert data["scan_id"] is None
 
+    def test_idle_reports_google_not_running(self, client):
+        # The refresh/restore path relies on google_running being reported
+        # separately — running alone misses live Google scans.
+        data = client.get("/api/scan/status").get_json()
+        assert data["google_running"] is False
+
+    def test_google_lock_held_reports_google_running(self, client):
+        from routes import state
+        assert state._google_scan_lock.acquire(blocking=False)
+        try:
+            data = client.get("/api/scan/status").get_json()
+            assert data["google_running"] is True
+            assert data["running"] is False     # M365/file lock still free
+        finally:
+            state._google_scan_lock.release()
+
 
 # ---------------------------------------------------------------------------
 # /api/scan/start

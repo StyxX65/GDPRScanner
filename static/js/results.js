@@ -736,25 +736,34 @@ function _ensureSSE() {
 
 function _sseWatchdog() {
   fetch('/api/scan/status').then(function(r) { return r.json(); }).then(function(status) {
-    if (status.running) {
+    var anyRunning = status.running || status.google_running;
+    if (anyRunning) {
       // A scan is in progress — make sure SSE is connected and progress UI is visible
       _ensureSSE();
-      if (!S._m365ScanRunning && !S._googleScanRunning && !S._fileScanRunning) {
+      if (status.running && !S._m365ScanRunning && !S._googleScanRunning && !S._fileScanRunning) {
         document.getElementById('scanBtn').disabled = true;
         document.getElementById('stopBtn').style.display = 'inline-block';
-        // /api/scan/status checks the M365 lock — if running=true it's an M365 scan
+        // status.running reflects the M365 + file lock; treat as an M365 reconnect
         S._m365ScanRunning = true; _renderProgressSegments();
         document.getElementById('progressFile').textContent = t('m365_sse_reconnecting', 'Reconnecting to running scan…');
         log(t('m365_sse_reconnecting', 'Reconnecting to running scan…'));
       }
+    } else if (!S._historyRefScanId && !(S.flaggedData && S.flaggedData.length)) {
+      // No scan of any kind is running (authoritative, both locks free) and
+      // nothing is shown yet — restore the last saved session from the DB.
+      // Retried on every poll, not one-shot: the initial attempt can be blocked
+      // by running flags that SSE replay of a *completed* scan set but never
+      // cleared, and sse_replay_done only fires for a non-empty buffer (so it
+      // never retries after a server restart clears the replay buffer).
+      // Both locks are confirmed free, so clear any stale flags first.
+      S._m365ScanRunning = false;
+      S._googleScanRunning = false;
+      S._fileScanRunning = false;
+      window.loadHistorySession?.(null);
     }
-    if (!_initialStatusChecked) {
-      _initialStatusChecked = true;
-      if (!status.running) window.loadHistorySession?.(null);
-    }
-    // When no scan is running, we still keep polling — the SSE connection
-    // may have died and we need to detect the *next* scheduled scan.
-    // The SSE itself is only opened/reopened when a scan is detected.
+    _initialStatusChecked = true;
+    // Keep polling even when idle — the SSE connection may have died and we
+    // need to detect the next scheduled scan (SSE is only opened on demand).
   }).catch(function(err) {
     // Status endpoint unavailable — server might be restarting
     console.warn('[SSE] status poll failed:', err);

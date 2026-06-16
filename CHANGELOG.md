@@ -9,6 +9,10 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+### Fixed
+
+- **Blank results grid after a browser refresh (especially after a server restart)** — restoring the last scan session on page load was one-shot: `_sseWatchdog()` called `loadHistorySession(null)` a single time, guarded by `_initialStatusChecked`. If that attempt was blocked — a completed scan's replayed `scan_phase` event leaves a `_*ScanRunning` flag set, and the `loadHistorySession` guard then bails — nothing retried, because `sse_replay_done` (the other retry path) only fires when the SSE replay buffer is non-empty, and the buffer is empty after a server restart (so refreshing after the in-app self-update reliably showed an empty grid even though the results were in the database). The watchdog now re-attempts the restore on every 4-second poll while nothing is shown and no scan is running, clearing stale running flags first (both scan locks are confirmed free at that point). Additionally, `/api/scan/status` now reports `google_running` separately from `running` (which only ever reflected the M365 + file lock), so a refresh during a live Google scan is detected instead of being treated as idle.
+
 ---
 
 ## [1.7.7] — 2026-06-15

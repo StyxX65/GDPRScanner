@@ -76,9 +76,13 @@ def scan_status():
     acquired = state._scan_lock.acquire(blocking=False)
     if acquired:
         state._scan_lock.release()
+    g_acquired = state._google_scan_lock.acquire(blocking=False)
+    if g_acquired:
+        state._google_scan_lock.release()
     return jsonify({
-        "running":  not acquired,
-        "scan_id":  _sse_mod._current_scan_id or None,
+        "running":         not acquired,     # M365 + file scan lock
+        "google_running":  not g_acquired,   # Google scan lock (separate)
+        "scan_id":         _sse_mod._current_scan_id or None,
     })
 
 
