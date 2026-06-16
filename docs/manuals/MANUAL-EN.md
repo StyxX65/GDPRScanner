@@ -1,6 +1,6 @@
 # GDPR Scanner — User Manual
 
-Version 1.7.7
+Version 1.7.8
 
 ---
 
@@ -671,4 +671,4 @@ For a typical school or municipality scan the cost is negligible — Claude Haik
 
 ---
 
-*GDPR Scanner v1.7.7 — for technical setup and configuration see README.md*
+*GDPR Scanner v1.7.8 — for technical setup and configuration see README.md*
