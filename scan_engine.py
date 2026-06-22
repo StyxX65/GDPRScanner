@@ -1078,6 +1078,14 @@ def run_scan(options: dict):
         if _check_abort():
             # Save checkpoint so scan can be resumed later
             _save_checkpoint(ck_key, scanned_ids, _state.flagged_items, _state.scan_meta)
+            # Finalise the DB scan record so items found before the stop stay
+            # visible — this early return otherwise skips finish_scan below,
+            # stranding them (invisible to get_session_items / get_open_items).
+            if _db and _db_scan_id:
+                try:
+                    _db.finish_scan(_db_scan_id, resumed_count + idx + 1)
+                except Exception as _e:
+                    logger.error("[db] finish_scan (aborted) failed: %s", _e)
             return
         idx += 1
         kind, meta, _ = _work_q.popleft()  # releases this item from the deque immediately

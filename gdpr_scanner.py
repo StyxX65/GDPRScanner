@@ -2305,6 +2305,19 @@ Example --settings file with SMTP:
         print(f"\n  GDPRScanner\n  ──────────────────────────────")
         print(f"  Open: http://{args.host}:{args.port}")
 
+        # Recover scans left unfinished by a crash / kill / mid-scan restart.
+        # Nothing is scanning at startup, so any scan with finished_at IS NULL is
+        # dead; finalising it makes its already-saved items visible again instead
+        # of stranding them (both get_session_items and get_open_items require a
+        # finished scan). Must run before the scheduler can start a new scan.
+        try:
+            if DB_OK:
+                _recovered = _get_db().finalize_orphan_scans()
+                if _recovered:
+                    print(f"  Recovered {_recovered} unfinished scan(s) from a prior restart")
+        except Exception as _orphan_err:
+            print(f"  Orphan-scan recovery: failed ({_orphan_err})")
+
         # Start in-process scheduler (#19)
         try:
             import scan_scheduler as _sched_mod

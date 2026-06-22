@@ -29,10 +29,13 @@ Usage (from gdpr_scanner.py)
 
 import hashlib
 import json
+import logging
 import sqlite3
 import time
 from pathlib import Path
 from typing import Iterator
+
+logger = logging.getLogger(__name__)
 
 from pathlib import Path as _P
 _DATA_DIR = _P.home() / ".gdprscanner"
@@ -431,6 +434,33 @@ class ScanDB:
         )
 
         c.commit()
+
+    def finalize_orphan_scans(self) -> int:
+        """Finalise scans left unfinished by a crash, kill, or mid-scan restart.
+
+        After a fresh process start nothing is scanning, so any scan still
+        carrying finished_at IS NULL is dead — the process that owned it is gone.
+        Its already-saved flagged_items were stranded: both get_session_items
+        and get_open_items require finished_at, so those items are invisible and
+        effectively lost.  Finalising the orphans on startup makes them show up
+        and prevents permanent data loss from interrupted scans (the M365 and
+        Google engines return early on abort and never reach finish_scan; only
+        the file scan finalises in a finally block).
+
+        Safe to call only when no scan is running (i.e. at startup).  Returns the
+        number of scans finalised.
+        """
+        rows = self._connect().execute(
+            "SELECT id, total_scanned FROM scans WHERE finished_at IS NULL"
+        ).fetchall()
+        count = 0
+        for sid, total in rows:
+            try:
+                self.finish_scan(sid, total or 0)
+                count += 1
+            except Exception as e:
+                logger.warning("[db] finalize_orphan_scans: scan %s failed: %s", sid, e)
+        return count
 
     # ── Query helpers ─────────────────────────────────────────────────────────
 

@@ -265,3 +265,51 @@ class TestExportImport:
         tgt.import_db(str(export_path), mode="replace")
         results = tgt.lookup_data_subject("290472-1234")
         assert len(results) >= 1
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Orphan-scan recovery (crash / kill / mid-scan restart)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestOrphanScanRecovery:
+
+    def _start_unfinished_scan(self, db, item_id):
+        """Begin a scan and save an item but never call finish_scan."""
+        sid = db.begin_scan({"sources": ["email"], "user_ids": []})
+        db.save_item(sid, _make_card(item_id=item_id))
+        return sid
+
+    def test_unfinished_scan_items_hidden_until_recovery(self, tmp_db):
+        self._start_unfinished_scan(tmp_db, "orphan-1")
+        # Not finalised → invisible to the open-items view
+        assert tmp_db.get_open_items() == []
+
+    def test_recovery_finalises_and_reveals_items(self, tmp_db):
+        self._start_unfinished_scan(tmp_db, "orphan-1")
+        self._start_unfinished_scan(tmp_db, "orphan-2")
+
+        recovered = tmp_db.finalize_orphan_scans()
+        assert recovered == 2
+
+        ids = {row["id"] for row in tmp_db.get_open_items()}
+        assert ids == {"orphan-1", "orphan-2"}
+
+    def test_recovery_leaves_finished_scans_untouched(self, tmp_db):
+        sid = tmp_db.begin_scan({"sources": ["email"], "user_ids": []})
+        tmp_db.save_item(sid, _make_card(item_id="done-1"))
+        tmp_db.finish_scan(sid, total_scanned=1)
+        before = tmp_db._connect().execute(
+            "SELECT finished_at FROM scans WHERE id=?", (sid,)
+        ).fetchone()[0]
+
+        assert tmp_db.finalize_orphan_scans() == 0  # nothing to recover
+
+        after = tmp_db._connect().execute(
+            "SELECT finished_at FROM scans WHERE id=?", (sid,)
+        ).fetchone()[0]
+        assert after == before  # finished_at not rewritten
+
+    def test_recovery_is_idempotent(self, tmp_db):
+        self._start_unfinished_scan(tmp_db, "orphan-1")
+        assert tmp_db.finalize_orphan_scans() == 1
+        assert tmp_db.finalize_orphan_scans() == 0
