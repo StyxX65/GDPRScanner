@@ -252,3 +252,36 @@ class TestFernet:
     def test_decrypt_empty_returns_empty(self):
         result = app_config._decrypt_password("")
         assert result == ""
+
+
+class TestSmtpConfigLegacyKeys:
+    """SMTP config saved by the older settings tab used `user`/`starttls`;
+    readers expect `username`/`use_tls`. _load_smtp_config must normalise them."""
+
+    def test_legacy_keys_normalised_on_load(self, tmp_path, monkeypatch):
+        import json
+        p = tmp_path / "smtp.json"
+        p.write_text(json.dumps({
+            "host": "smtp.gmail.com", "port": 587,
+            "user": "netadmin@adm.example.dk",   # legacy key
+            "starttls": True,                      # legacy key
+            "from_addr": "netadmin@adm.example.dk",
+            "recipients": ["a@example.dk"],
+        }), encoding="utf-8")
+        monkeypatch.setattr(app_config, "_SMTP_CONFIG_PATH", p)
+
+        cfg = app_config._load_smtp_config()
+        assert cfg["username"] == "netadmin@adm.example.dk"
+        assert cfg["use_tls"] is True
+
+    def test_canonical_keys_take_precedence(self, tmp_path, monkeypatch):
+        import json
+        p = tmp_path / "smtp.json"
+        p.write_text(json.dumps({
+            "username": "canonical@example.dk",
+            "user": "legacy@example.dk",
+        }), encoding="utf-8")
+        monkeypatch.setattr(app_config, "_SMTP_CONFIG_PATH", p)
+
+        cfg = app_config._load_smtp_config()
+        assert cfg["username"] == "canonical@example.dk"

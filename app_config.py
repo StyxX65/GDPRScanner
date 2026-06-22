@@ -878,6 +878,13 @@ def _load_smtp_config() -> dict:
             cfg = json.loads(_SMTP_CONFIG_PATH.read_text(encoding="utf-8"))
             if cfg.get("password"):
                 cfg["password"] = _decrypt_password(cfg["password"])
+            # Normalise legacy key names written by an older settings-tab UI
+            # (`user`/`starttls`) to the canonical keys every reader expects
+            # (`username`/`use_tls`), so configs saved before the fix still work.
+            if "username" not in cfg and "user" in cfg:
+                cfg["username"] = cfg["user"]
+            if "use_tls" not in cfg and "starttls" in cfg:
+                cfg["use_tls"] = cfg["starttls"]
             return cfg
     except Exception:
         pass

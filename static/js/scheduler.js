@@ -314,11 +314,11 @@ function stLoadSmtp() {
     const set = function(id, val) { const el=document.getElementById(id); if(el) el.value=val||''; };
     set('st-smtpHost', d.host);
     set('st-smtpPort', d.port || 587);
-    set('st-smtpUser', d.user);
+    set('st-smtpUser', d.username);
     set('st-smtpFrom', d.from_addr);
     set('st-smtpTo',   Array.isArray(d.recipients) ? d.recipients.join(', ') : (d.recipients||''));
     const tls = document.getElementById('st-smtpTls');
-    if (tls) tls.checked = d.starttls !== false;
+    if (tls) tls.checked = d.use_tls !== false;
     const pw = document.getElementById('st-smtpPw');
     if (pw) pw.value = d.has_password ? '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' : '';
     const ae = document.getElementById('st-smtpAutoEmail');
@@ -333,10 +333,13 @@ async function stSmtpSave() {
   const body = {
     host:       document.getElementById('st-smtpHost').value.trim(),
     port:       parseInt(document.getElementById('st-smtpPort').value) || 587,
-    user:       document.getElementById('st-smtpUser').value.trim(),
+    // Backend (routes/email.py) reads these exact keys — `username`/`use_tls`,
+    // not `user`/`starttls`. Sending the wrong keys leaves username empty so
+    // server.login() is skipped and the SMTP server rejects the send.
+    username:   document.getElementById('st-smtpUser').value.trim(),
     from_addr:  document.getElementById('st-smtpFrom').value.trim(),
     recipients: document.getElementById('st-smtpTo').value.split(/[,;]/).map(function(s){return s.trim();}).filter(Boolean),
-    starttls:          document.getElementById('st-smtpTls').checked,
+    use_tls:           document.getElementById('st-smtpTls').checked,
     auto_email_manual: !!(document.getElementById('st-smtpAutoEmail') || {}).checked,
   };
   if (pw !== null) body.password = pw;
