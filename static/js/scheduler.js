@@ -323,6 +323,8 @@ function stLoadSmtp() {
     if (pw) pw.value = d.has_password ? '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' : '';
     const ae = document.getElementById('st-smtpAutoEmail');
     if (ae) ae.checked = !!d.auto_email_manual;
+    const ps = document.getElementById('st-smtpPreferSmtp');
+    if (ps) ps.checked = !!d.prefer_smtp;
   }).catch(function(){});
 }
 
@@ -341,6 +343,7 @@ async function stSmtpSave() {
     recipients: document.getElementById('st-smtpTo').value.split(/[,;]/).map(function(s){return s.trim();}).filter(Boolean),
     use_tls:           document.getElementById('st-smtpTls').checked,
     auto_email_manual: !!(document.getElementById('st-smtpAutoEmail') || {}).checked,
+    prefer_smtp:       !!(document.getElementById('st-smtpPreferSmtp') || {}).checked,
   };
   if (pw !== null) body.password = pw;
   st.style.color = 'var(--muted)'; st.textContent = t('m365_smtp_saving','Saving...');

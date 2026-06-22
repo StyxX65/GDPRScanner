@@ -148,8 +148,12 @@ def smtp_test():
         "</body></html>"
     )
 
-    # Try Graph API first
-    if state.connector and state.connector.is_authenticated():
+    # Try Graph API first — unless the user opted to always use SMTP. Graph
+    # returns 202 (queued) even for recipients Exchange later silently drops
+    # (e.g. a Google-hosted subdomain of the O365 domain), so SMTP is the only
+    # reliable path for those; prefer_smtp forces it.
+    prefer_smtp = bool(saved.get("prefer_smtp"))
+    if state.connector and state.connector.is_authenticated() and not prefer_smtp:
         try:
             _send_email_graph(subject, body_html, recipients)
             return jsonify({"ok": True, "method": "graph", "recipients": recipients})
@@ -285,8 +289,8 @@ def send_report():
         "</body></html>"
     )
 
-    # Try Graph API first
-    if state.connector and state.connector.is_authenticated():
+    # Try Graph API first — unless prefer_smtp is set (see smtp_test for why).
+    if state.connector and state.connector.is_authenticated() and not smtp_cfg.get("prefer_smtp"):
         try:
             _send_email_graph(subject, body_html, recipients,
                               attachment_bytes=xl_bytes, attachment_name=fname)

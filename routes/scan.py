@@ -54,7 +54,7 @@ def _maybe_send_auto_email():
             "</body></html>"
         )
 
-        if state.connector and state.connector.is_authenticated():
+        if state.connector and state.connector.is_authenticated() and not smtp_cfg.get("prefer_smtp"):
             try:
                 _send_email_graph(subject, body_html, recipients,
                                   attachment_bytes=xl_bytes, attachment_name=fname)

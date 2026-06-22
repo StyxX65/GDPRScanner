@@ -366,6 +366,7 @@
   "m365_smtp_recipients_hint": "Komma- oder semikolongetrennt",
   "m365_smtp_save": "Speichern",
   "m365_smtp_auto_email_manual": "Bericht nach manueller Suche senden",
+  "m365_smtp_prefer_smtp": "Immer via SMTP senden (Microsoft Graph überspringen)",
   "m365_smtp_send": "Jetzt senden",
   "m365_smtp_saved": "Einstellungen gespeichert.",
   "m365_smtp_sending": "Senden…",
