@@ -48,6 +48,7 @@ Never revert to `!!window._googleConnected` / `_fileSources.length > 0` — thos
 - **Cache invalidation** — `invalidateHistoryCache()` clears `_sessions` and `_latestRefScanId`. All three `*_done` SSE handlers call `window.invalidateHistoryCache?.()`.
 - **Re-scan diff** — items present in the previous session but absent from the current one are tagged `_resolved: true`, rendered with `.card-resolved` and a green ✓ badge, and NOT added to `S.flaggedData` (grid-only, cannot be bulk-selected or exported).
 - **Mode transitions** — `startScan()` calls `window.exitHistoryMode?.()` before clearing the grid.
+- **`renderGrid(files)` hides the landing cards** — whenever `files.length > 0` it hides `#emptyState` and `#lastScanSummary` and shows `#grid`. This is centralised here because the live `scan_file_flagged` handler (`scan.js`) shows the grid but does NOT clear those panels, so results would render *underneath* a still-visible landing/last-scan card until a manual refresh. Do not move this hiding back into individual callers — every render path (live SSE, `loadOpenItems`, history, filters) must clear the landing. The empty case (`files.length === 0`) is left untouched so callers still control the empty/landing state.
 
 ## Card user/group badge — results.js
 
