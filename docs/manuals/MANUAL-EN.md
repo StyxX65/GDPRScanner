@@ -1,6 +1,6 @@
 # GDPR Scanner — User Manual
 
-Version 1.7.8
+Version 1.7.9
 
 ---
 
@@ -200,6 +200,8 @@ Click **▶ Genoptag** to continue from where the scan left off. Click **Start f
 
 ## 5. Understanding the Results
 
+When you open the app, the grid shows **all open items** — every flagged item that still needs action (i.e. has no disposition), across all of your scans, not just the most recent one. As you tag items (kept, redacted, deleted, false positive, …) they drop out of this view, so what remains is your outstanding work. Each item appears once, showing its most recent state. To look at a single past scan instead, use the session picker (see *Browsing past scan sessions* below).
+
 Each flagged item appears as a card. Here is what the badges and labels mean:
 
 ### Source badges
@@ -256,7 +258,7 @@ Once a scan has completed, you can review results from any earlier scan session 
 - Click the **Sessions** button in the history banner (which appears above the results grid after a scan completes) to open the session picker.
 - Each row shows the date and time, which sources were scanned, and how many items were flagged. A **Δ** badge marks delta scans; **Latest** marks the most recent session.
 - Click any row to load that session's results into the grid. A history banner replaces the progress bar, showing the session details.
-- Click **Latest scan** in the banner to jump back to the most recent session.
+- Click **Open items** in the banner to leave the past session and return to the default view of all items still needing action.
 - Starting a new scan automatically exits history mode and switches back to live results.
 
 All filters, exports, and disposition tagging work normally while browsing past sessions.
@@ -526,7 +528,17 @@ Click **Gem** to save, then click **Test** to send a test email and verify the c
 
 > If your account has MFA (two-factor authentication) enabled, you cannot use your regular password. You need to create an **App Password** in your account security settings:
 > - **Microsoft personal account**: account.microsoft.com/security → App passwords
-> - **Gmail**: myaccount.google.com → Security → 2-Step Verification → App passwords
+> - **Gmail / Google Workspace**: myaccount.google.com → Security → 2-Step Verification → App passwords (for Google Workspace accounts your administrator must first allow App Passwords, or set up an SMTP relay)
+
+### Always send via SMTP (skip Microsoft Graph)
+
+When the scanner is signed in to Microsoft 365, it normally sends email through Microsoft 365 directly, without using the SMTP settings above. This is convenient, but it cannot deliver to some addresses — most notably an address on a Google-hosted subdomain of your Microsoft 365 domain, which Microsoft 365 treats as internal and silently discards (no delivery, no error).
+
+Turn on **Send altid via SMTP (spring Microsoft Graph over)** to force all email — test emails, manual reports, and the after-scan auto-email — through the SMTP server you configured above. Use this when your reports go to a mailbox Microsoft 365 won't deliver to (for example a Google Workspace address), with `smtp.gmail.com` / `smtp-relay.gmail.com` as the SMTP host.
+
+### Email report after manual scan
+
+Turn on **Send rapport efter manuel scanning** to automatically email the report to your configured recipients every time a manual scan finishes.
 
 ### Sending a report manually
 
@@ -671,4 +683,4 @@ For a typical school or municipality scan the cost is negligible — Claude Haik
 
 ---
 
-*GDPR Scanner v1.7.8 — for technical setup and configuration see README.md*
+*GDPR Scanner v1.7.9 — for technical setup and configuration see README.md*

@@ -11,6 +11,24 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [1.7.9] — 2026-06-22
+
+### Added
+
+- **"Always send via SMTP" option for email reports** — new toggle in **Settings → E-mailrapport**. When the scanner is signed in to Microsoft 365 it normally sends email through Microsoft Graph; Graph reports "accepted" the instant a message is queued, which hides the case where Exchange Online later silently drops it (e.g. a recipient on a Google-hosted subdomain of your Microsoft 365 domain — the message is treated as internal, finds no mailbox, and is discarded, with no delivery and no bounce). Enabling this option makes the manual report, the test email, and the after-scan auto-email all go straight through your configured SMTP server (e.g. Google Workspace `smtp.gmail.com` / `smtp-relay.gmail.com`), bypassing the Graph routing entirely.
+
+### Changed
+
+- **The results grid now shows every open item by default, not just the last scan** — when you open the app (or refresh after a scheduled or manual scan), the grid loads *all* flagged items that still need action — i.e. those with no disposition — across every scan, instead of only the most recent scan session. Items you have already tagged (kept, redacted, deleted, false positive, …) drop out of the view. Re-scans are de-duplicated so each item appears once, showing its most recent state. The session picker still loads any individual past scan, and the history banner button (formerly "Latest scan") is now **"Open items"** and returns to this default view.
+
+### Fixed
+
+- **Interrupted scans no longer lose their results** — a scan only became visible once it was *finalised*, but the Microsoft 365 and Google scan engines skipped finalisation when a scan was stopped, and any scan cut short by a server restart, crash, or out-of-memory kill never finalised at all. Its already-found items were then stranded in the database and invisible in the grid (this is what caused "scan finished but no results shown", especially after the in-app self-update restarts). Unfinished scans are now finalised automatically on startup (nothing is scanning at boot, so any unfinished scan is known to be dead), and a manually stopped Microsoft 365 scan finalises immediately so its partial results stay visible.
+- **User and group badges were missing on result cards loaded from the database** — the reviewer's display name was shown live during a scan but never saved, so cards loaded from a past scan (now the default view) lost both the person badge and the Elev/Ansat group badge. The display name is now stored with each item, and the group badge is shown from the saved role even for older items that predate this fix (where a name can't be recovered, the group badge and a resolved e-mail still appear).
+- **Email reports sent via SMTP failed with "authentication failed"** — the **Settings → E-mailrapport** tab saved the SMTP username under the wrong field name, so the username never reached the mail server and sign-in was skipped — the server then rejected the unauthenticated message, which surfaced as a misleading authentication error even with a correct password or app password. The setting is now saved correctly, and configurations saved before the fix are migrated automatically.
+
+---
+
 ## [1.7.8] — 2026-06-16
 
 ### Fixed

@@ -1,6 +1,6 @@
 # GDPR Scanner — Brugermanual
 
-Version 1.7.8
+Version 1.7.9
 
 ---
 
@@ -200,6 +200,8 @@ Klik på **▶ Genoptag** for at fortsætte fra det sted, scanningen slap. Klik 
 
 ## 5. Forstå resultaterne
 
+Når du åbner appen, viser gitteret **alle åbne fund** — alle markerede elementer, der stadig kræver handling (dvs. uden disposition), på tværs af alle dine scanninger og ikke kun den seneste. Efterhånden som du mærker elementer (behold, anonymisér, slet, falsk positiv …), forsvinder de fra denne visning, så det, der står tilbage, er dit udestående arbejde. Hvert element vises én gang med sin nyeste tilstand. Vil du i stedet se en enkelt tidligere scanning, så brug sessionsvælgeren (se *Gennemse tidligere scanningssessioner* nedenfor).
+
 Hvert fundet element vises som et kort. Her er forklaringen på mærker og labels:
 
 ### Kildemærker
@@ -256,7 +258,7 @@ Når en scanning er afsluttet, kan du gennemse resultaterne fra en tidligere sca
 - Klik på **Sessioner**-knappen i historikbanneret (der vises over resultatgitteret, når en scanning er afsluttet) for at åbne sessionsvælgeren.
 - Hver række viser dato og tidspunkt, hvilke kilder der blev scannet, og hvor mange elementer der blev fundet. Et **Δ**-mærkat angiver delta-scanninger; **Seneste** markerer den nyeste session.
 - Klik på en række for at indlæse den pågældende sessions resultater i gitteret. Et historikbanner erstatter statuslinjen med sessionens oplysninger.
-- Klik på **Seneste scanning** i banneret for at vende tilbage til den nyeste session.
+- Klik på **Åbne fund** i banneret for at forlade den tidligere session og vende tilbage til standardvisningen med alle elementer, der stadig kræver handling.
 - Start af en ny scanning afslutter automatisk historiktilstanden og skifter til live-resultater.
 
 Alle filtre, eksporter og dispositionsmærkning fungerer normalt, mens du gennemser tidligere sessioner.
@@ -526,7 +528,17 @@ Klik på **Gem** for at gemme, og klik derefter på **Test** for at sende en tes
 
 > Hvis din konto har MFA (to-faktor-godkendelse) aktiveret, kan du ikke bruge din almindelige adgangskode. Du skal oprette en **app-adgangskode** i din kontos sikkerhedsindstillinger:
 > - **Personlig Microsoft-konto**: account.microsoft.com/security → App-adgangskoder
-> - **Gmail**: myaccount.google.com → Sikkerhed → 2-trinsbekræftelse → App-adgangskoder
+> - **Gmail / Google Workspace**: myaccount.google.com → Sikkerhed → 2-trinsbekræftelse → App-adgangskoder (for Google Workspace-konti skal din administrator først tillade app-adgangskoder eller opsætte et SMTP-relay)
+
+### Send altid via SMTP (spring Microsoft Graph over)
+
+Når scanneren er logget på Microsoft 365, sender den normalt e-mail gennem Microsoft 365 direkte, uden at bruge SMTP-indstillingerne ovenfor. Det er praktisk, men det kan ikke levere til visse adresser — især en adresse på et Google-hostet underdomæne af dit Microsoft 365-domæne, som Microsoft 365 opfatter som intern og kasserer i stilhed (ingen levering, ingen fejl).
+
+Slå **Send altid via SMTP (spring Microsoft Graph over)** til for at tvinge al e-mail — test-e-mails, manuelle rapporter og automatisk e-mail efter scanning — gennem den SMTP-server, du har konfigureret ovenfor. Brug dette, når dine rapporter sendes til en postkasse, som Microsoft 365 ikke kan levere til (f.eks. en Google Workspace-adresse), med `smtp.gmail.com` / `smtp-relay.gmail.com` som SMTP-vært.
+
+### Send rapport efter manuel scanning
+
+Slå **Send rapport efter manuel scanning** til for automatisk at sende rapporten pr. e-mail til dine konfigurerede modtagere, hver gang en manuel scanning er færdig.
 
 ### Send en rapport manuelt
 
@@ -671,4 +683,4 @@ For en typisk skole- eller kommunescanning er omkostningen ubetydelig — Claude
 
 ---
 
-*GDPR Scanner v1.7.8 — teknisk opsætning og konfiguration: se README.md*
+*GDPR Scanner v1.7.9 — teknisk opsætning og konfiguration: se README.md*
