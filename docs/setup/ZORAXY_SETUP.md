@@ -111,7 +111,25 @@ Optional hardening:
 
 ---
 
-## 7. Verify the scanner-specific behaviour
+## 7. Firewall / perimeter checklist
+
+The Zoraxy whitelist (step 6) is an **application-layer** control — a rejected request has still completed the TCP and TLS handshake against your box, and any proxy host you forget to tag is fully exposed. The firewall is the real perimeter. Work this checklist whenever you stand up or replace the edge firewall:
+
+- [ ] **No inbound port-forward unless a service is intentionally public.** A LAN-only deployment needs *zero* inbound forwards — DNS-01 (step 4) is outbound-only, so certificates issue and renew with the firewall fully closed.
+- [ ] **If any service is intentionally public** (e.g. a media server), forward **443 only to the Zoraxy host** — never to individual app hosts. Everything then enters through Zoraxy, where the per-host Access Rule decides public vs. private.
+- [ ] **The per-host whitelist stays your public/private boundary even with the firewall in place** — it is not made redundant by the firewall. Public hosts use the `default` rule; every internal-only host gets **Local Access Only**.
+- [ ] **New proxy hosts default to public.** Zoraxy applies the `default` rule to any host with no rule set, so a freshly-added internal service is reachable the moment it exists. Set its Access Rule to **Local Access Only** *at creation time*.
+- [ ] **Management ports are LAN-only.** Zoraxy admin (`:8000`) and any app admin UI must never be forwarded; tag them **Local Access Only** as well.
+- [ ] **Verify from off-network.** From a connection outside the LAN (e.g. a phone on mobile data), confirm private hostnames are blocked and only the intentionally-public ones respond:
+
+  ```bash
+  curl -v https://gdprscanner.example.dk        # should fail/refuse from outside
+  nmap -Pn -p 80,443,5100 <your-public-IP>      # only intentionally-open ports listed
+  ```
+
+---
+
+## 8. Verify the scanner-specific behaviour
 
 1. `https://gdprscanner.example.dk` loads with a valid padlock; `http://` redirects.
 2. **Run a scan and watch result cards stream in live** — that is the Server-Sent Events connection (`/api/scan/stream`) passing through the proxy. If progress stalls while the scan log advances, look at proxy buffering/timeout settings.
