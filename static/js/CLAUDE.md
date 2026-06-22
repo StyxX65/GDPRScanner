@@ -49,6 +49,10 @@ Never revert to `!!window._googleConnected` / `_fileSources.length > 0` — thos
 - **Re-scan diff** — items present in the previous session but absent from the current one are tagged `_resolved: true`, rendered with `.card-resolved` and a green ✓ badge, and NOT added to `S.flaggedData` (grid-only, cannot be bulk-selected or exported).
 - **Mode transitions** — `startScan()` calls `window.exitHistoryMode?.()` before clearing the grid.
 
+## Card user/group badge — results.js
+
+- **`_accountPill(f)`** builds the account/role pill for both card layouts (list + grid). The **group badge is driven by `f.user_role`** (`student`/`staff`) alone, so it renders even with no display name — items from scans saved before `account_name` was persisted (DB migration 11) have only `user_role` + `account_id`. The user label resolves best-effort: `f.account_name` → `S._allUsers` match (by `id` or `email`) → email-style `account_id` → omit. Do not re-nest the role badge inside an `account_name` check (the old bug) — that hides the group badge for legacy items. Both layouts call `_accountPill(f)`; keep them sharing the one helper.
+
 ## CPR cross-referencing — results.js
 
 - **`_loadRelated(f)`** — async; hides `#previewRelated` if `f.cpr_count` is 0, otherwise fetches `/api/db/related/<id>?ref=N` and renders a clickable list with per-item shared-CPR badge. Called from `openPreview`.

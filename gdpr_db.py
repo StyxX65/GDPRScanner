@@ -228,6 +228,7 @@ _MIGRATIONS: list[tuple[int, str]] = [
         emailed     INTEGER NOT NULL DEFAULT 0,
         error       TEXT    NOT NULL DEFAULT ''
     )"""),
+    (11, "ALTER TABLE flagged_items ADD COLUMN account_name TEXT NOT NULL DEFAULT ''"),
 ]
 
 
@@ -329,8 +330,8 @@ class ScanDB:
                 url, drive_id, size_kb, modified, cpr_count, risk,
                 thumb_b64, thumb_mime, attachments, user_role, transfer_risk,
                 special_category, face_count, exif_json, full_path,
-                email_count, phone_count, body_excerpt, scanned_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                email_count, phone_count, body_excerpt, account_name, scanned_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 card.get("id", ""),
                 scan_id,
@@ -357,6 +358,7 @@ class ScanDB:
                 card.get("email_count", 0),
                 card.get("phone_count", 0),
                 card.get("body_excerpt", ""),
+                card.get("account_name", ""),
                 now,
             ),
         )

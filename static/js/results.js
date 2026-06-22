@@ -25,6 +25,31 @@ const SOURCE_BADGES = {
   smb:        ['🌐', 'badge-smb',        'Network'],
 };
 
+// Build the user/group pill for a card. The group (role) badge is driven by
+// user_role alone so it shows even when no display name is available — e.g.
+// items from earlier scans saved before account_name was persisted. For those
+// the user label is resolved best-effort from the loaded user list (by id or
+// email), falling back to an email-style account_id. Returns '' when there is
+// neither a label nor a role to show.
+function _accountPill(f) {
+  const roleBadge =
+    f.user_role === 'student' ? '<span class="role-badge">' + t('role_student', 'Elev')  + '</span>' :
+    f.user_role === 'staff'   ? '<span class="role-badge">' + t('role_staff',   'Ansat') + '</span>' : '';
+  let label = f.account_name || '';
+  if (!label && f.account_id) {
+    const aid = String(f.account_id);
+    const u = (S._allUsers || []).find(function(u) {
+      return u.id === f.account_id ||
+             (u.email && u.email.toLowerCase() === aid.toLowerCase());
+    });
+    if (u) label = u.displayName || '';
+    else if (aid.includes('@')) label = aid;  // an email is already human-readable
+  }
+  if (!label && !roleBadge) return '';
+  const title = label || f.user_role || '';
+  return '<span class="account-pill" title="' + esc(title) + '">' + roleBadge + (label ? esc(label) : '') + '</span>';
+}
+
 function appendCard(f) {
   const search = document.getElementById('filterSearch').value.trim().toLowerCase();
   const srcVal = document.getElementById('filterSource').value;
@@ -61,6 +86,7 @@ function appendCard(f) {
     (f.source_type === 'smb' || f.source_type === 'sftp') ? _redactExts.has(_fileExt) : false
   );
   const redactBtn = _redactable ? `<button class="card-redact-btn" title="${t('redact_btn','Redact CPR')}" onclick="event.stopPropagation();redactItem(${JSON.stringify(f).replace(/"/g,'&quot;')},this.closest('.card'))">✏</button>` : '';
+  const acctPill = _accountPill(f);
 
   if (S.isListView) {
     card.innerHTML = `
@@ -68,7 +94,7 @@ function appendCard(f) {
       <div class="card-info list-info">
         <div class="card-name" title="${esc(f.name)}">${esc(f.name)}</div>
         <div class="card-meta">${f.size_kb} KB · ${esc(f.modified || '')}${f.folder ? ' · 📂 ' + esc(f.folder) : ''}</div>
-        <div class="card-source"><span class="source-badge ${badgeCls}">${esc(label)}</span> ${esc(f.source || '')}${f.account_name ? ' · <span class="account-pill" title="' + esc(f.account_name) + '">' + (f.user_role === 'student' ? '<span class="role-badge">' + t('role_student','Elev') + '</span>' : f.user_role === 'staff' ? '<span class="role-badge">' + t('role_staff','Ansat') + '</span>' : '') + esc(f.account_name) + '</span>' : ''}${f.transfer_risk === 'external-recipient' ? ' <span class="role-pill" style="background:#7B2D00;color:#FFD0B0">⚠ Ext.</span>' : f.transfer_risk ? ' <span class="role-pill" style="background:#003D7B;color:#B0D4FF">🔗</span>' : ''}</div>
+        <div class="card-source"><span class="source-badge ${badgeCls}">${esc(label)}</span> ${esc(f.source || '')}${acctPill ? ' · ' + acctPill : ''}${f.transfer_risk === 'external-recipient' ? ' <span class="role-pill" style="background:#7B2D00;color:#FFD0B0">⚠ Ext.</span>' : f.transfer_risk ? ' <span class="role-pill" style="background:#003D7B;color:#B0D4FF">🔗</span>' : ''}</div>
       </div>
       <span class="cpr-badge">${f.cpr_count} CPR</span>
       ${f.email_count > 0 ? '<span class="email-badge">' + f.email_count + ' ' + t('m365_badge_emails', 'e-mail') + '</span> ' : ''}
@@ -84,7 +110,7 @@ function appendCard(f) {
         <div class="card-name" title="${esc(f.name)}">${esc(f.name)}</div>
         <div class="card-meta">${f.size_kb} KB · ${esc(f.modified || '')}</div>
         ${f.folder ? `<div class="card-meta" style="font-size:10px" title="${esc(f.folder)}">📂 ${esc(f.folder)}</div>` : ''}
-        <div class="card-source"><span class="source-badge ${badgeCls}">${esc(label)}</span>${f.account_name ? ' <span class="account-pill" title="' + esc(f.account_name) + '">' + (f.user_role === "student" ? '<span class="role-badge">' + t("role_student","Elev") + "</span>" : f.user_role === "staff" ? '<span class="role-badge">' + t("role_staff","Ansat") + "</span>" : "") + esc(f.account_name) + '</span>' : ''}${f.transfer_risk === "external-recipient" ? ' <span class="role-pill" style="background:#7B2D00;color:#FFD0B0">⚠ Ext.</span>' : f.transfer_risk ? ' <span class="role-pill" style="background:#003D7B;color:#B0D4FF">🔗</span>' : ''}</div>
+        <div class="card-source"><span class="source-badge ${badgeCls}">${esc(label)}</span>${acctPill ? ' ' + acctPill : ''}${f.transfer_risk === "external-recipient" ? ' <span class="role-pill" style="background:#7B2D00;color:#FFD0B0">⚠ Ext.</span>' : f.transfer_risk ? ' <span class="role-pill" style="background:#003D7B;color:#B0D4FF">🔗</span>' : ''}</div>
         <span class="cpr-badge">${f.cpr_count} CPR</span>${f.email_count > 0 ? ' <span class="email-badge">' + f.email_count + ' ' + t('m365_badge_emails', 'e-mail') + '</span>' : ''}${f.phone_count > 0 ? ' <span class="phone-badge">' + f.phone_count + ' ' + t('m365_badge_phones', 'tlf.') + '</span>' : ''}${f.face_count > 0 ? ' <span class="photo-face-badge">' + f.face_count + ' ' + t('m365_badge_faces', f.face_count === 1 ? 'face' : 'faces') + '</span>' : ''}${f.exif && f.exif.gps ? ' <span class="photo-face-badge" style="background:#0a3a5a;color:#7ec8d0">🌍 GPS</span>' : ''}${f._deleted ? ' <span class="resolved-badge" style="background:#3a1a1a;color:#ff9b9b">🗑 ' + t('delete_badge', 'Deleted') + '</span>' : ''}${f._redacted ? ' <span class="resolved-badge">✏ ' + t('redact_badge', 'Redacted') + '</span>' : ''}${f._resolved ? ' <span class="resolved-badge">✓ ' + t('history_resolved_badge', 'Resolved') + '</span>' : ''}${f.overdue ? ' <span class="overdue-badge">🗓 Overdue</span>' : ''}
       </div>
       ${delBtn}${redactBtn}`;

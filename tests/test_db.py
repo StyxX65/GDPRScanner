@@ -313,3 +313,23 @@ class TestOrphanScanRecovery:
         self._start_unfinished_scan(tmp_db, "orphan-1")
         assert tmp_db.finalize_orphan_scans() == 1
         assert tmp_db.finalize_orphan_scans() == 0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# account_name persistence (user/group badge data)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestAccountNamePersistence:
+
+    def test_account_name_round_trips(self, tmp_db):
+        sid = tmp_db.begin_scan({"sources": ["email"], "user_ids": []})
+        tmp_db.save_item(sid, _make_card(item_id="an-1"))  # account_name="Test User"
+        tmp_db.finish_scan(sid, total_scanned=1)
+
+        row = [r for r in tmp_db.get_open_items() if r["id"] == "an-1"][0]
+        assert row.get("account_name") == "Test User"
+
+    def test_account_name_column_exists(self, tmp_db):
+        cols = [r[1] for r in tmp_db._connect().execute(
+            "PRAGMA table_info(flagged_items)").fetchall()]
+        assert "account_name" in cols
