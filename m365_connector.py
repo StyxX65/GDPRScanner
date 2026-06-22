@@ -552,6 +552,8 @@ class M365Connector:
             r.raise_for_status()
             return True  # 204 No Content = success
         raise _requests.exceptions.RetryError(f"Gave up after {self._MAX_RETRIES} attempts: {url}")
+
+    def delete_message(self, user_id: str, message_id: str) -> bool:
         """Move an email to Deleted Items (soft delete)."""
         base = "/me" if (not user_id or user_id == "me") else f"/users/{user_id}"
         try:
