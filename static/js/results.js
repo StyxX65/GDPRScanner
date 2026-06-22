@@ -122,6 +122,17 @@ function renderGrid(files) {
   const grid = document.getElementById('grid');
   grid.innerHTML = '';
   files.forEach(f => appendCard(f));
+  // Whenever results are rendered, the landing/last-scan cards must be hidden —
+  // the live scan_file_flagged path shows the grid but does not clear them, so
+  // results would otherwise appear underneath the still-visible landing page
+  // until a manual refresh. Centralised here so every render path is covered.
+  if (files && files.length) {
+    const es = document.getElementById('emptyState');
+    if (es) es.style.display = 'none';
+    const ls = document.getElementById('lastScanSummary');
+    if (ls) ls.style.display = 'none';
+    if (grid) grid.style.display = S.isListView ? 'block' : 'grid';
+  }
   _updateBulkBar();
   updateDispositionStats();
 }
