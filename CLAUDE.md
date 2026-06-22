@@ -93,7 +93,8 @@ All options live in the profile `options` dict and apply to **all three scan eng
 - **`get_sessions(limit=50, window_seconds=300)`** — groups `scans` rows by 300 s window. Groups built ascending, returned descending. `ref_scan_id` is the highest `scan_id` in each group. Do not change window size independently of `get_session_items`.
 - **`get_session_items(ref_scan_id=N)`** — anchors 300 s window to that scan's `started_at`. Window is **symmetric**: `started_at BETWEEN ref.started_at - 300 AND ref.started_at + 300`. Do not revert to a one-sided lower bound.
 - **`get_related_items(item_id, ref_scan_id, window_seconds=300)`** — self-joins `cpr_index` to find items sharing ≥1 CPR hash. Uses same 300 s symmetric window — do not change independently.
-- **`GET /api/db/flagged?ref=N`** — passes `ref_scan_id` to `get_session_items`; viewer scope enforcement still applies.
+- **`get_open_items()`** — returns every flagged item with **no action taken**, across **all** scans (not just the latest session window). "Open" = no `dispositions` row, or one whose `status='unreviewed'`. Because `flagged_items` PK is `(id, scan_id)`, the same item recurs per scan; the query dedupes by `id`, keeping the row from the highest finished `scan_id`. This powers the **default landing view** so items don't drop out of sight once a newer scan opens a fresh session.
+- **`GET /api/db/flagged`** — **with `?ref=N`** → `get_session_items(ref_scan_id=N)` (history mode); **without ref** → `get_open_items()` (default + viewer). Viewer scope enforcement applies to both. Do not change the no-ref `get_session_items()` default elsewhere (`export.py`, `scan_scheduler.py` still rely on latest-session for the current scan's report/email).
 - See `static/js/CLAUDE.md` for the frontend history browser behaviour and `sse_replay_done` retry fix.
 
 ## Global gotchas

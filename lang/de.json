@@ -167,7 +167,7 @@
   "history_lbl": "Verlauf",
   "history_items": "Treffer",
   "history_btn_sessions": "Sessionen",
-  "history_btn_latest": "Letzter Scan",
+  "history_btn_latest": "Offene Einträge",
   "history_picker_empty": "Keine früheren Scans",
   "history_delta_badge": "Delta",
   "history_latest_badge": "Aktuell",

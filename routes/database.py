@@ -180,7 +180,11 @@ def db_get_disposition(item_id):
 
 @bp.route("/api/db/flagged")
 def db_flagged_items():
-    """Return flagged items from the most recent completed scan session.
+    """Return flagged items for the results grid.
+
+    With ?ref=N, returns the items from that specific past scan session (history
+    mode).  Without ref, returns every item still awaiting action across all
+    scans (the default landing view) — not just the latest session window.
     Used by the read-only viewer to load results without an active SSE connection.
     Respects viewer_scope.role stored in the session for scoped tokens.
     """
@@ -197,7 +201,13 @@ def db_flagged_items():
     else:
         user_filt = {raw_user.lower()} if raw_user else set()
     ref_scan_id = request.args.get("ref", type=int)
-    items = _get_db().get_session_items(ref_scan_id=ref_scan_id)
+    if ref_scan_id:
+        # History mode — a specific past session was requested.
+        items = _get_db().get_session_items(ref_scan_id=ref_scan_id)
+    else:
+        # Default landing / viewer — show every item still awaiting action,
+        # across all scans, not just the latest session window.
+        items = _get_db().get_open_items()
     # Normalise JSON-encoded columns the same way scan_engine does for SSE cards
     import json as _json
     out = []

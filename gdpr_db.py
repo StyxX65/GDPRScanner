@@ -536,6 +536,40 @@ class ScanDB:
             result.append(d)
         return result
 
+    def get_open_items(self) -> list[dict]:
+        """Return every flagged item across all scans that has no action taken.
+
+        "Open" means the item has no disposition row (or a row whose status is
+        still 'unreviewed').  Unlike get_session_items this is NOT limited to the
+        latest scan window — it surfaces all outstanding items so nothing slips
+        out of view once a newer scan starts a fresh session.
+
+        flagged_items has a composite PK of (id, scan_id), so the same logical
+        item appears once per scan that flagged it.  We deduplicate by id, keeping
+        the row from the most recent finished scan, so each open item shows once.
+        """
+        rows = self._connect().execute(
+            """SELECT fi.*, COALESCE(d.status, 'unreviewed') AS disposition
+               FROM flagged_items fi
+               JOIN scans s ON fi.scan_id = s.id
+               LEFT JOIN dispositions d ON d.item_id = fi.id
+               WHERE s.finished_at IS NOT NULL
+                 AND (d.item_id IS NULL OR d.status = 'unreviewed')
+                 AND fi.scan_id = (
+                       SELECT MAX(fi2.scan_id)
+                       FROM flagged_items fi2
+                       JOIN scans s2 ON fi2.scan_id = s2.id
+                       WHERE fi2.id = fi.id AND s2.finished_at IS NOT NULL
+                 )
+               ORDER BY fi.cpr_count DESC""",
+        ).fetchall()
+        result = []
+        for r in rows:
+            d = dict(r)
+            d["attachments"] = json.loads(d.get("attachments") or "[]")
+            result.append(d)
+        return result
+
     def get_related_items(self, item_id: str, ref_scan_id: int | None = None,
                           window_seconds: int = 300) -> list[dict]:
         """Return flagged items from the same session that share at least one CPR

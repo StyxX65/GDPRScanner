@@ -38,20 +38,50 @@ function invalidateHistoryCache() {
 
 // ── Load a session into the results grid ──────────────────────────────────────
 
-async function loadHistorySession(refScanId) {
-  // refScanId: null → latest session, positive int → specific session
-  let resolvedRef = refScanId;
-  if (resolvedRef === null) {
-    const sessions = _sessions !== null ? _sessions : await _fetchSessions();
-    // Bail if a scan started while we were fetching sessions
+// Default landing view: every flagged item still awaiting action, across all
+// scans (not just the latest session). Leaves S._historyRefScanId null (live
+// mode) and shows no history banner — this is "now", not a past session.
+async function loadOpenItems() {
+  // Bail if a scan is running — live SSE owns the grid then.
+  if (S._m365ScanRunning || S._googleScanRunning || S._fileScanRunning) return;
+  try {
+    const r     = await fetch('/api/db/flagged');
+    const items = await r.json();
     if (S._m365ScanRunning || S._googleScanRunning || S._fileScanRunning) return;
-    if (!sessions.length) {
-      // No scans in DB — nothing to show
+    closeHistoryPicker();
+
+    if (!Array.isArray(items) || items.length === 0) {
+      S._historyRefScanId = null;
+      _setHistoryBanner(false);
       window.loadLastScanSummary?.();
       return;
     }
-    resolvedRef = sessions[0].ref_scan_id;
+
+    S._historyRefScanId = null;
+    S.flaggedData  = items;
+    S.filteredData = [];
+
+    const grid       = document.getElementById('grid');
+    const emptyState = document.getElementById('emptyState');
+    const lastScan   = document.getElementById('lastScanSummary');
+    if (emptyState) emptyState.style.display = 'none';
+    if (lastScan)   lastScan.style.display   = 'none';
+    if (grid) { grid.innerHTML = ''; grid.style.display = 'grid'; }
+
+    window.renderGrid(items);
+    try { window.markOverdueCards(); } catch(_) {}
+    try { window.loadTrend();        } catch(_) {}
+    _setHistoryBanner(false);
+  } catch(e) {
+    console.error('[history] failed to load open items:', e);
   }
+}
+
+async function loadHistorySession(refScanId) {
+  // refScanId: null → all open (unreviewed) items across every scan,
+  //            positive int → a specific past session
+  if (refScanId === null) return loadOpenItems();
+  const resolvedRef = refScanId;
 
   try {
     const r     = await fetch('/api/db/flagged?ref=' + resolvedRef);

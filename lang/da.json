@@ -106,7 +106,7 @@
   "history_lbl": "Historik",
   "history_items": "fund",
   "history_btn_sessions": "Sessioner",
-  "history_btn_latest": "Seneste scanning",
+  "history_btn_latest": "Åbne fund",
   "history_picker_empty": "Ingen tidligere scanninger",
   "history_delta_badge": "Delta",
   "history_latest_badge": "Seneste",

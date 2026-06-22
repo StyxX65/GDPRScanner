@@ -270,6 +270,49 @@ class TestFlaggedScopeEnforcement:
         ids = {row["id"] for row in r.get_json()}
         assert "ci1" in ids
 
+    def test_no_ref_returns_open_items_across_all_sessions(self, client, db_patch):
+        # Two scans in separate session windows. The default (no-ref) view must
+        # surface unactioned items from BOTH, not just the latest session.
+        old_id = _seed_scan(db_patch, [_item("o1")])
+        db_patch._connect().execute(
+            "UPDATE scans SET started_at = started_at - 400 WHERE id = ?", (old_id,)
+        )
+        db_patch._connect().commit()
+        _seed_scan(db_patch, [_item("o2")])
+
+        r = client.get("/api/db/flagged")
+        ids = {row["id"] for row in r.get_json()}
+        assert ids == {"o1", "o2"}
+
+    def test_no_ref_excludes_items_with_a_disposition(self, client, db_patch):
+        _seed_scan(db_patch, [_item("d1"), _item("d2")])
+        db_patch.set_disposition("d1", "kept")
+
+        r = client.get("/api/db/flagged")
+        ids = {row["id"] for row in r.get_json()}
+        assert "d2" in ids        # untouched → still open
+        assert "d1" not in ids    # action taken → hidden
+
+    def test_no_ref_unreviewed_disposition_stays_open(self, client, db_patch):
+        _seed_scan(db_patch, [_item("u1")])
+        db_patch.set_disposition("u1", "unreviewed")
+
+        r = client.get("/api/db/flagged")
+        ids = {row["id"] for row in r.get_json()}
+        assert "u1" in ids        # 'unreviewed' status is not an action
+
+    def test_no_ref_dedupes_rescanned_item_to_latest(self, client, db_patch):
+        # Same item flagged by two scans → appears once.
+        old_id = _seed_scan(db_patch, [_item("k1")])
+        db_patch._connect().execute(
+            "UPDATE scans SET started_at = started_at - 400 WHERE id = ?", (old_id,)
+        )
+        db_patch._connect().commit()
+        _seed_scan(db_patch, [_item("k1")])
+
+        rows = [row for row in client.get("/api/db/flagged").get_json() if row["id"] == "k1"]
+        assert len(rows) == 1
+
     def test_ref_param_loads_historical_session(self, client, db_patch):
         # Push first scan >300 s into the past so it occupies its own session window.
         old_id = _seed_scan(db_patch, [_item("h1")])

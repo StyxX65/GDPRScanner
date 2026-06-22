@@ -106,7 +106,7 @@
   "history_lbl": "History",
   "history_items": "items",
   "history_btn_sessions": "Sessions",
-  "history_btn_latest": "Latest scan",
+  "history_btn_latest": "Open items",
   "history_picker_empty": "No past scans",
   "history_delta_badge": "Delta",
   "history_latest_badge": "Latest",
